@@ -302,7 +302,11 @@ export async function DELETE(
     }
     
     // Update booking status to cancelled
-    await booking.update({ status: BookingStatusEnum.CANCELLED });
+    if (seatBooking) {
+      await seatBooking.update({ status: BookingStatusEnum.CANCELLED });
+    } else if (meetingBooking) {
+      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED });
+    }
     
     // Release the seat
     const seatId = bookingType === 'seat' 
@@ -312,7 +316,7 @@ export async function DELETE(
     const seat = await models.Seat.findByPk(seatId);
     
     if (seat) {
-      await seat.update({ availability_status: 'AVAILABLE' });
+      await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
     }
     
     // Release time slots if they exist
