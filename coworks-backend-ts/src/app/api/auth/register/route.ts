@@ -38,7 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Return response without password
     const customerData = customer.get({ plain: true });
-    delete customerData.password;
+    const { password: _, ...customerWithoutPassword } = customerData;    
     
     const response: RegisterResponse = {
       message: 'Registration successful',

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
-import { verifyToken } from '@/config/jwt';
-import { ApiResponse } from '@/types/common';
-import { BookingStatusEnum } from '@/types/booking';
+import models from '../../../../models';
+import { verifyToken } from '../../../../config/jwt';
+import { BookingStatusEnum } from '../../../../types/booking';
 
 // GET a single booking by ID
 export async function GET(
@@ -15,12 +14,10 @@ export async function GET(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -28,16 +25,15 @@ export async function GET(
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Try to find as seat booking first
-    let booking = await models.SeatBooking.findByPk(parseInt(id), {
+    let bookingType = 'seat';
+    let seatBooking = await models.SeatBooking.findByPk(parseInt(id), {
       include: [
         {
           model: models.Seat,
@@ -59,11 +55,12 @@ export async function GET(
       ]
     });
     
-    let bookingType = 'seat';
+    let meetingBooking = null;
     
     // If not found, try as meeting booking
-    if (!booking) {
-      booking = await models.MeetingBooking.findByPk(parseInt(id), {
+    if (!seatBooking) {
+      bookingType = 'meeting';
+      meetingBooking = await models.MeetingBooking.findByPk(parseInt(id), {
         include: [
           {
             model: models.Seat,
@@ -85,9 +82,10 @@ export async function GET(
           }
         ]
       });
-      
-      bookingType = 'meeting';
     }
+    
+    // Use a common booking variable
+    const booking = seatBooking || meetingBooking;
     
     if (!booking) {
       return NextResponse.json(
@@ -139,12 +137,10 @@ export async function PUT(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -152,12 +148,10 @@ export async function PUT(
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Parse the request body
@@ -165,14 +159,18 @@ export async function PUT(
     const { status } = body;
     
     // Try to find as seat booking first
-    let booking = await models.SeatBooking.findByPk(parseInt(id));
     let bookingType = 'seat';
+    let seatBooking = await models.SeatBooking.findByPk(parseInt(id));
+    let meetingBooking = null;
     
     // If not found, try as meeting booking
-    if (!booking) {
-      booking = await models.MeetingBooking.findByPk(parseInt(id));
+    if (!seatBooking) {
       bookingType = 'meeting';
+      meetingBooking = await models.MeetingBooking.findByPk(parseInt(id));
     }
+    
+    // Use a common booking variable
+    const booking = seatBooking || meetingBooking;
     
     if (!booking) {
       return NextResponse.json(
@@ -197,7 +195,10 @@ export async function PUT(
       
       // If cancelled or completed, release the seat
       if (status === BookingStatusEnum.CANCELLED || status === BookingStatusEnum.COMPLETED) {
-        const seatId = bookingType === 'seat' ? booking.seat_id : booking.meeting_room_id;
+        const seatId = bookingType === 'seat' 
+          ? (seatBooking?.seat_id as number) 
+          : (meetingBooking?.meeting_room_id as number);
+        
         const seat = await models.Seat.findByPk(seatId);
         
         if (seat) {
@@ -238,12 +239,10 @@ export async function DELETE(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -251,23 +250,25 @@ export async function DELETE(
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Try to find as seat booking first
-    let booking = await models.SeatBooking.findByPk(parseInt(id));
     let bookingType = 'seat';
+    let seatBooking = await models.SeatBooking.findByPk(parseInt(id));
+    let meetingBooking = null;
     
     // If not found, try as meeting booking
-    if (!booking) {
-      booking = await models.MeetingBooking.findByPk(parseInt(id));
+    if (!seatBooking) {
       bookingType = 'meeting';
+      meetingBooking = await models.MeetingBooking.findByPk(parseInt(id));
     }
+    
+    // Use a common booking variable
+    const booking = seatBooking || meetingBooking;
     
     if (!booking) {
       return NextResponse.json(
@@ -298,7 +299,10 @@ export async function DELETE(
     await booking.update({ status: BookingStatusEnum.CANCELLED });
     
     // Release the seat
-    const seatId = bookingType === 'seat' ? booking.seat_id : booking.meeting_room_id;
+    const seatId = bookingType === 'seat' 
+      ? (seatBooking?.seat_id as number) 
+      : (meetingBooking?.meeting_room_id as number);
+    
     const seat = await models.Seat.findByPk(seatId);
     
     if (seat) {
