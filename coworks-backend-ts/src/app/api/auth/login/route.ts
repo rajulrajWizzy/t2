@@ -41,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Return token and customer data (excluding password)
     const customerData = customer.get({ plain: true });
     const { password: _, ...customerWithoutPassword } = customerData;    
-    
+    //test
     const response: LoginResponse = {
       message: 'Login successful',
       token,
