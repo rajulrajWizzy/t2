@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '../../../models';
 import { verifyToken } from '../../../config/jwt';
 import { Op } from 'sequelize';
-
+import { AvailabilityStatusEnum } from '../../../types/seating';
 // GET bookings for a customer
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     // Update the seat availability
-    await seat.update({ availability_status: 'BOOKED' });
+    await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED });
     
     // Update time slots if they exist
     await models.TimeSlot.update(
