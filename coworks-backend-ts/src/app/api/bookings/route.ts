@@ -253,17 +253,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED });
     
     // Update time slots if they exist
-    await models.TimeSlot.update(
-      { is_available: false, booking_id: booking.id },
-      { 
-        where: { 
-          seat_id, 
-          date: startTimeDate.toISOString().split('T')[0],
-          start_time: startTimeDate.toTimeString().split(' ')[0],
-          end_time: endTimeDate.toTimeString().split(' ')[0]
-        } 
-      }
-    );
+    if (booking) {
+      await models.TimeSlot.update(
+        { is_available: false, booking_id: booking.id },
+        { 
+          where: { 
+            seat_id, 
+            date: startTimeDate.toISOString().split('T')[0],
+            start_time: startTimeDate.toTimeString().split(' ')[0],
+            end_time: endTimeDate.toTimeString().split(' ')[0]
+          } 
+        }
+      );
+    }
     
     return NextResponse.json({
       success: true,
