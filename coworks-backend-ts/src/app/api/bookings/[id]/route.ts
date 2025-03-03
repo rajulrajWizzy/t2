@@ -191,7 +191,12 @@ export async function PUT(
     
     // Update booking status
     if (status && Object.values(BookingStatusEnum).includes(status as BookingStatusEnum)) {
-      await booking.update({ status });
+      // Handle each booking type separately
+      if (seatBooking) {
+        await seatBooking.update({ status });
+      } else if (meetingBooking) {
+        await meetingBooking.update({ status });
+      }
       
       // If cancelled or completed, release the seat
       if (status === BookingStatusEnum.CANCELLED || status === BookingStatusEnum.COMPLETED) {
