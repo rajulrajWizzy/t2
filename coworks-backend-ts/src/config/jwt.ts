@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { Customer } from '@/types/auth';
 import { JwtPayload, JwtVerificationResult } from '@/types/common';
 
@@ -14,7 +14,7 @@ export function generateToken(user: Customer): string {
       name: user.name
     },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
   );
 }
 
