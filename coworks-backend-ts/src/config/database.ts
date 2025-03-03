@@ -16,12 +16,12 @@ const sequelize = new Sequelize(
     dialect: 'postgres',
     dialectModule: pg, // Explicitly providing the pg module
     logging: console.log,
-    /*dialectOptions: {
+    dialectOptions: {
       ssl: {
         require: true,
         rejectUnauthorized: false, // Important for Neon and some other providers
       },
-    },*/
+    },
     pool: {
       max: 5,
       min: 0,
