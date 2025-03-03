@@ -40,8 +40,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Return token and customer data (excluding password)
     const customerData = customer.get({ plain: true });
-    delete customerData.password; // TypeScript doesn't allow destructuring with omission
-    
+    const { password: _, ...customerWithoutPassword } = customerData;    
     const response: LoginResponse = {
       message: 'Login successful',
       token,
