@@ -4,6 +4,7 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { PaymentStatusEnum } from '@/types/payment';
 import { BookingStatusEnum } from '@/types/booking';
+import { SeatBookingModel, MeetingBookingModel } from '../../../../models';
 
 // GET a single payment by ID
 export async function GET(
@@ -175,7 +176,14 @@ export async function PUT(
         }
         
         // Release seat if booking is cancelled
-        const seatId = payment.booking_type === 'seat' ? booking.seat_id : booking.meeting_room_id;
+        let seatId: number;
+        if (payment.booking_type === 'seat') {
+          const seatBooking = booking as SeatBookingModel;
+          seatId = seatBooking.seat_id;
+        } else {
+          const meetingBooking = booking as MeetingBookingModel;
+          seatId = meetingBooking.meeting_room_id;
+        }
         const seat = await models.Seat.findByPk(seatId);
         
         if (seat) {
