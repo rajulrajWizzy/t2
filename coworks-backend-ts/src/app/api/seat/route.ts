@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
-import { verifyToken } from '@/config/jwt';
-import { ApiResponse } from '@/types/common';
-import { SeatInput } from '@/types/seating';
+import models from '../../../models';
+import { verifyToken } from '../../../config/jwt';
+import { SeatInput } from '../../../types/seating';
 
 // GET all seats or filter by branch_id
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -41,22 +40,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       order: [['id', 'ASC']]
     });
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: true,
       data: seats
-    };
-    
-    return NextResponse.json(response);
+    });
   } catch (error) {
     console.error('Error fetching seats:', error);
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: false,
       message: 'Failed to fetch seats',
       error: (error as Error).message
-    };
-    
-    return NextResponse.json(response, { status: 500 });
+    }, { status: 500 });
   }
 }
 
@@ -66,12 +61,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      }, { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -79,12 +72,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      }, { status: 401 });
     }
     
     // Parse the request body
@@ -93,34 +84,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Basic validation
     if (!branch_id || !seating_type_id || !seat_number || !price) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Branch ID, seating type ID, seat number, and price are required'
-      };
-      
-      return NextResponse.json(response, { status: 400 });
+      }, { status: 400 });
     }
     
     // Check if branch exists
     const branch = await models.Branch.findByPk(branch_id);
     if (!branch) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Branch not found'
-      };
-      
-      return NextResponse.json(response, { status: 404 });
+      }, { status: 404 });
     }
     
     // Check if seating type exists
     const seatingType = await models.SeatingType.findByPk(seating_type_id);
     if (!seatingType) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Seating type not found'
-      };
-      
-      return NextResponse.json(response, { status: 404 });
+      }, { status: 404 });
     }
     
     // Check if seat number already exists for this branch
@@ -132,12 +117,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     if (existingSeat) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Seat number already exists for this branch'
-      };
-      
-      return NextResponse.json(response, { status: 409 });
+      }, { status: 409 });
     }
     
     // Create a new seat
@@ -149,22 +132,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       availability_status: body.availability_status || 'AVAILABLE'
     });
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: true,
       message: 'Seat created successfully',
       data: seat
-    };
-    
-    return NextResponse.json(response, { status: 201 });
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating seat:', error);
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: false,
       message: 'Failed to create seat',
       error: (error as Error).message
-    };
-    
-    return NextResponse.json(response, { status: 500 });
+    }, { status: 500 });
   }
 }

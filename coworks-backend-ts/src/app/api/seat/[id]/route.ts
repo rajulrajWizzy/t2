@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
-import { verifyToken } from '@/config/jwt';
-import { ApiResponse } from '@/types/common';
-import { AvailabilityStatusEnum } from '@/types/seating';
+import models from '../../../../models';
+import { verifyToken } from '../../../../config/jwt';
+import { AvailabilityStatusEnum } from '../../../../types/seating';
 
 // GET a single seat by ID
 export async function GET(
@@ -64,12 +63,10 @@ export async function PUT(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -77,12 +74,10 @@ export async function PUT(
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Parse the request body
@@ -136,12 +131,10 @@ export async function DELETE(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -149,12 +142,10 @@ export async function DELETE(
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Find the seat

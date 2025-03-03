@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
-import { verifyToken } from '@/config/jwt';
-import { ApiResponse } from '@/types/common';
-import { SeatBookingInput } from '@/types/booking';
+import models from '../../../models';
+import { verifyToken } from '../../../config/jwt';
 import { Op } from 'sequelize';
 
 // GET bookings for a customer
@@ -11,12 +9,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -24,12 +20,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Get URL parameters
@@ -114,25 +108,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       order: [['start_time', 'DESC']]
     });
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: true,
       data: {
         seatBookings,
         meetingBookings
       }
-    };
-    
-    return NextResponse.json(response);
+    });
   } catch (error) {
     console.error('Error fetching bookings:', error);
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: false,
       message: 'Failed to fetch bookings',
       error: (error as Error).message
-    };
-    
-    return NextResponse.json(response, { status: 500 });
+    }, { status: 500 });
   }
 }
 
@@ -142,12 +132,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     const token = authHeader.split(' ')[1];
@@ -155,16 +143,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Unauthorized'
-      };
-      
-      return NextResponse.json(response, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Parse the request body
-    const body = await request.json() as SeatBookingInput & { type: 'seat' | 'meeting' };
+    const body = await request.json();
     const { 
       type = 'seat',
       customer_id = decoded.id,
@@ -176,33 +162,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Basic validation
     if (!seat_id || !start_time || !end_time || !total_price) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Seat ID, start time, end time, and total price are required'
-      };
-      
-      return NextResponse.json(response, { status: 400 });
+      }, { status: 400 });
     }
     
     // Check if the seat exists
     const seat = await models.Seat.findByPk(seat_id);
     if (!seat) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Seat not found'
-      };
-      
-      return NextResponse.json(response, { status: 404 });
+      }, { status: 404 });
     }
     
     // Check if the seat is available
     if (seat.availability_status !== 'AVAILABLE') {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'Seat is not available'
-      };
-      
-      return NextResponse.json(response, { status: 400 });
+      }, { status: 400 });
     }
     
     // Convert string dates to Date objects
@@ -230,12 +210,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     if (existingBookings.length > 0) {
-      const response: ApiResponse = {
+      return NextResponse.json({
         success: false,
         message: 'The selected time slot is not available'
-      };
-      
-      return NextResponse.json(response, { status: 400 });
+      }, { status: 400 });
     }
     
     // Create the booking based on type
@@ -251,15 +229,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     } else if (type === 'meeting') {
       // Additional fields for meeting booking
-      const { num_participants, amenities } = body as any;
+      const { num_participants, amenities } = body;
       
       if (!num_participants) {
-        const response: ApiResponse = {
+        return NextResponse.json({
           success: false,
           message: 'Number of participants is required for meeting bookings'
-        };
-        
-        return NextResponse.json(response, { status: 400 });
+        }, { status: 400 });
       }
       
       booking = await models.MeetingBooking.create({
@@ -289,22 +265,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     );
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: true,
       message: 'Booking created successfully',
       data: booking
-    };
-    
-    return NextResponse.json(response, { status: 201 });
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating booking:', error);
     
-    const response: ApiResponse = {
+    return NextResponse.json({
       success: false,
       message: 'Failed to create booking',
       error: (error as Error).message
-    };
-    
-    return NextResponse.json(response, { status: 500 });
+    }, { status: 500 });
   }
 }
