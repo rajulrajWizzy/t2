@@ -4,6 +4,7 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { PaymentStatusEnum } from '@/types/payment';
 import { BookingStatusEnum } from '@/types/booking';
+import { AvailabilityStatusEnum } from '../../../../types/seating';
 
 // GET a single payment by ID
 export async function GET(
@@ -187,7 +188,7 @@ export async function PUT(
         const seat = await models.Seat.findByPk(seatId);
         
         if (seat) {
-          await seat.update({ availability_status: 'AVAILABLE' });
+          await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
         }
         
         // Release time slots if they exist and it's a seat booking
