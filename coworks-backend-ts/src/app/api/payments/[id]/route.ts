@@ -162,7 +162,17 @@ export async function PUT(
       
       // If payment is refunded, update booking status to cancelled
       if (status === PaymentStatusEnum.REFUNDED) {
-        await booking.update({ status: BookingStatusEnum.CANCELLED });
+        if (payment.booking_type === 'seat') {
+          await models.SeatBooking.update(
+            { status: BookingStatusEnum.CANCELLED },
+            { where: { id: payment.booking_id } }
+          );
+        } else {
+          await models.MeetingBooking.update(
+            { status: BookingStatusEnum.CANCELLED },
+            { where: { id: payment.booking_id } }
+          );
+        }
         
         // Release seat if booking is cancelled
         const seatId = payment.booking_type === 'seat' ? booking.seat_id : booking.meeting_room_id;

@@ -167,15 +167,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Update booking status to confirmed
     if (payment.booking_type === 'seat') {
-      await models.SeatBooking.update(
-        { status: BookingStatusEnum.CANCELLED },
-        { where: { id: payment.booking_id } }
-      );
+      const seatBooking = booking as any; // or proper type casting
+      await seatBooking.update({ status: BookingStatusEnum.CANCELLED });
     } else {
-      await models.MeetingBooking.update(
-        { status: BookingStatusEnum.CANCELLED },
-        { where: { id: payment.booking_id } }
-      );
+      const meetingBooking = booking as any; // or proper type casting
+      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED });
     }
     
     const response: ApiResponse = {
