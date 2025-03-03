@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '../../../../models';
 import { verifyToken } from '../../../../config/jwt';
 import { BookingStatusEnum } from '../../../../types/booking';
+import { AvailabilityStatusEnum } from '../../../../types/seating';
 
 // GET a single booking by ID
 export async function GET(
@@ -207,7 +208,7 @@ export async function PUT(
         const seat = await models.Seat.findByPk(seatId);
         
         if (seat) {
-          await seat.update({ availability_status: 'AVAILABLE' });
+          await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
         }
         
         // Release time slots if they exist
