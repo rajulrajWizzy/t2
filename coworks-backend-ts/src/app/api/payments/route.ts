@@ -166,7 +166,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     // Update booking status to confirmed
-    await booking.update({ status: BookingStatusEnum.CONFIRMED });
+    if (payment.booking_type === 'seat') {
+      const seatBooking = booking as any; // or proper type casting
+      await seatBooking.update({ status: BookingStatusEnum.CANCELLED });
+    } else {
+      const meetingBooking = booking as any; // or proper type casting
+      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED });
+    }
     
     const response: ApiResponse = {
       success: true,
