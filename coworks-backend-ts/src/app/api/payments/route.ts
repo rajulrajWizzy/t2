@@ -162,16 +162,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       amount,
       payment_method,
       payment_status: PaymentStatusEnum.COMPLETED, // Assuming payment is completed immediately for simplicity
-      transaction_id
+      transaction_id: transaction_id || undefined
     });
     
     // Update booking status to confirmed
     if (payment.booking_type === 'seat') {
       const seatBooking = booking as any; // or proper type casting
-      await seatBooking.update({ status: BookingStatusEnum.CANCELLED });
+      await seatBooking.update({ status: BookingStatusEnum.CONFIRMED });
     } else {
       const meetingBooking = booking as any; // or proper type casting
-      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED });
+      await meetingBooking.update({ status: BookingStatusEnum.CONFIRMED });
     }
     
     const response: ApiResponse = {
