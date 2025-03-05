@@ -4,13 +4,5 @@
     "devCommand": "npm run dev",
     "installCommand": "npm install",
     "framework": "nextjs",
-    "outputDirectory": ".next",
-    "functions": {
-      "api/**/*": {
-        "runtime": "nodejs18.x"
-      },
-      "middleware.js": {
-        "runtime": "nodejs18.x"
-      }
-    }
+    "regions": ["sin1"]
   }
