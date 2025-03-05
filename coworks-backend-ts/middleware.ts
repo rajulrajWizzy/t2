@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import * as jose from 'jose';
-import { verifyJWT } from '@/config/jwt-edge';
 
 // Paths that don't require authentication
 const PUBLIC_PATHS: string[] = [
