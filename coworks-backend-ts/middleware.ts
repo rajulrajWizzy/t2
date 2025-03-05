@@ -7,27 +7,9 @@ const PUBLIC_PATHS: string[] = [
   '/api/auth/login',
   '/api/auth/register',
   '/',
-  '/api/test', // for testing connection
+  '/api/test', 
   '/api/health'
 ];
-
-// JWT verification for Edge middleware
-async function verifyJWT(token: string): Promise<{valid: boolean, expired: boolean}> {
-  try {
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || 'your-secret-key'
-    );
-
-    await jose.jwtVerify(token, secret);
-    return { valid: true, expired: false };
-  } catch (error) {
-    const err = error as Error;
-    return {
-      valid: false,
-      expired: err.message.includes('expired')
-    };
-  }
-}
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -53,17 +35,24 @@ export async function middleware(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     
     // Verify token
-    const { valid, expired } = await verifyJWT(token);
-    
-    if (!valid) {
+    try {
+      const secret = new TextEncoder().encode(
+        process.env.JWT_SECRET || 'your-secret-key'
+      );
+      
+      await jose.jwtVerify(token, secret);
+      
+      // Token is valid, continue with the request
+      return NextResponse.next();
+    } catch (error) {
+      const err = error as Error;
+      const isExpired = err.message.includes('expired');
+      
       return new NextResponse(
-        JSON.stringify({ message: expired ? 'Token expired' : 'Invalid token' }),
+        JSON.stringify({ message: isExpired ? 'Token expired' : 'Invalid token' }),
         { status: 401, headers: { 'content-type': 'application/json' } }
       );
     }
-    
-    // Continue with the request
-    return NextResponse.next();
   }
   
   // For non-API routes, allow the request to proceed

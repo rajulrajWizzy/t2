@@ -28,10 +28,21 @@ export async function generateToken(user: Customer): Promise<string> {
 export async function verifyToken(token: string): Promise<JwtVerificationResult> {
   try {
     const { payload } = await jose.jwtVerify(token, secret);
+    
+    // Create a proper JwtPayload object from the jose payload
+    const jwtPayload: JwtPayload = {
+      id: payload.id as number,
+      email: payload.email as string,
+      name: payload.name as string,
+      // Optional properties that might be present in the token
+      iat: payload.iat,
+      exp: payload.exp
+    };
+    
     return { 
       valid: true, 
       expired: false, 
-      decoded: payload as JwtPayload 
+      decoded: jwtPayload
     };
   } catch (error) {
     const err = error as Error;
@@ -41,4 +52,4 @@ export async function verifyToken(token: string): Promise<JwtVerificationResult>
       decoded: null
     };
   }
-}s
+}
