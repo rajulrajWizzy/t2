@@ -1,14 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from './src/config/jwt';
+import * as jose from 'jose';
+import { verifyJWT } from '@/config/jwt-edge';
 
 // Paths that don't require authentication
 const PUBLIC_PATHS: string[] = [
   '/api/auth/login',
-  '/api/auth/register'
+  '/api/auth/register',
+  '/',
+  '/api/test', // for testing connection
+  '/api/health'
 ];
 
-export function middleware(request: NextRequest) {
+// JWT verification for Edge middleware
+async function verifyJWT(token: string): Promise<{valid: boolean, expired: boolean}> {
+  try {
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || 'your-secret-key'
+    );
+
+    await jose.jwtVerify(token, secret);
+    return { valid: true, expired: false };
+  } catch (error) {
+    const err = error as Error;
+    return {
+      valid: false,
+      expired: err.message.includes('expired')
+    };
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // Check if the path is public
@@ -32,7 +54,7 @@ export function middleware(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     
     // Verify token
-    const { valid, expired } = verifyToken(token);
+    const { valid, expired } = await verifyJWT(token);
     
     if (!valid) {
       return new NextResponse(
@@ -49,7 +71,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure the middleware to run on all /api routes
+// Configure the middleware to run on specific paths
 export const config = {
   matcher: '/api/:path*',
 };
