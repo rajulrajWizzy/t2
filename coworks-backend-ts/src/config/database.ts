@@ -1,11 +1,25 @@
+// src/config/database.ts
 import { Sequelize } from 'sequelize';
 import pg from 'pg';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Ensure environment variables are properly typed
-const dbName = process.env.DB_NAME as string;
-const dbUser = process.env.DB_USER as string;
-const dbPass = process.env.DB_PASS as string;
+const dbName = process.env.DB_NAME || 'coworks_db';
+const dbUser = process.env.DB_USER || 'postgres';
+const dbPass = String(process.env.DB_PASS || ''); // Explicitly convert to string
 const dbHost = process.env.DB_HOST || 'localhost';
+const dbSchema = process.env.DB_SCHEMA || 'public';
+
+// Debug environment variables
+console.log('Database connection info:');
+console.log('DB_NAME:', dbName);
+console.log('DB_USER:', dbUser);
+console.log('DB_PASS:', dbPass ? '[PASSWORD SET]' : '[NO PASSWORD]');
+console.log('DB_HOST:', dbHost);
+console.log('DB_SCHEMA:', dbSchema);
 
 const sequelize = new Sequelize(
   dbName,
@@ -14,19 +28,16 @@ const sequelize = new Sequelize(
   {
     host: dbHost,
     dialect: 'postgres',
-    dialectModule: pg, // Explicitly providing the pg module
+    dialectModule: pg,
     logging: console.log,
+    define: {
+      schema: "excel_coworks_schema", // Ensure this is defined
+    },
     dialectOptions: {
-      ssl: {
+      ssl: process.env.DB_SSL === 'true' ? {
         require: true,
-        rejectUnauthorized: false, // Important for Neon and some other providers
-      },
-    },
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
+        rejectUnauthorized: false,
+      } : false,
     },
   }
 );

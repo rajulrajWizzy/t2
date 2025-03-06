@@ -1,17 +1,43 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
+const dbSchema = process.env.DB_SCHEMA || 'public';
 
 // Create Sequelize instance
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: process.env.DB_HOST || 'localhost',
+let sequelize;
+
+// Check if DATABASE_URL exists (Vercel/Production)
+if (process.env.DATABASE_URL) {
+  console.log('Using DATABASE_URL for connection');
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    logging: console.log
-  }
-);
+    logging: console.log,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    }
+  });
+} else {
+  // Fallback to individual credentials (local development)
+  console.log('Using individual credentials for connection');
+  sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASS,
+    {
+      host: process.env.DB_HOST || 'localhost',
+      dialect: 'postgres',
+      logging: console.log,
+      dialectOptions: {
+        ssl: process.env.DB_SSL === 'true' ? {
+          require: true,
+          rejectUnauthorized: false
+        } : undefined
+      }
+    }
+  );
+}
 
 // Define Branch model directly for this script
 const Branch = sequelize.define('Branch', {
@@ -116,13 +142,17 @@ async function seedBranches() {
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
     
+    // Set search path to ensure correct schema
+    await sequelize.query(`SET search_path TO "${dbSchema}";`);
+    console.log(`Search path set to: ${dbSchema}`);
+    
     // Clear existing branches
     await Branch.destroy({ where: {} });
     console.log('Cleared existing branches');
     
     // Create new branches
     for (const branch of branches) {
-      await Branch.create(branch);
+      await Branch.create(branch); // Fix the error here - just use branch without "${dbSchema}"
     }
     
     console.log('Branches seeded successfully!');
