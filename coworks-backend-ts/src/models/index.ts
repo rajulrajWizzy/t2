@@ -24,8 +24,8 @@ MeetingBookingModel.belongsTo(CustomerModel, { foreignKey: 'customer_id', as: 'C
 SeatModel.hasMany(SeatBookingModel, { foreignKey: 'seat_id', as: 'Bookings' });
 SeatBookingModel.belongsTo(SeatModel, { foreignKey: 'seat_id', as: 'Seat' });
 
-// This already has an explicit 'as' name, keep it as is
-SeatModel.hasMany(MeetingBookingModel, { foreignKey: 'meeting_room_id', as: 'MeetingRoom' });
+// Meeting room associations
+SeatModel.hasMany(MeetingBookingModel, { foreignKey: 'meeting_room_id', as: 'MeetingBookings' });
 MeetingBookingModel.belongsTo(SeatModel, { foreignKey: 'meeting_room_id', as: 'MeetingRoom' });
 
 SeatBookingModel.hasMany(PaymentModel, { 

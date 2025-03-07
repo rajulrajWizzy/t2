@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '../../../models';
-import { verifyToken } from '../../../config/jwt';
-import { SeatInput } from '../../../types/seating';
-import { AvailabilityStatusEnum } from '../../../types/seating';
+import models from '@/models';
+import { verifyToken } from '@/config/jwt';
+import { SeatInput } from '@/types/seating';
+import { AvailabilityStatusEnum } from '@/types/seating';
 
 // GET all seats or filter by branch_id
 export async function GET(request: NextRequest): Promise<NextResponse> {

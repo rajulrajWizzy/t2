@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '../../../models';
-import { verifyToken } from '../../../config/jwt';
+import models from '@/models';
+import { verifyToken } from '@/config/jwt';
 import { Op } from 'sequelize';
-import { AvailabilityStatusEnum } from '../../../types/seating';
+import { AvailabilityStatusEnum } from '@/types/seating';
 
 // GET bookings for a customer
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -64,23 +64,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
-          as: 'Seat', // Using explicit alias
+          as: 'Seat', // Explicit alias
           include: [
             {
               model: models.Branch,
-              as: 'Branch', // Using explicit alias
+              as: 'Branch', // Explicit alias
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
-              as: 'SeatingType', // Using explicit alias
+              as: 'SeatingType', // Explicit alias
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
-          as: 'Customer', // Using explicit alias
+          as: 'Customer', // Explicit alias
           attributes: ['name', 'email', 'phone']
         }
       ],
@@ -93,23 +93,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
-          as: 'MeetingRoom', // Using explicit alias
+          as: 'MeetingRoom', // Explicit alias
           include: [
             {
               model: models.Branch,
-              as: 'Branch', // Using explicit alias
+              as: 'Branch', // Explicit alias
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
-              as: 'SeatingType', // Using explicit alias
+              as: 'SeatingType', // Explicit alias
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
-          as: 'Customer', // Using explicit alias
+          as: 'Customer', // Explicit alias
           attributes: ['name', 'email', 'phone']
         }
       ],
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
-    // FIXED: Check if the seat is available
+    // Check if the seat is available
     if (seat.availability_status !== AvailabilityStatusEnum.AVAILABLE) {
       return NextResponse.json({
         success: false,
