@@ -42,4 +42,5 @@ export interface Customer {
   export interface RegisterResponse {
     message: string;
     customer: Omit<Customer, 'password'>;
+    token: string;
   }

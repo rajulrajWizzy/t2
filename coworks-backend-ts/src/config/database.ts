@@ -6,47 +6,66 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-// Ensure environment variables are properly typed
-const dbName = process.env.DB_NAME || 'coworks_db';
-const dbUser = process.env.DB_USER || 'postgres';
-const dbPass = String(process.env.DB_PASS || ''); // Explicitly convert to string
-const dbHost = process.env.DB_HOST || 'localhost';
+// Get the schema from environment variables
 const dbSchema = process.env.DB_SCHEMA || 'public';
 
-// Debug environment variables
-console.log('Database connection info:');
-console.log('DB_NAME:', dbName);
-console.log('DB_USER:', dbUser);
-console.log('DB_PASS:', dbPass ? '[PASSWORD SET]' : '[NO PASSWORD]');
-console.log('DB_HOST:', dbHost);
-console.log('DB_SCHEMA:', dbSchema);
+// Create Sequelize instance
+let sequelize: Sequelize;
 
-const sequelize = new Sequelize(
-  dbName,
-  dbUser,
-  dbPass,
-  {
-    host: dbHost,
+// Check if DATABASE_URL exists (Vercel/Production)
+if (process.env.DATABASE_URL) {
+  console.log('Using DATABASE_URL for connection');
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     dialectModule: pg,
     logging: console.log,
-    define: {
-      schema: "excel_coworks_schema", // Ensure this is defined
-    },
+    schema: dbSchema,
     dialectOptions: {
-      ssl: process.env.DB_SSL === 'true' ? {
+      ssl: {
         require: true,
-        rejectUnauthorized: false,
-      } : false,
-    },
-  }
-);
+        rejectUnauthorized: false
+      }
+    }
+  });
+} else {
+  // Fallback to individual credentials (local development)
+  console.log('Using individual credentials for connection');
+  sequelize = new Sequelize(
+    process.env.DB_NAME || 'coworks_db',
+    process.env.DB_USER || 'postgres',
+    process.env.DB_PASS || '',
+    {
+      host: process.env.DB_HOST || 'localhost',
+      dialect: 'postgres',
+      dialectModule: pg,
+      logging: console.log,
+      schema: dbSchema,
+      dialectOptions: {
+        ssl: process.env.DB_SSL === 'true' ? {
+          require: true,
+          rejectUnauthorized: false
+        } : undefined
+      }
+    }
+  );
+}
 
 // Test the connection
 async function testConnection(): Promise<void> {
   try {
+    // Set the search path to the specified schema
+    await sequelize.query(`SET search_path TO "${dbSchema}";`);
+    console.log(`Search path set to: ${dbSchema}`);
+    
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
+    
+    // Check if the tables are accessible
+    const tablesResult = await sequelize.query(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = '${dbSchema}';`
+    );
+    
+    console.log('Available tables:', (tablesResult[0] as any[]).map(row => row.table_name).join(', '));
   } catch (error) {
     console.error('Unable to connect to the database:', error);
   }

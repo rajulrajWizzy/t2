@@ -3,6 +3,7 @@ import models from '../../../models';
 import { verifyToken } from '../../../config/jwt';
 import { Op } from 'sequelize';
 import { AvailabilityStatusEnum } from '../../../types/seating';
+
 // GET bookings for a customer
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -63,19 +64,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
+          as: 'Seat', // Add explicit alias
           include: [
             {
               model: models.Branch,
+              as: 'Branch', // Add explicit alias
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
+              as: 'SeatingType', // Add explicit alias
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
+          as: 'Customer', // Add explicit alias
           attributes: ['name', 'email', 'phone']
         }
       ],
@@ -88,20 +93,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
-          as: 'MeetingRoom',
+          as: 'MeetingRoom', // This already has an explicit alias
           include: [
             {
               model: models.Branch,
+              as: 'Branch', // Add explicit alias
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
+              as: 'SeatingType', // Add explicit alias
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
+          as: 'Customer', // Add explicit alias
           attributes: ['name', 'email', 'phone']
         }
       ],

@@ -38,19 +38,23 @@ export async function GET(
       include: [
         {
           model: models.Seat,
+          as: 'Seat',
           include: [
             {
               model: models.Branch,
+              as: 'Branch',
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
+              as: 'SeatingType',
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
+          as: 'Customer',
           attributes: ['name', 'email', 'phone']
         }
       ]
@@ -69,16 +73,19 @@ export async function GET(
             include: [
               {
                 model: models.Branch,
+                as: 'Branch',
                 attributes: ['name', 'address', 'location']
               },
               {
                 model: models.SeatingType,
+                as: 'SeatingType',
                 attributes: ['name', 'description']
               }
             ]
           },
           {
             model: models.Customer,
+            as: 'Customer',
             attributes: ['name', 'email', 'phone']
           }
         ]

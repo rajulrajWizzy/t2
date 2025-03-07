@@ -1,7 +1,9 @@
+// src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import bcrypt from 'bcryptjs';
 import { RegisterRequest, RegisterResponse } from '@/types/auth';
+import { generateToken } from '@/config/jwt';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -36,13 +38,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       password: hashedPassword
     });
     
+    console.log('Customer created successfully with ID:', customer.id);
+    
     // Return response without password
     const customerData = customer.get({ plain: true });
-    const { password: _, ...customerWithoutPassword } = customerData;    
+    const { password: _, ...customerWithoutPassword } = customerData;
+    
+    // Generate token for immediate use
+    const token = generateToken(customer);
     
     const response: RegisterResponse = {
       message: 'Registration successful',
-      customer: customerData as any
+      customer: customerWithoutPassword as any,
+      token // Add token to the response
     };
     
     return NextResponse.json(response, { status: 201 });

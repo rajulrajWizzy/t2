@@ -26,15 +26,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // Find seats with associated branch and seating type
+    // Give explicit aliases to avoid conflicts
     const seats = await models.Seat.findAll({
       where: whereConditions,
       include: [
         {
           model: models.Branch,
+          as: 'Branch', // Add explicit alias
           attributes: ['name', 'address', 'location']
         },
         {
           model: models.SeatingType,
+          as: 'SeatingType', // Add explicit alias
           attributes: ['name', 'description', 'hourly_rate', 'is_hourly', 'min_booking_duration']
         }
       ],

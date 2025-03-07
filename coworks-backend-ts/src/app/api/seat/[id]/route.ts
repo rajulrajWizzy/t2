@@ -16,10 +16,12 @@ export async function GET(
       include: [
         {
           model: models.Branch,
+          as: 'Branch',
           attributes: ['name', 'address', 'location', 'opening_time', 'closing_time']
         },
         {
           model: models.SeatingType,
+          as: 'SeatingType',
           attributes: ['name', 'description', 'hourly_rate', 'is_hourly', 'min_booking_duration']
         }
       ]

@@ -11,7 +11,7 @@
         "migrate:down": "node scripts/migrate.js down",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "node scripts/migrate.js && node scripts/seed-branches.js && node scripts/seed-seating-types.js" 
+        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js" 
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",

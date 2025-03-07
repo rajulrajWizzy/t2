@@ -12,9 +12,13 @@ export async function GET(
     const { id } = params;
     
     // Find the branch with its seats
+    // Add explicit 'as' alias to the include statement
     const branch = await models.Branch.findByPk(parseInt(id), {
       include: [
-        { model: models.Seat }
+        { 
+          model: models.Seat,
+          as: 'Seats'  // This must match the alias defined in models/index.ts
+        }
       ]
     });
     
