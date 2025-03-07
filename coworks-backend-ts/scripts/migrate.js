@@ -1,4 +1,4 @@
-// scripts/smart-migrate.js
+// scripts/migrate.js
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
@@ -136,7 +136,7 @@ async function up() {
     const branchesExists = await tableExists('branches');
     if (!branchesExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".branches (
+        CREATE TABLE "${dbSchema}"."branches" (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           address TEXT NOT NULL,
@@ -160,7 +160,7 @@ async function up() {
     const customersExists = await tableExists('customers');
     if (!customersExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".customers (
+        CREATE TABLE "${dbSchema}"."customers" (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           email VARCHAR(255) NOT NULL UNIQUE,
@@ -175,24 +175,26 @@ async function up() {
       console.log('Customers table already exists');
     }
 
-    // Check if seating_type_enum exists before creating
-    const seatingTypeEnumExists = await typeExists('seating_type_enum');
+    // Create seating_type_enum in the correct schema
+    const seatingTypeEnumExists = await typeExists('enum_seating_types_name');
     if (!seatingTypeEnumExists) {
       await sequelize.query(`
-        CREATE TYPE "${dbSchema}".seating_type_enum AS ENUM ('HOT_DESK', 'DEDICATED_DESK', 'CUBICLE', 'MEETING_ROOM', 'DAILY_PASS');
+        CREATE TYPE "${dbSchema}"."enum_seating_types_name" AS ENUM (
+          'HOT_DESK', 'DEDICATED_DESK', 'CUBICLE', 'MEETING_ROOM', 'DAILY_PASS'
+        );
       `, { transaction });
-      console.log('Created seating_type_enum');
+      console.log('Created enum_seating_types_name type');
     } else {
-      console.log('seating_type_enum already exists');
+      console.log('enum_seating_types_name already exists');
     }
     
     // Create seating_types table if it doesn't exist
     const seatingTypesExists = await tableExists('seating_types');
     if (!seatingTypesExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".seating_types (
+        CREATE TABLE "${dbSchema}"."seating_types" (
           id SERIAL PRIMARY KEY,
-          name "${dbSchema}".seating_type_enum NOT NULL,
+          name "${dbSchema}"."enum_seating_types_name" NOT NULL,
           description TEXT,
           hourly_rate DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
           is_hourly BOOLEAN NOT NULL DEFAULT TRUE,
@@ -206,28 +208,30 @@ async function up() {
       console.log('seating_types table already exists');
     }
 
-    // Check if availability_status_enum exists before creating
-    const availabilityStatusEnumExists = await typeExists('availability_status_enum');
+    // Create availability_status_enum in the correct schema
+    const availabilityStatusEnumExists = await typeExists('enum_seats_availability_status');
     if (!availabilityStatusEnumExists) {
       await sequelize.query(`
-        CREATE TYPE "${dbSchema}".availability_status_enum AS ENUM ('AVAILABLE', 'BOOKED', 'MAINTENANCE');
+        CREATE TYPE "${dbSchema}"."enum_seats_availability_status" AS ENUM (
+          'AVAILABLE', 'BOOKED', 'MAINTENANCE'
+        );
       `, { transaction });
-      console.log('Created availability_status_enum');
+      console.log('Created enum_seats_availability_status type');
     } else {
-      console.log('availability_status_enum already exists');
+      console.log('enum_seats_availability_status already exists');
     }
     
     // Create seats table if it doesn't exist
     const seatsExists = await tableExists('seats');
     if (!seatsExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".seats (
+        CREATE TABLE "${dbSchema}"."seats" (
           id SERIAL PRIMARY KEY,
-          branch_id INTEGER NOT NULL REFERENCES "${dbSchema}".branches(id),
-          seating_type_id INTEGER NOT NULL REFERENCES "${dbSchema}".seating_types(id),
+          branch_id INTEGER NOT NULL REFERENCES "${dbSchema}"."branches"(id),
+          seating_type_id INTEGER NOT NULL REFERENCES "${dbSchema}"."seating_types"(id),
           seat_number VARCHAR(255) NOT NULL,
           price DECIMAL(10, 2) NOT NULL,
-          availability_status "${dbSchema}".availability_status_enum DEFAULT 'AVAILABLE',
+          availability_status "${dbSchema}"."enum_seats_availability_status" DEFAULT 'AVAILABLE',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
@@ -237,29 +241,31 @@ async function up() {
       console.log('seats table already exists');
     }
 
-    // Check if booking_status_enum exists before creating
-    const bookingStatusEnumExists = await typeExists('booking_status_enum');
+    // Create booking_status_enum in the correct schema
+    const bookingStatusEnumExists = await typeExists('enum_seat_bookings_status');
     if (!bookingStatusEnumExists) {
       await sequelize.query(`
-        CREATE TYPE "${dbSchema}".booking_status_enum AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED');
+        CREATE TYPE "${dbSchema}"."enum_seat_bookings_status" AS ENUM (
+          'PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'
+        );
       `, { transaction });
-      console.log('Created booking_status_enum');
+      console.log('Created enum_seat_bookings_status type');
     } else {
-      console.log('booking_status_enum already exists');
+      console.log('enum_seat_bookings_status already exists');
     }
     
     // Create seat_bookings table if it doesn't exist
     const seatBookingsExists = await tableExists('seat_bookings');
     if (!seatBookingsExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".seat_bookings (
+        CREATE TABLE "${dbSchema}"."seat_bookings" (
           id SERIAL PRIMARY KEY,
-          customer_id INTEGER NOT NULL REFERENCES "${dbSchema}".customers(id),
-          seat_id INTEGER NOT NULL REFERENCES "${dbSchema}".seats(id),
+          customer_id INTEGER NOT NULL REFERENCES "${dbSchema}"."customers"(id),
+          seat_id INTEGER NOT NULL REFERENCES "${dbSchema}"."seats"(id),
           start_time TIMESTAMP WITH TIME ZONE NOT NULL,
           end_time TIMESTAMP WITH TIME ZONE NOT NULL,
           total_price DECIMAL(10, 2) NOT NULL,
-          status "${dbSchema}".booking_status_enum DEFAULT 'PENDING',
+          status "${dbSchema}"."enum_seat_bookings_status" DEFAULT 'PENDING',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
@@ -273,16 +279,16 @@ async function up() {
     const meetingBookingsExists = await tableExists('meeting_bookings');
     if (!meetingBookingsExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".meeting_bookings (
+        CREATE TABLE "${dbSchema}"."meeting_bookings" (
           id SERIAL PRIMARY KEY,
-          customer_id INTEGER NOT NULL REFERENCES "${dbSchema}".customers(id),
-          meeting_room_id INTEGER NOT NULL REFERENCES "${dbSchema}".seats(id),
+          customer_id INTEGER NOT NULL REFERENCES "${dbSchema}"."customers"(id),
+          meeting_room_id INTEGER NOT NULL REFERENCES "${dbSchema}"."seats"(id),
           start_time TIMESTAMP WITH TIME ZONE NOT NULL,
           end_time TIMESTAMP WITH TIME ZONE NOT NULL,
           num_participants INTEGER NOT NULL,
           amenities JSONB,
           total_price DECIMAL(10, 2) NOT NULL,
-          status "${dbSchema}".booking_status_enum DEFAULT 'PENDING',
+          status "${dbSchema}"."enum_seat_bookings_status" DEFAULT 'PENDING',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
@@ -292,48 +298,56 @@ async function up() {
       console.log('meeting_bookings table already exists');
     }
 
-    // Check if payment enums exist before creating
-    const paymentMethodEnumExists = await typeExists('payment_method_enum');
+    // Create payment_method_enum in the correct schema
+    const paymentMethodEnumExists = await typeExists('enum_payments_payment_method');
     if (!paymentMethodEnumExists) {
       await sequelize.query(`
-        CREATE TYPE "${dbSchema}".payment_method_enum AS ENUM ('CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'CASH', 'DIGITAL_WALLET');
+        CREATE TYPE "${dbSchema}"."enum_payments_payment_method" AS ENUM (
+          'CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'CASH', 'DIGITAL_WALLET'
+        );
       `, { transaction });
-      console.log('Created payment_method_enum');
+      console.log('Created enum_payments_payment_method type');
     } else {
-      console.log('payment_method_enum already exists');
+      console.log('enum_payments_payment_method already exists');
     }
     
-    const paymentStatusEnumExists = await typeExists('payment_status_enum');
+    // Create payment_status_enum in the correct schema
+    const paymentStatusEnumExists = await typeExists('enum_payments_payment_status');
     if (!paymentStatusEnumExists) {
       await sequelize.query(`
-        CREATE TYPE "${dbSchema}".payment_status_enum AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
+        CREATE TYPE "${dbSchema}"."enum_payments_payment_status" AS ENUM (
+          'PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'
+        );
       `, { transaction });
-      console.log('Created payment_status_enum');
+      console.log('Created enum_payments_payment_status type');
     } else {
-      console.log('payment_status_enum already exists');
+      console.log('enum_payments_payment_status already exists');
     }
     
-    const bookingTypeEnumExists = await typeExists('booking_type_enum');
+    // Create booking_type_enum in the correct schema
+    const bookingTypeEnumExists = await typeExists('enum_payments_booking_type');
     if (!bookingTypeEnumExists) {
       await sequelize.query(`
-        CREATE TYPE "${dbSchema}".booking_type_enum AS ENUM ('seat', 'meeting');
+        CREATE TYPE "${dbSchema}"."enum_payments_booking_type" AS ENUM (
+          'seat', 'meeting'
+        );
       `, { transaction });
-      console.log('Created booking_type_enum');
+      console.log('Created enum_payments_booking_type type');
     } else {
-      console.log('booking_type_enum already exists');
+      console.log('enum_payments_booking_type already exists');
     }
     
     // Create payments table if it doesn't exist
     const paymentsExists = await tableExists('payments');
     if (!paymentsExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".payments (
+        CREATE TABLE "${dbSchema}"."payments" (
           id SERIAL PRIMARY KEY,
           booking_id INTEGER NOT NULL,
-          booking_type "${dbSchema}".booking_type_enum NOT NULL,
+          booking_type "${dbSchema}"."enum_payments_booking_type" NOT NULL,
           amount DECIMAL(10, 2) NOT NULL,
-          payment_method "${dbSchema}".payment_method_enum NOT NULL,
-          payment_status "${dbSchema}".payment_status_enum DEFAULT 'PENDING',
+          payment_method "${dbSchema}"."enum_payments_payment_method" NOT NULL,
+          payment_status "${dbSchema}"."enum_payments_payment_status" DEFAULT 'PENDING',
           transaction_id VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -348,15 +362,15 @@ async function up() {
     const timeSlotsExists = await tableExists('time_slots');
     if (!timeSlotsExists) {
       await sequelize.query(`
-        CREATE TABLE "${dbSchema}".time_slots (
+        CREATE TABLE "${dbSchema}"."time_slots" (
           id SERIAL PRIMARY KEY,
-          branch_id INTEGER NOT NULL REFERENCES "${dbSchema}".branches(id),
-          seat_id INTEGER NOT NULL REFERENCES "${dbSchema}".seats(id),
+          branch_id INTEGER NOT NULL REFERENCES "${dbSchema}"."branches"(id),
+          seat_id INTEGER NOT NULL REFERENCES "${dbSchema}"."seats"(id),
           date DATE NOT NULL,
           start_time TIME NOT NULL,
           end_time TIME NOT NULL,
           is_available BOOLEAN NOT NULL DEFAULT TRUE,
-          booking_id INTEGER REFERENCES "${dbSchema}".seat_bookings(id),
+          booking_id INTEGER REFERENCES "${dbSchema}"."seat_bookings"(id),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
