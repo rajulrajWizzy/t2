@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
+import models from '../../../../models';
 import { BranchInput } from '@/types/branch';
 import { ApiResponse } from '@/types/common';
 

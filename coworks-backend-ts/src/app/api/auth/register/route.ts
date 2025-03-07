@@ -1,9 +1,9 @@
 // src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
+import models from '../../../../models';
 import bcrypt from 'bcryptjs';
 import { RegisterRequest, RegisterResponse } from '@/types/auth';
-import { generateToken } from '@/config/jwt';
+import { generateToken } from '../../../../config/jwt';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
