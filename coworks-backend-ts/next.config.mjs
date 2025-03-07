@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore'],
@@ -7,7 +13,7 @@ const nextConfig = {
     // Handle path aliases
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname, 'src'),
+      '@': resolve(__dirname, 'src'),
     };
     
     // This makes Webpack treat pg-native as an external dependency
