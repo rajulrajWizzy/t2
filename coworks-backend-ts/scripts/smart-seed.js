@@ -362,20 +362,34 @@ async function seedSeatingTypes() {
     // Set search path to ensure correct schema
     await sequelize.query(`SET search_path TO "${dbSchema}";`);
     
-    // Insert seating types using raw SQL to avoid enum issues
-    for (const type of seatingTypes) {
+    // Create ENUM type if it doesn't exist
+    try {
       await sequelize.query(`
-        INSERT INTO "${dbSchema}"."seating_types" 
-        (name, description, hourly_rate, is_hourly, min_booking_duration, created_at, updated_at) 
-        VALUES 
-        ('${type.name}', '${type.description}', ${type.hourly_rate}, ${type.is_hourly}, ${type.min_booking_duration}, NOW(), NOW());
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_seating_types_name') THEN
+            CREATE TYPE "${dbSchema}".seating_type_enum AS ENUM (
+              'HOT_DESK', 'DEDICATED_DESK', 'CUBICLE', 'MEETING_ROOM', 'DAILY_PASS'
+            );
+          END IF;
+        END
+        $$;
       `);
+    } catch (enumError) {
+      console.warn('Note about ENUM:', enumError.message);
+    }
+    
+    // Create new seating types
+    let count = 0;
+    for (const type of seatingTypes) {
+      await SeatingType.create(type);
+      count++;
       console.log(`Created seating type: ${type.name}`);
     }
     
     // Record the seed
     await recordSeed(seedName);
-    console.log(`Seating types seeded successfully!`);
+    console.log(`Seating types seeded successfully! Created ${count} types.`);
   } catch (error) {
     console.error('Error seeding seating types:', error);
   }

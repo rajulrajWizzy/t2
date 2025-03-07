@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '../../../../models';
+import models from '@/models';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '../../../../config/jwt';
+import { generateToken } from '@/config/jwt';
 import { LoginRequest, LoginResponse } from '@/types/auth';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
