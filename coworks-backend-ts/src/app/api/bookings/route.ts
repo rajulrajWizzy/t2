@@ -64,23 +64,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
-          as: 'Seat', // Add explicit alias
+          as: 'Seat', // Using explicit alias
           include: [
             {
               model: models.Branch,
-              as: 'Branch', // Add explicit alias
+              as: 'Branch', // Using explicit alias
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
-              as: 'SeatingType', // Add explicit alias
+              as: 'SeatingType', // Using explicit alias
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
-          as: 'Customer', // Add explicit alias
+          as: 'Customer', // Using explicit alias
           attributes: ['name', 'email', 'phone']
         }
       ],
@@ -93,23 +93,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
-          as: 'MeetingRoom', // This already has an explicit alias
+          as: 'MeetingRoom', // Using explicit alias
           include: [
             {
               model: models.Branch,
-              as: 'Branch', // Add explicit alias
+              as: 'Branch', // Using explicit alias
               attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
-              as: 'SeatingType', // Add explicit alias
+              as: 'SeatingType', // Using explicit alias
               attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
-          as: 'Customer', // Add explicit alias
+          as: 'Customer', // Using explicit alias
           attributes: ['name', 'email', 'phone']
         }
       ],
@@ -161,12 +161,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json();
     const { 
       type = 'seat',
-      customer_id = decoded.id,
       seat_id, 
       start_time, 
       end_time, 
       total_price 
     } = body;
+    
+    // Use the decoded ID from JWT token
+    const customer_id = decoded.id;
+    
+    console.log('Using customer ID:', customer_id);
+    console.log('Decoded token info:', decoded);
     
     // Basic validation
     if (!seat_id || !start_time || !end_time || !total_price) {
@@ -174,6 +179,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         success: false,
         message: 'Seat ID, start time, end time, and total price are required'
       }, { status: 400 });
+    }
+    
+    // Check if the customer exists
+    const customer = await models.Customer.findByPk(customer_id);
+    if (!customer) {
+      return NextResponse.json({
+        success: false,
+        message: 'Customer not found. Please register first.',
+        debug: { customerId: customer_id }
+      }, { status: 404 });
     }
     
     // Check if the seat exists
@@ -185,8 +200,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
-    // Check if the seat is available
-    if (seat.availability_status !== 'AVAILABLE') {
+    // FIXED: Check if the seat is available
+    if (seat.availability_status !== AvailabilityStatusEnum.AVAILABLE) {
       return NextResponse.json({
         success: false,
         message: 'Seat is not available'
