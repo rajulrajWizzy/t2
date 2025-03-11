@@ -6,12 +6,9 @@ import { verifyToken } from './src/config/jwt';
 const PUBLIC_PATHS: string[] = [
   '/api/auth/login',
   '/api/auth/register',
-  '/api/auth/forgot-password',
-  '/api/auth/reset-password',
   '/',
   '/api/test',
-  '/api/health',
-  '/api/admin/cleanup' // This is protected by API key, not JWT
+  '/api/health'
 ];
 
 export function middleware(request: NextRequest) {

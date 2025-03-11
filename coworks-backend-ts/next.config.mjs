@@ -9,11 +9,6 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore'],
   },
-  typescript: {
-    // This allows production builds to successfully complete even if
-    // there are TypeScript errors
-    ignoreBuildErrors: true,
-  },
   webpack: (config) => {
     // Handle path aliases
     config.resolve.alias = {

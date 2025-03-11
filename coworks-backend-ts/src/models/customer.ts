@@ -11,10 +11,7 @@ class CustomerModel extends Model<Customer, CustomerCreationAttributes> implemen
   public name!: string;
   public email!: string;
   public phone!: string | null;
-  public company_name!: string | null;
   public password!: string;
-  public reset_token!: string | null;
-  public reset_token_expires!: Date | null;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -44,21 +41,9 @@ CustomerModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    company_name: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    reset_token: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    reset_token_expires: {
-      type: DataTypes.DATE,
-      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,
