@@ -38,6 +38,7 @@
         "uuid": "^9.0.1"
     },
     "devDependencies": {
+        "@types/nodemailer":"6.4.17",
         "@types/uuid": "^9.0.8",
         "cross-env": "^7.0.3",
         "eslint": "^8.40.0",
