@@ -8,7 +8,7 @@ import { generateToken } from '@/config/jwt';
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json() as RegisterRequest;
-    const { name, email, phone, password } = body;
+    const { name, email, phone, company_name, password } = body;
     
     // Basic validation
     if (!name || !email || !password) {
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       name,
       email,
       phone,
+      company_name,
       password: hashedPassword
     });
     

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '../../../../models';
-import { verifyToken } from '../../../../config/jwt';
-import { BookingStatusEnum } from '../../../../types/booking';
-import { AvailabilityStatusEnum } from '../../../../types/seating';
+import models from '@/models';
+import { verifyToken } from '@/config/jwt';
+import { BookingStatusEnum } from '@/types/booking';
+import { AvailabilityStatusEnum } from '@/types/seating';
+import { Op } from 'sequelize';
 
 // GET a single booking by ID
 export async function GET(
@@ -55,7 +56,7 @@ export async function GET(
         {
           model: models.Customer,
           as: 'Customer',
-          attributes: ['name', 'email', 'phone']
+          attributes: ['name', 'email', 'phone', 'company_name']
         }
       ]
     });
@@ -86,7 +87,7 @@ export async function GET(
           {
             model: models.Customer,
             as: 'Customer',
-            attributes: ['name', 'email', 'phone']
+            attributes: ['name', 'email', 'phone', 'company_name']
           }
         ]
       });
@@ -199,6 +200,25 @@ export async function PUT(
     
     // Update booking status
     if (status && Object.values(BookingStatusEnum).includes(status as BookingStatusEnum)) {
+      // If trying to cancel, check the 24-hour rule
+      if (status === BookingStatusEnum.CANCELLED) {
+        // Check if the booking is within 24 hours of start time
+        const now = new Date();
+        const startTime = new Date(booking.start_time);
+        const timeDifference = startTime.getTime() - now.getTime();
+        const hoursDifference = timeDifference / (1000 * 60 * 60);
+        
+        if (hoursDifference < 24) {
+          return NextResponse.json(
+            { 
+              message: 'Booking cannot be cancelled within 24 hours of the start time',
+              hours_remaining: hoursDifference 
+            },
+            { status: 400 }
+          );
+        }
+      }
+      
       // Handle each booking type separately
       if (seatBooking) {
         await seatBooking.update({ status });
@@ -308,39 +328,62 @@ export async function DELETE(
       );
     }
     
+    if (booking.status === BookingStatusEnum.CANCELLED) {
+      return NextResponse.json(
+        { message: 'This booking is already cancelled' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if the booking is within 24 hours of start time
+    const now = new Date();
+    const startTime = new Date(booking.start_time);
+    const timeDifference = startTime.getTime() - now.getTime();
+    const hoursDifference = timeDifference / (1000 * 60 * 60);
+    
+    if (hoursDifference < 24) {
+      return NextResponse.json(
+        { 
+          message: 'Booking cannot be cancelled within 24 hours of the start time',
+          hours_remaining: hoursDifference 
+        },
+        { status: 400 }
+      );
+    }
+    
     // Update booking status to cancelled
     if (seatBooking) {
       await seatBooking.update({ status: BookingStatusEnum.CANCELLED });
-    } else if (meetingBooking) {
-      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED });
-    }
-    
-    // Release the seat
-    const seatId = bookingType === 'seat' 
-      ? (seatBooking?.seat_id as number) 
-      : (meetingBooking?.meeting_room_id as number);
-    
-    const seat = await models.Seat.findByPk(seatId);
-    
-    if (seat) {
-      await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
-    }
-    
-    // Release time slots if they exist
-    if (bookingType === 'seat') {
+      
+      // Release the seat
+      const seat = await models.Seat.findByPk(booking.seat_id);
+      if (seat) {
+        await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
+      }
+      
+      // Release time slots if they exist
       await models.TimeSlot.update(
         { is_available: true, booking_id: null },
         { where: { booking_id: parseInt(id) } }
       );
+    } else if (meetingBooking) {
+      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED });
+      
+      // Release the meeting room
+      const seat = await models.Seat.findByPk(booking.meeting_room_id);
+      if (seat) {
+        await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
+      }
     }
     
     return NextResponse.json({
+      success: true,
       message: 'Booking cancelled successfully'
     });
   } catch (error) {
     console.error('Error cancelling booking:', error);
     return NextResponse.json(
-      { message: 'Failed to cancel booking', error: (error as Error).message },
+      { success: false, message: 'Failed to cancel booking', error: (error as Error).message },
       { status: 500 }
     );
   }
