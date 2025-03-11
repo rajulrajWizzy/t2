@@ -8,6 +8,7 @@ import MeetingBookingModel from './meetingBooking';
 import PaymentModel from './payment';
 import TimeSlotModel from './timeSlot';
 import BlacklistedTokenModel from './blacklistedToken';
+import PasswordResetModel from './passwordReset';
 
 // Define associations with explicit aliases
 BranchModel.hasMany(SeatModel, { foreignKey: 'branch_id', as: 'Seats' });
@@ -70,7 +71,7 @@ const models = {
   MeetingBooking: MeetingBookingModel,
   Payment: PaymentModel,
   TimeSlot: TimeSlotModel,
-  BlacklistedToken: BlacklistedTokenModel
+  BlacklistedToken: BlacklistedTokenModel,
+  PasswordReset: PasswordResetModel  // Add this line
 };
-
 export default models;
