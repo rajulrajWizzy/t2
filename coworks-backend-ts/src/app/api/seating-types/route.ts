@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const { valid, decoded } = verifyToken(token);
+    const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       const response: ApiResponse = {
         success: false,

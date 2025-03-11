@@ -28,7 +28,7 @@ export async function GET(
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const { valid, decoded } = verifyToken(token);
+    const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       const response: ApiResponse = {
         success: false,
@@ -108,7 +108,7 @@ export async function PUT(
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const { valid, decoded } = verifyToken(token);
+    const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       const response: ApiResponse = {
         success: false,
