@@ -18,7 +18,7 @@ const nextConfig = {
     // Handle path aliases
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve(__dirname, 'src'),
+      '@': resolve(__dirname, 'src'),
     };
     
     // This makes Webpack treat pg-native as an external dependency
