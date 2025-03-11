@@ -74,7 +74,7 @@ export async function PUT(
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const { valid, decoded } = verifyToken(token);
+    const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
@@ -142,7 +142,7 @@ export async function DELETE(
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const { valid, decoded } = verifyToken(token);
+    const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
