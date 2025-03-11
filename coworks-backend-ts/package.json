@@ -9,9 +9,10 @@
         "lint": "next lint",
         "migrate": "node scripts/migrate.js",
         "migrate:down": "node scripts/migrate.js down",
+        "migrate:blacklisted-tokens": "node scripts/migrate-blacklisted-tokens.js",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js" 
+        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js"
     },
     "dependencies": {
         "@types/bcryptjs": "^2.4.6",
@@ -31,7 +32,8 @@
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "sequelize": "^6.37.5",
-        "typescript": "^5.7.3"
+        "typescript": "^5.7.3",
+        "nodemailer": "^6.9.12"
     },
     "devDependencies": {
         "cross-env": "^7.0.3",
