@@ -4,6 +4,8 @@ import models from '@/models';
 import bcrypt from 'bcryptjs';
 import { RegisterRequest, RegisterResponse } from '@/types/auth';
 import { generateToken } from '@/config/jwt';
+import validation from '@/utils/validation';
+import mailService from '@/utils/mailService';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -14,6 +16,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!name || !email || !password) {
       return NextResponse.json(
         { message: 'Name, email, and password are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Name validation
+    if (!validation.isValidName(name)) {
+      return NextResponse.json(
+        { message: 'Name cannot be empty or contain only whitespace' },
+        { status: 400 }
+      );
+    }
+    
+    // Email validation
+    if (!validation.isValidEmail(email)) {
+      return NextResponse.json(
+        { message: 'Please provide a valid email address' },
+        { status: 400 }
+      );
+    }
+    
+    // Phone validation (if provided)
+    if (phone && !validation.isValidPhone(phone)) {
+      return NextResponse.json(
+        { message: 'Phone number must be 10 digits' },
+        { status: 400 }
+      );
+    }
+    
+    // Password validation
+    if (!validation.isValidPassword(password)) {
+      return NextResponse.json(
+        { message: 'Password must be at least 8 characters long' },
         { status: 400 }
       );
     }
@@ -46,6 +80,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Generate token for immediate use
     const token = generateToken(customer);
+    
+    // Send welcome email
+    await mailService.sendWelcomeEmail(email, name);
     
     const response: RegisterResponse = {
       message: 'Registration successful',

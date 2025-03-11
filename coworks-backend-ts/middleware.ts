@@ -6,12 +6,14 @@ import { verifyToken } from './src/config/jwt';
 const PUBLIC_PATHS: string[] = [
   '/api/auth/login',
   '/api/auth/register',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
   '/',
   '/api/test',
   '/api/health'
 ];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // Check if the path is public
@@ -34,12 +36,16 @@ export function middleware(request: NextRequest) {
     // Extract token
     const token = authHeader.split(' ')[1];
     
-    // Verify token
-    const { valid, expired } = verifyToken(token);
+    // Verify token - now async
+    const { valid, expired, blacklisted } = await verifyToken(token);
     
     if (!valid) {
+      let message = 'Invalid token';
+      if (expired) message = 'Token expired';
+      if (blacklisted) message = 'Token revoked';
+      
       return new NextResponse(
-        JSON.stringify({ message: expired ? 'Token expired' : 'Invalid token' }),
+        JSON.stringify({ message }),
         { status: 401, headers: { 'content-type': 'application/json' } }
       );
     }
