@@ -1,9 +1,10 @@
+// src/models/customer.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '@/config/database';
 import { Customer, CustomerAttributes } from '@/types/auth';
 
 // Interface for creation attributes
-interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at'> {}
+interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'company_name'> {}
 
 // Define the Customer model
 class CustomerModel extends Model<Customer, CustomerCreationAttributes> implements Customer {
@@ -12,6 +13,8 @@ class CustomerModel extends Model<Customer, CustomerCreationAttributes> implemen
   public email!: string;
   public phone!: string | null;
   public password!: string;
+  public profile_picture!: string | null;
+  public company_name!: string | null;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -44,6 +47,14 @@ CustomerModel.init(
     password: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    profile_picture: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    company_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

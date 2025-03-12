@@ -32,11 +32,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       include: [
         {
           model: models.Seat,
-          as: 'Seats', // Explicit alias that matches what's defined in models/index.ts
+          as: 'Seats',
           include: [
             {
               model: models.SeatingType,
-              as: 'SeatingType' // Explicit alias that matches what's defined in models/index.ts
+              as: 'SeatingType'
             }
           ]
         }
@@ -95,7 +95,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       longitude, 
       cost_multiplier, 
       opening_time, 
-      closing_time 
+      closing_time,
+      images,
+      amenities
     } = body;
     
     // Basic validation
@@ -115,7 +117,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       longitude: longitude || null,
       cost_multiplier: cost_multiplier || 1.00,
       opening_time: opening_time || '08:00:00',
-      closing_time: closing_time || '22:00:00'
+      closing_time: closing_time || '22:00:00',
+      images: images || null,
+      amenities: amenities || null
     });
     
     const response: ApiResponse = {

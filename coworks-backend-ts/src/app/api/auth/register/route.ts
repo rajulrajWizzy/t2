@@ -10,7 +10,7 @@ import mailService from '@/utils/mailService';
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json() as RegisterRequest;
-    const { name, email, phone, password } = body;
+    const { name, email, phone, password, profile_picture, company_name } = body;
     
     // Basic validation
     if (!name || !email || !password) {
@@ -69,7 +69,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       name,
       email,
       phone,
-      password: hashedPassword
+      password: hashedPassword,
+      profile_picture: profile_picture || undefined,
+      company_name: company_name || undefined
     });
     
     console.log('Customer created successfully with ID:', customer.id);

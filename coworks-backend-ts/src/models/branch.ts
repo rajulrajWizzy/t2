@@ -1,9 +1,10 @@
+// src/models/branch.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '@/config/database';
 import { Branch, BranchAttributes } from '@/types/branch';
 
 // Interface for creation attributes
-interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at'> {}
+interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at' | 'images' | 'amenities'> {}
 
 // Define the Branch model
 class BranchModel extends Model<Branch, BranchCreationAttributes> implements Branch {
@@ -17,6 +18,8 @@ class BranchModel extends Model<Branch, BranchCreationAttributes> implements Bra
   public opening_time!: string;
   public closing_time!: string;
   public is_active!: boolean;
+  public images!: object | null;
+  public amenities!: object | null;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -69,6 +72,14 @@ BranchModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    images: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    amenities: {
+      type: DataTypes.JSON,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

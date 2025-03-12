@@ -35,7 +35,8 @@
         "react-dom": "^18.3.1",
         "sequelize": "^6.37.5",
         "typescript": "^5.7.3",
-        "uuid": "^9.0.1"
+        "uuid": "^9.0.1",
+        "@google-cloud/storage": "^7.3.1"
     },
     "devDependencies": {
         "@types/nodemailer":"6.4.17",
@@ -44,7 +45,8 @@
         "eslint": "^8.40.0",
         "eslint-config-next": "^14.0.0",
         "ts-node": "^10.9.2",
-        "ts-node-dev": "^2.0.0"
+        "ts-node-dev": "^2.0.0",
+        "@types/google-cloud__storage": "^2.3.1"
     },
     "description": "A TypeScript-based Next.js backend API for a coworking space management system. This project handles user authentication, managing branches, seats, bookings, and payments.",
     "main": "index.js",
