@@ -36,7 +36,7 @@
         "sequelize": "^6.37.5",
         "typescript": "^5.7.3",
         "uuid": "^9.0.1",
-        "@google-cloud/storage": "^7.3.1"
+        "@vercel/blob": "^0.19.0"
     },
     "devDependencies": {
         "@types/nodemailer":"6.4.17",

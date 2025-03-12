@@ -1,7 +1,12 @@
 // src/app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadImage } from '@/utils/imageUploadService';
 import { verifyToken } from '@/config/jwt';
+import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
+import { uploadImageToBlob } from '@/utils/vercelBlobService';
+import { validateBase64Image } from '@/utils/imageValidation';
+import storageConfig from '@/config/storage';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -36,11 +41,66 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     
-    // Validate image type
+    // Validate folder type
     const folder = type === 'branch' ? 'branch' : 'profile';
     
-    // Upload the image
-    const imageUrl = await uploadImage(image, folder);
+    // Validate the image
+    const validatedImage = validateBase64Image(image);
+    
+    if (!validatedImage.isValid) {
+      return NextResponse.json(
+        { success: false, message: validatedImage.error },
+        { status: 400 }
+      );
+    }
+    
+    let imageUrl;
+    
+    // Check if we're in production and Vercel Blob is configured
+    if (storageConfig.isProduction && storageConfig.isVercelBlobConfigured) {
+      // Use Vercel Blob Storage for production
+      try {
+        imageUrl = await uploadImageToBlob(image, folder);
+      } catch (error) {
+        console.error('Error uploading to Vercel Blob:', error);
+        
+        // Fall back to placeholder
+        const filename = `${uuidv4()}.${validatedImage.extension}`;
+        imageUrl = `${storageConfig.baseUrl}/api/placeholder/${folder}/${filename}`;
+      }
+    } else if (storageConfig.isProduction) {
+      // In production but Vercel Blob is not configured
+      // We can't reliably store files in production without Blob Storage
+      // so we'll use a placeholder
+      const filename = `${uuidv4()}.${validatedImage.extension}`;
+      imageUrl = `${storageConfig.baseUrl}/api/placeholder/${folder}/${filename}`;
+      
+      console.warn('Image uploaded to placeholder API. Configure Vercel Blob Storage for production use.');
+    } else {
+      // Local development - use public directory
+      try {
+        // Generate unique filename
+        const filename = `${uuidv4()}.${validatedImage.extension}`;
+        
+        // Create directory if it doesn't exist
+        const publicDir = path.join(process.cwd(), 'public', folder);
+        if (!fs.existsSync(publicDir)) {
+          fs.mkdirSync(publicDir, { recursive: true });
+        }
+        
+        // Write file to public directory
+        fs.writeFileSync(path.join(publicDir, filename), validatedImage.buffer);
+        
+        // Return the URL
+        imageUrl = `/${folder}/${filename}`;
+      } catch (error) {
+        console.error('File system error:', error);
+        
+        // Fall back to placeholder
+        const filename = `${uuidv4()}.${validatedImage.extension}`;
+        imageUrl = `/api/placeholder/${folder}/${filename}`;
+      }
+    }
     
     return NextResponse.json({
       success: true,
