@@ -24,15 +24,18 @@ export async function uploadImageToBlob(
     
     // Generate unique filename
     const filename = `${folder}/${uuidv4()}.${validatedImage.extension}`;
+
+    // Convert buffer to Blob for Vercel Blob Storage
+    const blob = new Blob([validatedImage.buffer], { type: validatedImage.mimeType });
     
     // Upload to Vercel Blob Storage
-    const blob = await put(filename, validatedImage.buffer, {
+    const result = await put(filename, blob, {
       contentType: validatedImage.mimeType,
       access: 'public',
     });
     
     // Return the URL
-    return blob.url;
+    return result.url;
   } catch (error) {
     console.error('Error uploading image to Vercel Blob:', error);
     throw new Error(`Image upload failed: ${(error as Error).message}`);
