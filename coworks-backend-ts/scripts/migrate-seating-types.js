@@ -65,100 +65,51 @@ async function migrateSeatingTypes() {
       return;
     }
 
-    // Check if table exists
-    const tableExists = await sequelize.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = '${dbSchema}' 
-        AND table_name = 'seating_types'
-      );
-    `, { type: Sequelize.QueryTypes.SELECT });
-
-    if (!tableExists[0].exists) {
-      console.log('Seating types table does not exist. Please run migrations first.');
-      process.exit(1);
-      return;
-    }
-
-    // Check if min_seats column already exists
-    const columnExists = await sequelize.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.columns
-        WHERE table_schema = '${dbSchema}'
-        AND table_name = 'seating_types'
-        AND column_name = 'min_seats'
-      );
-    `, { type: Sequelize.QueryTypes.SELECT });
-
-    if (!columnExists[0].exists) {
-      // Add min_seats column if it doesn't exist
-      await sequelize.query(`
-        ALTER TABLE "${dbSchema}"."seating_types"
-        ADD COLUMN min_seats INTEGER NOT NULL DEFAULT 1;
-      `);
-      console.log('Added min_seats column to seating_types table');
-    } else {
-      console.log('min_seats column already exists in seating_types table');
-    }
+    // Add min_seats column if it doesn't exist
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."seating_types"
+      ADD COLUMN IF NOT EXISTS min_seats INTEGER NOT NULL DEFAULT 1;
+    `);
+    console.log('Added min_seats column to seating_types table');
     
-    // Update values for seating types without deleting/recreating them
+    // Update values for seating types
     await sequelize.query(`
       UPDATE "${dbSchema}"."seating_types"
       SET 
         min_booking_duration = 
           CASE name 
             WHEN 'HOT_DESK' THEN 60
-            WHEN 'Hot Desk' THEN 60
             WHEN 'DEDICATED_DESK' THEN 90
-            WHEN 'Dedicated Desk' THEN 90
             WHEN 'CUBICLE' THEN 90
-            WHEN 'Cubicle' THEN 90
             WHEN 'MEETING_ROOM' THEN 2
-            WHEN 'Meeting Room' THEN 2
             WHEN 'DAILY_PASS' THEN 1
-            WHEN 'Daily Pass' THEN 1
             ELSE min_booking_duration
           END,
         is_hourly = 
           CASE name 
             WHEN 'HOT_DESK' THEN false
-            WHEN 'Hot Desk' THEN false
             WHEN 'DEDICATED_DESK' THEN false
-            WHEN 'Dedicated Desk' THEN false
             WHEN 'CUBICLE' THEN false
-            WHEN 'Cubicle' THEN false
             WHEN 'MEETING_ROOM' THEN true
-            WHEN 'Meeting Room' THEN true
             WHEN 'DAILY_PASS' THEN false
-            WHEN 'Daily Pass' THEN false
             ELSE is_hourly
           END,
         min_seats = 
           CASE name 
             WHEN 'HOT_DESK' THEN 1
-            WHEN 'Hot Desk' THEN 1
             WHEN 'DEDICATED_DESK' THEN 10
-            WHEN 'Dedicated Desk' THEN 10
             WHEN 'CUBICLE' THEN 1
-            WHEN 'Cubicle' THEN 1
             WHEN 'MEETING_ROOM' THEN 1
-            WHEN 'Meeting Room' THEN 1
             WHEN 'DAILY_PASS' THEN 1
-            WHEN 'Daily Pass' THEN 1
             ELSE 1
           END,
         description = 
           CASE name 
             WHEN 'HOT_DESK' THEN 'Flexible desk space with minimum 2-month commitment'
-            WHEN 'Hot Desk' THEN 'Flexible desk space with minimum 2-month commitment'
             WHEN 'DEDICATED_DESK' THEN 'Permanently assigned desk with minimum 3-month commitment and 10-seat minimum'
-            WHEN 'Dedicated Desk' THEN 'Permanently assigned desk with minimum 3-month commitment and 10-seat minimum'
             WHEN 'CUBICLE' THEN 'Semi-private workspace with minimum 3-month commitment'
-            WHEN 'Cubicle' THEN 'Semi-private workspace with minimum 3-month commitment'
             WHEN 'MEETING_ROOM' THEN 'Private room for meetings and conferences'
-            WHEN 'Meeting Room' THEN 'Private room for meetings and conferences'
             WHEN 'DAILY_PASS' THEN 'Full day access to hot desk spaces based on availability'
-            WHEN 'Daily Pass' THEN 'Full day access to hot desk spaces based on availability'
             ELSE description
           END
     `);

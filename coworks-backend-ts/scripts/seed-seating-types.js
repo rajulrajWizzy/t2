@@ -1,10 +1,9 @@
-// scripts/seed-seating-types.js
-const { Sequelize } = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 
-const seatingTypes = require('../src/utils/seeders/seatingTypes').default;
-
+// Get the schema from environment variables
 const dbSchema = process.env.DB_SCHEMA || 'public';
+console.log(`Using database schema: ${dbSchema}`);
 
 // Create Sequelize instance
 let sequelize;
@@ -15,6 +14,7 @@ if (process.env.DATABASE_URL) {
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     logging: console.log,
+    schema: dbSchema, // Add schema here
     dialectOptions: {
       ssl: {
         require: true,
@@ -33,6 +33,7 @@ if (process.env.DATABASE_URL) {
       host: process.env.DB_HOST || 'localhost',
       dialect: 'postgres',
       logging: console.log,
+      schema: dbSchema, // Add schema here
       dialectOptions: {
         ssl: process.env.DB_SSL === 'true' ? {
           require: true,
@@ -43,120 +44,121 @@ if (process.env.DATABASE_URL) {
   );
 }
 
+// Define SeatingType model directly for this script
+const SeatingType = sequelize.define('SeatingType', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  name: {
+    type: DataTypes.ENUM('HOT_DESK', 'DEDICATED_DESK', 'CUBICLE', 'MEETING_ROOM', 'DAILY_PASS'),
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  hourly_rate: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00
+  },
+  is_hourly: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  min_booking_duration: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 2
+  }
+}, {
+  tableName: 'seating_types',
+  schema: dbSchema, // Add schema reference here
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
+});
+
+const seatingTypes = [
+  {
+    name: 'HOT_DESK',
+    description: 'Flexible desk space available on a first-come, first-served basis',
+    hourly_rate: 150.00,
+    is_hourly: true,
+    min_booking_duration: 2
+  },
+  {
+    name: 'DEDICATED_DESK',
+    description: 'Permanently assigned desk for regular use',
+    hourly_rate: 200.00,
+    is_hourly: true,
+    min_booking_duration: 2
+  },
+  {
+    name: 'CUBICLE',
+    description: 'Semi-private workspace with partitions',
+    hourly_rate: 250.00,
+    is_hourly: true,
+    min_booking_duration: 2
+  },
+  {
+    name: 'MEETING_ROOM',
+    description: 'Private room for meetings and conferences',
+    hourly_rate: 500.00,
+    is_hourly: true,
+    min_booking_duration: 2
+  },
+  {
+    name: 'DAILY_PASS',
+    description: 'Full day access to hot desk spaces',
+    hourly_rate: 800.00,
+    is_hourly: false,
+    min_booking_duration: 8
+  }
+];
+
 async function seedSeatingTypes() {
   try {
     // Connect to database
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
-
+    
     // Set search path to ensure correct schema
     await sequelize.query(`SET search_path TO "${dbSchema}";`);
     console.log(`Search path set to: ${dbSchema}`);
-
-    // Check if table exists
-    const tableExists = await sequelize.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = '${dbSchema}' 
-        AND table_name = 'seating_types'
-      );
-    `, { type: Sequelize.QueryTypes.SELECT });
-
-    if (!tableExists[0].exists) {
-      console.log('Seating types table does not exist. Please run migrations first.');
-      process.exit(1);
-      return;
+    
+    // Check if ENUM type exists and create it if needed
+    try {
+      await sequelize.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_seating_types_name') THEN
+            CREATE TYPE "${dbSchema}".seating_type_enum AS ENUM (
+              'HOT_DESK', 'DEDICATED_DESK', 'CUBICLE', 'MEETING_ROOM', 'DAILY_PASS'
+            );
+          END IF;
+        END
+        $$;
+      `);
+    } catch (enumError) {
+      console.warn('Note about ENUM:', enumError.message);
     }
-
-    // Check if we have data already
-    const existingTypes = await sequelize.query(`
-      SELECT id, name FROM "${dbSchema}"."seating_types";
-    `, { type: Sequelize.QueryTypes.SELECT });
-
-    console.log(`Found ${existingTypes.length} existing seating types.`);
-
-    // If table is empty, insert new records
-    if (existingTypes.length === 0) {
-      console.log('No existing seating types found. Inserting new records...');
-      for (const seatingType of seatingTypes) {
-        await sequelize.query(`
-          INSERT INTO "${dbSchema}"."seating_types" 
-          (name, code, description, hourly_rate, is_hourly, min_booking_duration, min_seats, created_at, updated_at)
-          VALUES 
-          (:name, :code, :description, :hourly_rate, :is_hourly, :min_booking_duration, :min_seats, NOW(), NOW());
-        `, { 
-          replacements: seatingType,
-          type: Sequelize.QueryTypes.INSERT 
-        });
-      }
-      console.log('Seating types inserted successfully.');
-    } else {
-      // If table has data, update existing records (don't delete!)
-      console.log('Updating existing seating types...');
-      
-      // Create a map of existing types by their current names
-      const existingTypeMap = {};
-      for (const type of existingTypes) {
-        existingTypeMap[type.name] = type.id;
-      }
-      
-      // Helper function to get the original enum name
-      const getOriginalName = (friendlyName) => {
-        switch(friendlyName) {
-          case 'Hot Desk': return 'HOT_DESK';
-          case 'Dedicated Desk': return 'DEDICATED_DESK';
-          case 'Cubicle': return 'CUBICLE';
-          case 'Meeting Room': return 'MEETING_ROOM';
-          case 'Daily Pass': return 'DAILY_PASS';
-          default: return friendlyName; // If it already has the old name format
-        }
-      };
-      
-      for (const seatingType of seatingTypes) {
-        const originalName = getOriginalName(seatingType.name);
-        
-        // Check if we have this type already (by original name or new name)
-        const typeId = existingTypeMap[originalName] || existingTypeMap[seatingType.name];
-        
-        if (typeId) {
-          // Update existing record
-          await sequelize.query(`
-            UPDATE "${dbSchema}"."seating_types"
-            SET 
-              name = :name,
-              code = :code,
-              description = :description,
-              hourly_rate = :hourly_rate,
-              is_hourly = :is_hourly,
-              min_booking_duration = :min_booking_duration,
-              min_seats = :min_seats,
-              updated_at = NOW()
-            WHERE id = :id;
-          `, {
-            replacements: {
-              ...seatingType,
-              id: typeId
-            },
-            type: Sequelize.QueryTypes.UPDATE
-          });
-          console.log(`Updated seating type ID ${typeId} to ${seatingType.name}`);
-        } else {
-          // If not found, insert a new record
-          await sequelize.query(`
-            INSERT INTO "${dbSchema}"."seating_types" 
-            (name, code, description, hourly_rate, is_hourly, min_booking_duration, min_seats, created_at, updated_at)
-            VALUES 
-            (:name, :code, :description, :hourly_rate, :is_hourly, :min_booking_duration, :min_seats, NOW(), NOW());
-          `, { 
-            replacements: seatingType,
-            type: Sequelize.QueryTypes.INSERT 
-          });
-          console.log(`Inserted new seating type: ${seatingType.name}`);
-        }
-      }
-      console.log('Seating types updated successfully.');
+    
+    // Clear existing seating types
+    await SeatingType.destroy({ where: {} });
+    console.log('Cleared existing seating types');
+    
+    // Create new seating types
+    let count = 0;
+    for (const type of seatingTypes) {
+      await SeatingType.create(type);
+      count++;
     }
-
+    
+    console.log(`Seating types seeded successfully! Created ${count} types.`);
     process.exit(0);
   } catch (error) {
     console.error('Error seeding seating types:', error);
@@ -164,4 +166,5 @@ async function seedSeatingTypes() {
   }
 }
 
+// Run the seed function
 seedSeatingTypes();
