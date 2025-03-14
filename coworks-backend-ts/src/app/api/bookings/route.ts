@@ -1,7 +1,7 @@
 // src/app/api/bookings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '../../../config/jwt'; // Updated import path from utils to lib
 import { Op } from 'sequelize';
 import { SeatingTypeEnum, AvailabilityStatusEnum } from '@/types/seating';
 
@@ -87,20 +87,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const durationHours = durationMs / (1000 * 60 * 60);
     const durationDays = durationHours / 24;
     
-    // Validate minimum booking duration based on seating type (using the original enum values)
+    // Validate minimum booking duration based on seating type
     if (seatingType.name === SeatingTypeEnum.HOT_DESK) {
       // Hot desk: minimum 2 months (60 days) and at least 1 seat
       if (durationDays < 60) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires a minimum booking duration of 2 months`
+          message: 'Hot desk requires a minimum booking duration of 2 months'
         }, { status: 400 });
       }
       
       if (quantity < 1) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires at least 1 seat`
+          message: 'Hot desk requires at least 1 seat'
         }, { status: 400 });
       }
     } 
@@ -109,14 +109,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (durationDays < 90) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires a minimum booking duration of 3 months`
+          message: 'Dedicated desk requires a minimum booking duration of 3 months'
         }, { status: 400 });
       }
       
       if (quantity < 10) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires a minimum of 10 seats`
+          message: 'Dedicated desk requires a minimum of 10 seats'
         }, { status: 400 });
       }
     }
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (durationDays < 90) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires a minimum booking duration of 3 months`
+          message: 'Cubicle requires a minimum booking duration of 3 months'
         }, { status: 400 });
       }
     }
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (durationHours < 2) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires a minimum booking duration of 2 hours`
+          message: 'Meeting room requires a minimum booking duration of 2 hours'
         }, { status: 400 });
       }
     }
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (durationDays < 1) {
         return NextResponse.json({
           success: false,
-          message: `${seatingType.display_name} requires a minimum booking duration of 1 day`
+          message: 'Daily pass requires a minimum booking duration of 1 day'
         }, { status: 400 });
       }
     }
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (availableSeats < quantity) {
         return NextResponse.json({
           success: false,
-          message: `Not enough seats available. Only ${availableSeats} ${seatingType.display_name.toLowerCase()} seats available.`
+          message: `Not enough seats available. Only ${availableSeats} ${seatingType.name.toLowerCase()} seats available.`
         }, { status: 400 });
       }
     }
