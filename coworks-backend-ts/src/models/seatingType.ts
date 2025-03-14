@@ -13,6 +13,7 @@ class SeatingTypeModel extends Model<SeatingType, SeatingTypeCreationAttributes>
   public hourly_rate!: number;
   public is_hourly!: boolean;
   public min_booking_duration!: number;
+  public min_seats!: number; // Added new field for minimum seats
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -48,6 +49,11 @@ SeatingTypeModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 2,
+    },
+    min_seats: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
     },
     created_at: {
       type: DataTypes.DATE,

@@ -149,7 +149,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const { valid, decoded } =await verifyToken(token);
+    const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
@@ -164,14 +164,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       seat_id, 
       start_time, 
       end_time, 
-      total_price 
+      total_price,
+      quantity = 1 // Added quantity parameter
     } = body;
     
     // Use the decoded ID from JWT token
     const customer_id = decoded.id;
-    
-    console.log('Using customer ID:', customer_id);
-    console.log('Decoded token info:', decoded);
     
     // Basic validation
     if (!seat_id || !start_time || !end_time || !total_price) {
@@ -200,6 +198,106 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
+    // Get the seating type
+    const seatingType = await models.SeatingType.findByPk(seat.seating_type_id);
+    if (!seatingType) {
+      return NextResponse.json({
+        success: false,
+        message: 'Seating type not found'
+      }, { status: 404 });
+    }
+    
+    // Convert string dates to Date objects
+    const startTimeDate = new Date(start_time);
+    const endTimeDate = new Date(end_time);
+    
+    // Calculate booking duration in days or hours
+    const durationMs = endTimeDate.getTime() - startTimeDate.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+    const durationDays = durationHours / 24;
+    
+    // Validate minimum booking duration based on seating type
+    if (seatingType.name === SeatingTypeEnum.HOT_DESK) {
+      // Hot desk: minimum 2 months (60 days) and at least 1 seat
+      if (durationDays < 60) {
+        return NextResponse.json({
+          success: false,
+          message: 'Hot desk requires a minimum booking duration of 2 months'
+        }, { status: 400 });
+      }
+      
+      if (quantity < 1) {
+        return NextResponse.json({
+          success: false,
+          message: 'Hot desk requires at least 1 seat'
+        }, { status: 400 });
+      }
+    } 
+    else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
+      // Dedicated desk: minimum 3 months (90 days) and at least 10 seats
+      if (durationDays < 90) {
+        return NextResponse.json({
+          success: false,
+          message: 'Dedicated desk requires a minimum booking duration of 3 months'
+        }, { status: 400 });
+      }
+      
+      if (quantity < 10) {
+        return NextResponse.json({
+          success: false,
+          message: 'Dedicated desk requires a minimum of 10 seats'
+        }, { status: 400 });
+      }
+    }
+    else if (seatingType.name === SeatingTypeEnum.CUBICLE) {
+      // Cubicle: minimum 3 months (90 days)
+      if (durationDays < 90) {
+        return NextResponse.json({
+          success: false,
+          message: 'Cubicle requires a minimum booking duration of 3 months'
+        }, { status: 400 });
+      }
+    }
+    else if (seatingType.name === SeatingTypeEnum.MEETING_ROOM) {
+      // Meeting room: hourly basis with minimum 2 hours
+      if (durationHours < 2) {
+        return NextResponse.json({
+          success: false,
+          message: 'Meeting room requires a minimum booking duration of 2 hours'
+        }, { status: 400 });
+      }
+    }
+    else if (seatingType.name === SeatingTypeEnum.DAILY_PASS) {
+      // Daily pass: minimum 1 day
+      if (durationDays < 1) {
+        return NextResponse.json({
+          success: false,
+          message: 'Daily pass requires a minimum booking duration of 1 day'
+        }, { status: 400 });
+      }
+    }
+    
+    // For Hot Desk and Daily Pass, check seat availability
+    if (seatingType.name === SeatingTypeEnum.HOT_DESK || 
+        seatingType.name === SeatingTypeEnum.DAILY_PASS) {
+      // Count available seats of this type in the branch
+      const branchId = seat.branch_id;
+      const availableSeats = await models.Seat.count({
+        where: {
+          branch_id: branchId,
+          seating_type_id: seat.seating_type_id,
+          availability_status: AvailabilityStatusEnum.AVAILABLE
+        }
+      });
+      
+      if (availableSeats < quantity) {
+        return NextResponse.json({
+          success: false,
+          message: `Not enough seats available. Only ${availableSeats} ${seatingType.name.toLowerCase()} seats available.`
+        }, { status: 400 });
+      }
+    }
+    
     // Check if the seat is available
     if (seat.availability_status !== AvailabilityStatusEnum.AVAILABLE) {
       return NextResponse.json({
@@ -207,10 +305,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         message: 'Seat is not available'
       }, { status: 400 });
     }
-    
-    // Convert string dates to Date objects
-    const startTimeDate = new Date(start_time);
-    const endTimeDate = new Date(end_time);
     
     // Check if the time slot is available
     const existingBookings = await models.SeatBooking.findAll({
@@ -239,17 +333,88 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 400 });
     }
     
-    // Create the booking based on type
-    let booking;
+    // For seat types that require multiple seats, we need to book multiple seats
+    const bookings = [];
+    
+    // Create multiple bookings for multiple seats if needed
+    const seatsToBook = quantity || 1;
     
     if (type === 'seat') {
-      booking = await models.SeatBooking.create({
-        customer_id,
-        seat_id,
-        start_time: startTimeDate,
-        end_time: endTimeDate,
-        total_price
-      });
+      if (seatsToBook === 1) {
+        // Single seat booking
+        const booking = await models.SeatBooking.create({
+          customer_id,
+          seat_id,
+          start_time: startTimeDate,
+          end_time: endTimeDate,
+          total_price
+        });
+        
+        bookings.push(booking);
+        
+        // Update the seat availability
+        await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED });
+        
+        // Update time slots if they exist
+        await models.TimeSlot.update(
+          { is_available: false, booking_id: booking.id },
+          { 
+            where: { 
+              seat_id, 
+              date: startTimeDate.toISOString().split('T')[0],
+              start_time: startTimeDate.toTimeString().split(' ')[0],
+              end_time: endTimeDate.toTimeString().split(' ')[0]
+            } 
+          }
+        );
+      } else {
+        // Multiple seat booking (for dedicated desk or bulk hot desk)
+        // Find available seats of the same type in the same branch
+        const availableSeats = await models.Seat.findAll({
+          where: {
+            branch_id: seat.branch_id,
+            seating_type_id: seat.seating_type_id,
+            availability_status: AvailabilityStatusEnum.AVAILABLE
+          },
+          limit: seatsToBook
+        });
+        
+        if (availableSeats.length < seatsToBook) {
+          return NextResponse.json({
+            success: false,
+            message: `Not enough seats available. Only ${availableSeats.length} seats available.`
+          }, { status: 400 });
+        }
+        
+        // Book all seats
+        for (const seatToBook of availableSeats) {
+          const booking = await models.SeatBooking.create({
+            customer_id,
+            seat_id: seatToBook.id,
+            start_time: startTimeDate,
+            end_time: endTimeDate,
+            total_price: total_price / seatsToBook // Divide total price among seats
+          });
+          
+          bookings.push(booking);
+          
+          // Update the seat availability
+          await seatToBook.update({ availability_status: AvailabilityStatusEnum.BOOKED });
+          
+          // Update time slots if they exist
+          await models.TimeSlot.update(
+            { is_available: false, booking_id: booking.id },
+            { 
+              where: { 
+                seat_id: seatToBook.id, 
+                date: startTimeDate.toISOString().split('T')[0],
+                start_time: startTimeDate.toTimeString().split(' ')[0],
+                end_time: endTimeDate.toTimeString().split(' ')[0]
+              } 
+            }
+          );
+        }
+      }
     } else if (type === 'meeting') {
       // Additional fields for meeting booking
       const { num_participants, amenities } = body;
@@ -261,7 +426,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }, { status: 400 });
       }
       
-      booking = await models.MeetingBooking.create({
+      const booking = await models.MeetingBooking.create({
         customer_id,
         meeting_room_id: seat_id,
         start_time: startTimeDate,
@@ -270,30 +435,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         amenities: amenities || null,
         total_price
       });
-    }
-    
-    // Update the seat availability
-    await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED });
-    
-    // Update time slots if they exist
-    if (booking) {
-      await models.TimeSlot.update(
-        { is_available: false, booking_id: booking.id },
-        { 
-          where: { 
-            seat_id, 
-            date: startTimeDate.toISOString().split('T')[0],
-            start_time: startTimeDate.toTimeString().split(' ')[0],
-            end_time: endTimeDate.toTimeString().split(' ')[0]
-          } 
-        }
-      );
+      
+      bookings.push(booking);
+      
+      // Update the seat availability
+      await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED });
     }
     
     return NextResponse.json({
       success: true,
       message: 'Booking created successfully',
-      data: booking
+      data: bookings.length === 1 ? bookings[0] : bookings
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating booking:', error);

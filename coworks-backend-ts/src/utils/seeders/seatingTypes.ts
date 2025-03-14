@@ -21,38 +21,38 @@ const sequelize = new Sequelize(
 const seatingTypes = [
   {
     name: SeatingTypeEnum.HOT_DESK,
-    description: 'Flexible desk space available on a first-come, first-served basis',
+    description: 'Flexible desk space with minimum 2-month commitment',
     hourly_rate: 150.00,
-    is_hourly: true,
-    min_booking_duration: 2
+    is_hourly: false, // Changed to false as it's now monthly
+    min_booking_duration: 60 // 60 days (2 months)
   },
   {
     name: SeatingTypeEnum.DEDICATED_DESK,
-    description: 'Permanently assigned desk for regular use',
+    description: 'Permanently assigned desk with minimum 3-month commitment and 10-seat minimum',
     hourly_rate: 200.00,
-    is_hourly: true,
-    min_booking_duration: 2
+    is_hourly: false, // Changed to false as it's now monthly
+    min_booking_duration: 90 // 90 days (3 months)
   },
   {
     name: SeatingTypeEnum.CUBICLE,
-    description: 'Semi-private workspace with partitions',
+    description: 'Semi-private workspace with minimum 3-month commitment',
     hourly_rate: 250.00,
-    is_hourly: true,
-    min_booking_duration: 2
+    is_hourly: false, // Changed to false as it's now monthly
+    min_booking_duration: 90 // 90 days (3 months)
   },
   {
     name: SeatingTypeEnum.MEETING_ROOM,
     description: 'Private room for meetings and conferences',
     hourly_rate: 500.00,
-    is_hourly: true,
-    min_booking_duration: 2
+    is_hourly: true, // Stays hourly
+    min_booking_duration: 2 // Minimum 2 hours
   },
   {
     name: SeatingTypeEnum.DAILY_PASS,
-    description: 'Full day access to hot desk spaces',
+    description: 'Full day access to hot desk spaces based on availability',
     hourly_rate: 800.00,
     is_hourly: false,
-    min_booking_duration: 8
+    min_booking_duration: 1 // 1 day minimum
   }
 ];
 
