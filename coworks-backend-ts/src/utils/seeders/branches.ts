@@ -20,7 +20,6 @@ const sequelize = new Sequelize(
 const branches = [
   {
     name: 'Outer Ringroad',
-    code: 'ORR',
     address: 'Excel Coworks, #552, 3rd floor, Service Road Nagarabhavi, Bengaluru-560072',
     location: 'Outer Ringroad',
     latitude: 12.960887919914697,
@@ -31,7 +30,6 @@ const branches = [
   },
   {
     name: 'Nagarabhavi',
-    code: 'NAB',
     address: 'Excel Coworks, #2, 3rd & 4th floor, Above Mcdonald\'s, 80 feet Road, Nagarabhavi, Bengaluru-560072',
     location: 'Nagarabhavi',
     latitude: 12.960887919914697,
@@ -42,7 +40,6 @@ const branches = [
   },
   {
     name: 'Kengeri Ring Road',
-    code: 'KRR',
     address: 'Excel Coworks, #103, 3rd floor, Above Godrej Interio, Kengeri Ring Road, Bengaluru-560056',
     location: 'Kengeri Ring Road',
     latitude: 12.962268042295037,
@@ -53,7 +50,6 @@ const branches = [
   },
   {
     name: 'Papareddypalya',
-    code: 'PAP',
     address: 'Excel Coworks, #962/171,172 & 173, 1st floor, Above SBI Bank, Old Ring Road, Papareddypalya, Bengaluru-560072',
     location: 'Papareddypalya',
     latitude: 12.970299552649015, 

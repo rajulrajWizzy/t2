@@ -1,26 +1,25 @@
+// src/models/branch.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '@/config/database';
 import { Branch, BranchAttributes } from '@/types/branch';
-import { isValidEmail, isValidPhone, isValidName, isValidPostalCode } from '@/utils/validation';
 
 // Interface for creation attributes
-interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at'> {}
+interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at' | 'images' | 'amenities'> {}
 
 // Define the Branch model
 class BranchModel extends Model<Branch, BranchCreationAttributes> implements Branch {
   public id!: number;
   public name!: string;
-  public code!: string;
   public address!: string;
-  public city!: string;
-  public state!: string;
-  public country!: string;
-  public postal_code!: string;
-  public phone!: string;
-  public email!: string;
-  public capacity!: number;
-  public operating_hours!: string;
+  public location!: string;
+  public latitude!: number | null;
+  public longitude!: number | null;
+  public cost_multiplier!: number;
+  public opening_time!: string;
+  public closing_time!: string;
   public is_active!: boolean;
+  public images!: object | null;
+  public amenities!: object | null;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -37,134 +36,50 @@ BranchModel.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        isValidName(value: string) {
-          if (!isValidName(value)) {
-            throw new Error('Branch name must contain only alphabetic characters and spaces');
-          }
-        },
-      },
-    },
-    code: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        notEmpty: {
-          msg: 'Branch code is required',
-        },
-        isUppercase: {
-          msg: 'Branch code must be uppercase',
-        },
-        len: {
-          args: [2, 5],
-          msg: 'Branch code must be 2-5 characters long',
-        },
-      },
     },
     address: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
-      validate: {
-        notEmpty: {
-          msg: 'Address is required',
-        },
-      },
     },
-    city: {
-      type: DataTypes.STRING,
+    location: {
+      type: DataTypes.TEXT,
       allowNull: false,
-      validate: {
-        isValidName(value: string) {
-          if (!isValidName(value)) {
-            throw new Error('City must contain only alphabetic characters and spaces');
-          }
-        },
-      },
     },
-    state: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isValidName(value: string) {
-          if (!isValidName(value)) {
-            throw new Error('State must contain only alphabetic characters and spaces');
-          }
-        },
-      },
+    latitude: {
+      type: DataTypes.DECIMAL(10, 8),
+      allowNull: true,
     },
-    country: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isValidName(value: string) {
-          if (!isValidName(value)) {
-            throw new Error('Country must contain only alphabetic characters and spaces');
-          }
-        },
-      },
+    longitude: {
+      type: DataTypes.DECIMAL(11, 8),
+      allowNull: true,
     },
-    postal_code: {
-      type: DataTypes.STRING,
+    cost_multiplier: {
+      type: DataTypes.DECIMAL(3, 2),
       allowNull: false,
-      validate: {
-        isValidPostalCode(value: string) {
-          if (!isValidPostalCode(value)) {
-            throw new Error('Please enter a valid postal code');
-          }
-        },
-      },
+      defaultValue: 1.00,
     },
-    phone: {
-      type: DataTypes.STRING,
+    opening_time: {
+      type: DataTypes.TIME,
       allowNull: false,
-      validate: {
-        isValidPhone(value: string) {
-          if (!isValidPhone(value)) {
-            throw new Error('Please enter a valid phone number');
-          }
-        },
-      },
+      defaultValue: '08:00:00',
     },
-    email: {
-      type: DataTypes.STRING,
+    closing_time: {
+      type: DataTypes.TIME,
       allowNull: false,
-      validate: {
-        isValidEmail(value: string) {
-          if (!isValidEmail(value)) {
-            throw new Error('Please enter a valid email address');
-          }
-        },
-      },
-    },
-    capacity: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-      validate: {
-        isInt: {
-          msg: 'Capacity must be a number',
-        },
-        min: {
-          args: [0],
-          msg: 'Capacity cannot be negative',
-        },
-      },
-    },
-    operating_hours: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: '9:00 AM - 5:00 PM',
-      validate: {
-        notEmpty: {
-          msg: 'Operating hours are required',
-        },
-      },
+      defaultValue: '22:00:00',
     },
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    images: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    amenities: {
+      type: DataTypes.JSON,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,
