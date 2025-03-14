@@ -83,8 +83,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Create a new seating type
     const seatingType = await models.SeatingType.create({
       name,
-      code,
-      description: description || undefined,
+      description,
       hourly_rate: hourly_rate || 0.00,
       is_hourly: is_hourly !== undefined ? is_hourly : true,
       min_booking_duration: min_booking_duration || 2

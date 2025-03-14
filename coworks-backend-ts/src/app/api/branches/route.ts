@@ -89,54 +89,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json();
     const { 
       name, 
-      code,
       address, 
-      city,
-      state,
-      country,
-      postal_code,
-      phone,
-      email,
+      location, 
       latitude, 
       longitude, 
       cost_multiplier, 
       opening_time, 
       closing_time,
-      capacity,
-      operating_hours,
-      is_active,
       images,
       amenities
     } = body;
     
     // Basic validation
-    if (!name || !address) {
+    if (!name || !address || !location) {
       return NextResponse.json({
         success: false,
-        message: 'Name and address are required'
+        message: 'Name, address, and location are required'
       }, { status: 400 });
     }
     
     // Create a new branch
     const branch = await models.Branch.create({
       name,
-      code: code || name.substring(0, 3).toUpperCase(),
       address,
-      city: city || '',
-      state: state || '',
-      country: country || '',
-      postal_code: postal_code || '',
-      phone: phone || '',
-      email: email || '',
-      capacity: capacity || 0,
-      operating_hours: operating_hours || `${opening_time || '09:00'} - ${closing_time || '17:00'}`,
-      is_active: is_active !== undefined ? is_active : true,
-      // Additional fields that might be part of your extended model:
-      ...(latitude !== undefined && { latitude }),
-      ...(longitude !== undefined && { longitude }),
-      ...(cost_multiplier !== undefined && { cost_multiplier }),
-      ...(images !== undefined && { images }),
-      ...(amenities !== undefined && { amenities })
+      location,
+      latitude: latitude || null,
+      longitude: longitude || null,
+      cost_multiplier: cost_multiplier || 1.00,
+      opening_time: opening_time || '08:00:00',
+      closing_time: closing_time || '22:00:00',
+      images: images || null,
+      amenities: amenities || null
     });
     
     const response: ApiResponse = {

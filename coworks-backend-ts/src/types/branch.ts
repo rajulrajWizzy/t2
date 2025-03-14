@@ -1,7 +1,8 @@
+// src/types/branch.ts
 export interface Branch {
   id: number;
   name: string;
-  code: string;
+  code: string; // Added code field
   address: string;
   city: string;
   state: string;
@@ -12,19 +13,13 @@ export interface Branch {
   capacity: number;
   operating_hours: string;
   is_active: boolean;
-  // Optional extended fields
-  latitude?: number | null;
-  longitude?: number | null;
-  cost_multiplier?: number | null;
-  images?: string | null;
-  amenities?: string | null;
   created_at: Date;
   updated_at: Date;
 }
 
 export interface BranchInput {
   name: string;
-  code: string;
+  code: string; // Added code field
   address: string;
   city: string;
   state: string;
@@ -35,12 +30,6 @@ export interface BranchInput {
   capacity?: number;
   operating_hours?: string;
   is_active?: boolean;
-  // Optional extended fields
-  latitude?: number | null;
-  longitude?: number | null;
-  cost_multiplier?: number | null;
-  images?: string | null;
-  amenities?: string | null;
 }
 
 export interface BranchAttributes extends BranchInput {
