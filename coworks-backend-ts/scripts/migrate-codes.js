@@ -55,144 +55,76 @@ async function migrateCodesAndNames() {
     const migrationExists = await sequelize.query(`
       SELECT EXISTS (
         SELECT 1 FROM "${dbSchema}"."migrations" 
-        WHERE name = 'add_codes_and_update_names'
+        WHERE name = 'add_codes_and_display_names'
       );
     `, { type: Sequelize.QueryTypes.SELECT });
     
     if (migrationExists[0].exists) {
-      console.log('Migration for codes and names has already been applied. Skipping...');
+      console.log('Migration for codes and display names has already been applied. Skipping...');
       process.exit(0);
       return;
     }
 
-    // First, check if tables exist
-    const seatingTypesExist = await sequelize.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = '${dbSchema}' 
-        AND table_name = 'seating_types'
-      );
-    `, { type: Sequelize.QueryTypes.SELECT });
+    // 1. Add code column to seating_types if it doesn't exist
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."seating_types"
+      ADD COLUMN IF NOT EXISTS code VARCHAR(10) NOT NULL DEFAULT '';
+    `);
+    console.log('Added code column to seating_types table');
     
-    const branchesExist = await sequelize.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = '${dbSchema}' 
-        AND table_name = 'branches'
-      );
-    `, { type: Sequelize.QueryTypes.SELECT });
-
-    // 1. Check and add code column to seating_types if needed
-    if (seatingTypesExist[0].exists) {
-      // Check if the code column already exists
-      const codeColumnExists = await sequelize.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.columns
-          WHERE table_schema = '${dbSchema}'
-          AND table_name = 'seating_types'
-          AND column_name = 'code'
-        );
-      `, { type: Sequelize.QueryTypes.SELECT });
-      
-      if (!codeColumnExists[0].exists) {
-        // Add code column if it doesn't exist
-        await sequelize.query(`
-          ALTER TABLE "${dbSchema}"."seating_types"
-          ADD COLUMN code VARCHAR(10) NOT NULL DEFAULT '';
-        `);
-        console.log('Added code column to seating_types table');
-        
-        // Update seating type codes
-        await sequelize.query(`
-          UPDATE "${dbSchema}"."seating_types"
-          SET code = 
-            CASE 
-              WHEN name = 'HOT_DESK' OR name = 'Hot Desk' THEN 'hot'
-              WHEN name = 'DEDICATED_DESK' OR name = 'Dedicated Desk' THEN 'ded'
-              WHEN name = 'CUBICLE' OR name = 'Cubicle' THEN 'cub'
-              WHEN name = 'MEETING_ROOM' OR name = 'Meeting Room' THEN 'meet'
-              WHEN name = 'DAILY_PASS' OR name = 'Daily Pass' THEN 'day'
-              ELSE LOWER(SUBSTRING(name, 1, 3))
-            END
-        `);
-        console.log('Updated seating type codes');
-      } else {
-        console.log('Code column already exists in seating_types table');
-      }
-      
-      // Update seating type names (if they still have underscores)
-      await sequelize.query(`
-        UPDATE "${dbSchema}"."seating_types"
-        SET 
-          name = 
-            CASE 
-              WHEN name = 'HOT_DESK' THEN 'Hot Desk'
-              WHEN name = 'DEDICATED_DESK' THEN 'Dedicated Desk'
-              WHEN name = 'CUBICLE' THEN 'Cubicle'
-              WHEN name = 'MEETING_ROOM' THEN 'Meeting Room'
-              WHEN name = 'DAILY_PASS' THEN 'Daily Pass'
-              ELSE name
-            END
-        WHERE name IN ('HOT_DESK', 'DEDICATED_DESK', 'CUBICLE', 'MEETING_ROOM', 'DAILY_PASS')
-      `);
-      console.log('Updated seating type names');
-    } else {
-      console.log('Seating types table does not exist, skipping...');
-    }
+    // 2. Add display_name column to seating_types if it doesn't exist
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."seating_types"
+      ADD COLUMN IF NOT EXISTS display_name VARCHAR(50) NOT NULL DEFAULT '';
+    `);
+    console.log('Added display_name column to seating_types table');
     
-    // 2. Check and add code column to branches if needed
-    if (branchesExist[0].exists) {
-      // Check if the code column already exists
-      const codeColumnExists = await sequelize.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.columns
-          WHERE table_schema = '${dbSchema}'
-          AND table_name = 'branches'
-          AND column_name = 'code'
-        );
-      `, { type: Sequelize.QueryTypes.SELECT });
-      
-      if (!codeColumnExists[0].exists) {
-        // Add code column if it doesn't exist
-        await sequelize.query(`
-          ALTER TABLE "${dbSchema}"."branches"
-          ADD COLUMN code VARCHAR(10) NOT NULL DEFAULT '';
-        `);
-        console.log('Added code column to branches table');
-        
-        // Update branch codes
-        await sequelize.query(`
-          UPDATE "${dbSchema}"."branches"
-          SET code = SUBSTRING(UPPER(name), 1, 3)
-          WHERE code = '';
-        `);
-        console.log('Updated branch codes');
-      } else {
-        console.log('Code column already exists in branches table');
-      }
-    } else {
-      console.log('Branches table does not exist, skipping...');
-    }
+    // 3. Add code column to branches if it doesn't exist
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."branches"
+      ADD COLUMN IF NOT EXISTS code VARCHAR(10) NOT NULL DEFAULT '';
+    `);
+    console.log('Added code column to branches table');
+    
+    // 4. Update seating type codes and display names (keeping the original ENUM values)
+    await sequelize.query(`
+      UPDATE "${dbSchema}"."seating_types"
+      SET 
+        display_name = 
+          CASE name
+            WHEN 'HOT_DESK' THEN 'Hot Desk'
+            WHEN 'DEDICATED_DESK' THEN 'Dedicated Desk'
+            WHEN 'CUBICLE' THEN 'Cubicle'
+            WHEN 'MEETING_ROOM' THEN 'Meeting Room'
+            WHEN 'DAILY_PASS' THEN 'Daily Pass'
+            ELSE name
+          END,
+        code = 
+          CASE name
+            WHEN 'HOT_DESK' THEN 'hot'
+            WHEN 'DEDICATED_DESK' THEN 'ded'
+            WHEN 'CUBICLE' THEN 'cub'
+            WHEN 'MEETING_ROOM' THEN 'meet'
+            WHEN 'DAILY_PASS' THEN 'day'
+            ELSE ''
+          END
+    `);
+    console.log('Updated seating type display names and codes');
+    
+    // 5. Update branch codes based on their names
+    await sequelize.query(`
+      UPDATE "${dbSchema}"."branches"
+      SET code = SUBSTRING(UPPER(name), 1, 3)
+      WHERE code = '';
+    `);
+    console.log('Updated branch codes');
     
     // Record the migration
-    // Check if migrations table exists
-    const migrationsExist = await sequelize.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = '${dbSchema}' 
-        AND table_name = 'migrations'
-      );
-    `, { type: Sequelize.QueryTypes.SELECT });
-    
-    if (migrationsExist[0].exists) {
-      await sequelize.query(`
-        INSERT INTO "${dbSchema}"."migrations" (name, applied_at)
-        VALUES ('add_codes_and_update_names', NOW());
-      `);
-      console.log('Recorded migration for codes and names');
-    } else {
-      console.log('Migrations table does not exist, cannot record migration');
-    }
+    await sequelize.query(`
+      INSERT INTO "${dbSchema}"."migrations" (name, applied_at)
+      VALUES ('add_codes_and_display_names', NOW());
+    `);
+    console.log('Recorded migration for codes and display names');
 
     console.log('Migration completed successfully.');
     process.exit(0);

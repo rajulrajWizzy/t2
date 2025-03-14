@@ -1,10 +1,10 @@
 // src/types/seating.ts
 export enum SeatingTypeEnum {
-  HOT_DESK = 'Hot Desk', // Changed from HOT_DESK to 'Hot Desk'
-  DEDICATED_DESK = 'Dedicated Desk', // Changed from DEDICATED_DESK to 'Dedicated Desk'
-  CUBICLE = 'Cubicle', // Changed from CUBICLE to 'Cubicle'
-  MEETING_ROOM = 'Meeting Room', // Changed from MEETING_ROOM to 'Meeting Room'
-  DAILY_PASS = 'Daily Pass' // Changed from DAILY_PASS to 'Daily Pass'
+  HOT_DESK = 'HOT_DESK',  // Keep the original enum values
+  DEDICATED_DESK = 'DEDICATED_DESK',
+  CUBICLE = 'CUBICLE',
+  MEETING_ROOM = 'MEETING_ROOM',
+  DAILY_PASS = 'DAILY_PASS'
 }
 
 // Added code words for seating types
@@ -16,6 +16,15 @@ export enum SeatingTypeCode {
   DAILY_PASS = 'day'
 }
 
+// Map of display names
+export const SeatingTypeDisplayNames = {
+  [SeatingTypeEnum.HOT_DESK]: 'Hot Desk',
+  [SeatingTypeEnum.DEDICATED_DESK]: 'Dedicated Desk',
+  [SeatingTypeEnum.CUBICLE]: 'Cubicle',
+  [SeatingTypeEnum.MEETING_ROOM]: 'Meeting Room',
+  [SeatingTypeEnum.DAILY_PASS]: 'Daily Pass'
+};
+
 export enum AvailabilityStatusEnum {
   AVAILABLE = 'AVAILABLE',
   BOOKED = 'BOOKED',
@@ -25,7 +34,8 @@ export enum AvailabilityStatusEnum {
 export interface SeatingType {
   id: number;
   name: SeatingTypeEnum;
-  code: string; // Added code field
+  code: string;
+  display_name: string; // Added display_name field
   description: string | null;
   hourly_rate: number;
   is_hourly: boolean;
@@ -37,7 +47,8 @@ export interface SeatingType {
 
 export interface SeatingTypeInput {
   name: SeatingTypeEnum;
-  code: string; // Added code field
+  code: string;
+  display_name: string; // Added display_name field
   description?: string;
   hourly_rate?: number;
   is_hourly?: boolean;

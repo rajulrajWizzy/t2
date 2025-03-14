@@ -10,7 +10,8 @@ interface SeatingTypeCreationAttributes extends Optional<SeatingTypeAttributes, 
 class SeatingTypeModel extends Model<SeatingType, SeatingTypeCreationAttributes> implements SeatingType {
   public id!: number;
   public name!: SeatingTypeEnum;
-  public code!: string; // Added code field
+  public code!: string;
+  public display_name!: string; // Added display_name field
   public description!: string | null;
   public hourly_rate!: number;
   public is_hourly!: boolean;
@@ -30,12 +31,18 @@ SeatingTypeModel.init(
       autoIncrement: true,
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(...Object.values(SeatingTypeEnum)),
       allowNull: false,
     },
     code: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: '',
+    },
+    display_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: '',
     },
     description: {
       type: DataTypes.TEXT,
