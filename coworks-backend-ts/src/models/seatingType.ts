@@ -1,3 +1,4 @@
+// src/models/seatingType.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '@/config/database';
 import { SeatingType, SeatingTypeAttributes, SeatingTypeEnum } from '@/types/seating';

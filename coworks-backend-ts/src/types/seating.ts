@@ -1,3 +1,4 @@
+// src/types/seating.ts
 export enum SeatingTypeEnum {
   HOT_DESK = 'HOT_DESK',
   DEDICATED_DESK = 'DEDICATED_DESK',
@@ -19,7 +20,7 @@ export interface SeatingType {
   hourly_rate: number;
   is_hourly: boolean;
   min_booking_duration: number;
-  min_seats: number; // Added field
+  min_seats: number; // Added field for minimum seats requirement
   created_at: Date;
   updated_at: Date;
 }
