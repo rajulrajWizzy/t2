@@ -2,7 +2,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '@/config/database';
 import { Customer, CustomerAttributes } from '@/types/auth';
-import { isValidEmail, isValidPhone, isValidName } from '@/utils/validation';
+
 // Interface for creation attributes
 interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'company_name'> {}
 
@@ -31,49 +31,22 @@ CustomerModel.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        isValidName(value: string) {
-          if (!isValidName(value)) {
-            throw new Error('Name must contain only alphabetic characters and spaces');
-          }
-        },
-      },
     },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
       validate: {
-        isValidEmail(value: string) {
-          if (!isValidEmail(value)) {
-            throw new Error('Please enter a valid email address');
-          }
-        },
+        isEmail: true,
       },
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isValidPhone(value: string) {
-          if (!isValidPhone(value)) {
-            throw new Error('Please enter a valid phone number');
-          }
-        },
-      },
+      allowNull: true,
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        notEmpty: {
-          msg: 'Password is required',
-        },
-        len: {
-          args: [8, 100],
-          msg: 'Password must be at least 8 characters long',
-        },
-      },
     },
     profile_picture: {
       type: DataTypes.STRING,
