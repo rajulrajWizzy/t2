@@ -4,22 +4,23 @@ import sequelize from '@/config/database';
 import { Branch, BranchAttributes } from '@/types/branch';
 
 // Interface for creation attributes
-interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at' | 'images' | 'amenities'> {}
+interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
 // Define the Branch model
 class BranchModel extends Model<Branch, BranchCreationAttributes> implements Branch {
   public id!: number;
   public name!: string;
+  public code!: string; // Added code field
   public address!: string;
-  public location!: string;
-  public latitude!: number | null;
-  public longitude!: number | null;
-  public cost_multiplier!: number;
-  public opening_time!: string;
-  public closing_time!: string;
+  public city!: string;
+  public state!: string;
+  public country!: string;
+  public postal_code!: string;
+  public phone!: string;
+  public email!: string;
+  public capacity!: number;
+  public operating_hours!: string;
   public is_active!: boolean;
-  public images!: object | null;
-  public amenities!: object | null;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -37,49 +38,52 @@ BranchModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    code: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     address: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING,
       allowNull: false,
     },
-    location: {
-      type: DataTypes.TEXT,
+    city: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
-    latitude: {
-      type: DataTypes.DECIMAL(10, 8),
-      allowNull: true,
-    },
-    longitude: {
-      type: DataTypes.DECIMAL(11, 8),
-      allowNull: true,
-    },
-    cost_multiplier: {
-      type: DataTypes.DECIMAL(3, 2),
+    state: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 1.00,
     },
-    opening_time: {
-      type: DataTypes.TIME,
+    country: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '08:00:00',
     },
-    closing_time: {
-      type: DataTypes.TIME,
+    postal_code: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '22:00:00',
+    },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    capacity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    operating_hours: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: '9:00 AM - 5:00 PM',
     },
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-    },
-    images: {
-      type: DataTypes.JSON,
-      allowNull: true,
-    },
-    amenities: {
-      type: DataTypes.JSON,
-      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,
