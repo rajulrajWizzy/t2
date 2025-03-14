@@ -10,12 +10,11 @@ interface SeatingTypeCreationAttributes extends Optional<SeatingTypeAttributes, 
 class SeatingTypeModel extends Model<SeatingType, SeatingTypeCreationAttributes> implements SeatingType {
   public id!: number;
   public name!: SeatingTypeEnum;
-  public code!: string; // Added code field
   public description!: string | null;
   public hourly_rate!: number;
   public is_hourly!: boolean;
   public min_booking_duration!: number;
-  public min_seats!: number;
+  public min_seats!: number; // Added new field for minimum seats
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -30,11 +29,7 @@ SeatingTypeModel.init(
       autoIncrement: true,
     },
     name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    code: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(...Object.values(SeatingTypeEnum)),
       allowNull: false,
     },
     description: {
