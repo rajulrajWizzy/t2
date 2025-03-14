@@ -1,7 +1,7 @@
 // src/app/api/bookings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/utils/auth';
+import { verifyToken } from '../../../config/jwt'; // Updated import path from utils to lib
 import { Op } from 'sequelize';
 import { SeatingTypeEnum, AvailabilityStatusEnum } from '@/types/seating';
 
