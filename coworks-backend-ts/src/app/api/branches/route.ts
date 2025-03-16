@@ -118,7 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       cost_multiplier: cost_multiplier || 1.00,
       opening_time: opening_time || '08:00:00',
       closing_time: closing_time || '22:00:00',
-      images: images || null,
+      images: images || undefined,
       amenities: amenities || null
     });
     
