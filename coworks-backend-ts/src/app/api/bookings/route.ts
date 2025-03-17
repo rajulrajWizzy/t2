@@ -339,17 +339,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // GET bookings with optional filtering by branch and seating type short codes
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const token = req.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
+    // Get token from the authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
         message: 'Unauthorized',
         data: null
       }, { status: 401 });
     }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify the token
+    const { valid, decoded } = await verifyToken(token);
+    if (!valid || !decoded) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
         message: 'Invalid token',
@@ -363,7 +367,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const seatingTypeCode = url.searchParams.get('type');
 
     // Prepare filter conditions
-    const whereConditions: any = {};
+    const whereConditions: any = {
+      customer_id: decoded.id // Only fetch bookings for the authenticated user
+    };
 
     // Filter by branch if provided
     if (branchCode) {
@@ -387,15 +393,40 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Fetch bookings with filters
-    const bookings = await models.SeatBooking.findAll({
+    // Fetch seat bookings
+    const seatBookings = await models.SeatBooking.findAll({
       where: whereConditions,
       include: [
-        { model: models.Branch, as: 'Branch' },
-        { model: models.Seat, as: 'Seat' },
+        { 
+          model: models.Seat, 
+          as: 'Seat',
+          include: [
+            { model: models.Branch, as: 'Branch' },
+            { model: models.SeatingType, as: 'SeatingType' }
+          ]
+        },
         { model: models.Customer, as: 'Customer' }
       ]
     });
+
+    // Fetch meeting bookings
+    const meetingBookings = await models.MeetingBooking.findAll({
+      where: whereConditions,
+      include: [
+        { 
+          model: models.Seat, 
+          as: 'MeetingRoom',
+          include: [
+            { model: models.Branch, as: 'Branch' },
+            { model: models.SeatingType, as: 'SeatingType' }
+          ]
+        },
+        { model: models.Customer, as: 'Customer' }
+      ]
+    });
+
+    // Combine both types of bookings
+    const bookings = [...seatBookings, ...meetingBookings];
 
     return NextResponse.json<ApiResponse<any>>({
       success: true,
