@@ -1,30 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
 import bcrypt from 'bcryptjs';
+import models from '@/models';
 import { generateToken } from '@/config/jwt';
-import { LoginRequest, LoginResponse } from '@/types/auth';
-import validation from '@/utils/validation';
+import { UserRole } from '@/types/auth';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json() as LoginRequest;
+    const body = await request.json();
     const { email, password } = body;
     
     // Basic validation
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
-    
-    // Email format validation
-    if (!validation.isValidEmail(email)) {
-      return NextResponse.json(
-        { 
-          message: 'Invalid email format',
-          details: 'Email must be in a valid format (e.g., user@example.com)'
-        },
         { status: 400 }
       );
     }
@@ -54,10 +42,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const customerData = customer.get({ plain: true });
     const { password: _, ...customerWithoutPassword } = customerData;    
     
-    const response: LoginResponse = {
+    const response = {
       message: 'Login successful',
       token,
-      customer: customerWithoutPassword as any // Need to cast here as we've removed password field
+      user: {
+        id: customerWithoutPassword.id,
+        email: customerWithoutPassword.email,
+        name: customerWithoutPassword.name,
+        role: customerWithoutPassword.role,
+        managed_branch_id: customerWithoutPassword.managed_branch_id,
+      }
     };
     
     return NextResponse.json(response);
