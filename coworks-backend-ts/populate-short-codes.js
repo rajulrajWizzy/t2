@@ -16,7 +16,10 @@ const sequelize = new Sequelize(
 
 // Branch short codes mapping
 const branchShortCodes = {
-  'naagarbhaavi': 'ngb',
+  'nagarabhavi': 'ngb',
+  'outer ringroad': 'orr',
+  'kengeri ring road': 'krr',
+  'papareddypalya': 'prp'
   // Add more branches as needed
 };
 
@@ -57,6 +60,13 @@ async function populateShortCodes() {
       
       console.log(`Updated branch "${branch.name}" with short code "${shortCode}"`);
     }
+    
+    // Fix the spelling of Naagarbhaavi to Nagarabhavi
+    console.log('Fixing spelling of Naagarbhaavi to Nagarabhavi...');
+    await sequelize.query(
+      "UPDATE branches SET name = 'Nagarabhavi' WHERE name LIKE 'Naagarbhaavi%'",
+      { transaction }
+    );
     
     // Populate short codes for seating types
     console.log('Populating short codes for seating types...');

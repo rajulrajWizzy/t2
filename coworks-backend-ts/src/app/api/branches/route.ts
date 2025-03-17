@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
+import validation from '@/utils/validation';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -107,6 +108,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         success: false,
         message: 'Name, address, and location are required'
+      }, { status: 400 });
+    }
+    
+    // Name validation - check for blank or whitespace-only names
+    if (!validation.isValidName(name)) {
+      return NextResponse.json({
+        success: false,
+        message: 'Name cannot be empty or contain only whitespace'
       }, { status: 400 });
     }
     

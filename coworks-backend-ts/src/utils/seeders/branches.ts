@@ -26,7 +26,8 @@ const branches = [
     longitude: 77.50951199690735,
     cost_multiplier: 1.00,
     opening_time: '08:00:00',
-    closing_time: '22:00:00'
+    closing_time: '22:00:00',
+    short_code: 'orr'
   },
   {
     name: 'Nagarabhavi',
@@ -36,7 +37,8 @@ const branches = [
     longitude: 77.50951199690735,
     cost_multiplier: 1.10,
     opening_time: '08:00:00',
-    closing_time: '22:00:00'
+    closing_time: '22:00:00',
+    short_code: 'ngb'
   },
   {
     name: 'Kengeri Ring Road',
@@ -46,7 +48,8 @@ const branches = [
     longitude: 77.51229349884184,
     cost_multiplier: 0.95,
     opening_time: '08:00:00',
-    closing_time: '22:00:00'
+    closing_time: '22:00:00',
+    short_code: 'krr'
   },
   {
     name: 'Papareddypalya',
@@ -56,7 +59,8 @@ const branches = [
     longitude: 77.5068244832054,
     cost_multiplier: 1.05,
     opening_time: '08:00:00',
-    closing_time: '22:00:00'
+    closing_time: '22:00:00',
+    short_code: 'prp'
   }
 ];
 

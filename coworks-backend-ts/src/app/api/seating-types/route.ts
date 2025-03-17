@@ -3,6 +3,7 @@ import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { SeatingTypeInput } from '@/types/seating';
 import { ApiResponse } from '@/types/common';
+import validation from '@/utils/validation';
 
 // GET all seating types
 export async function GET(): Promise<NextResponse> {
@@ -65,6 +66,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const response: ApiResponse = {
         success: false,
         message: 'Name is required'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
+    }
+    
+    // Name validation - check for blank or whitespace-only names
+    if (!validation.isValidName(name.toString())) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Name cannot be empty or contain only whitespace'
       };
       
       return NextResponse.json(response, { status: 400 });
