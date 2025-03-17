@@ -1,8 +1,15 @@
 {
     "version": 2,
-    "buildCommand": "npm run build",
-    "devCommand": "npm run dev",
-    "installCommand": "npm install",
-    "framework": "nextjs",
-    "regions": ["sin1"]
-  }
+    "builds": [
+      {
+        "src": "package.json",
+        "use": "@vercel/next",
+        "config": {
+          "installCommand": "npm install typescript && npm install"
+        }
+      }
+    ],
+    "env": {
+      "NODE_ENV": "production"
+    }
+}

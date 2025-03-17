@@ -24,16 +24,20 @@ async function deploy() {
     // 1. Install dependencies
     console.log('Installing dependencies...');
     runCommand('npm install');
+    
+    // 2. Install TypeScript explicitly
+    console.log('Installing TypeScript...');
+    runCommand('npm install typescript --save');
 
-    // 2. Run migrations
+    // 3. Run migrations
     console.log('Running database migrations...');
     runCommand('node migrate.js');
 
-    // 3. Build the application
+    // 4. Build the application
     console.log('Building the application...');
     runCommand('npm run build');
 
-    // 4. Deploy to Vercel (if vercel CLI is installed)
+    // 5. Deploy to Vercel (if vercel CLI is installed)
     console.log('Deploying to Vercel...');
     runCommand('vercel --prod');
 
