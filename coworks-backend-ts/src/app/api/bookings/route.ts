@@ -27,8 +27,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const verificationResult = await verifyToken(token);
-    if (!verificationResult?.decoded) {
+    const { valid, decoded } = await verifyToken(token);
+    if (!valid || !decoded) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     // Use the decoded ID from JWT token
-    const customer_id = verificationResult.decoded.id;
+    const customer_id = decoded.id;
     
     // Check if the customer exists
     const customer = await models.Customer.findByPk(customer_id);
@@ -452,8 +452,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const token = authHeader.split(' ')[1];
     
     // Verify the token
-    const verificationResult = await verifyToken(token);
-    if (!verificationResult?.decoded) {
+    const { valid, decoded } = await verifyToken(token);
+    if (!valid || !decoded) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
         message: 'Invalid token',
@@ -468,7 +468,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // Prepare filter conditions
     const whereConditions: any = {
-      customer_id: verificationResult.decoded.id // Only fetch bookings for the authenticated user
+      customer_id: decoded.id // Only fetch bookings for the authenticated user
     };
 
     // Fetch seat bookings

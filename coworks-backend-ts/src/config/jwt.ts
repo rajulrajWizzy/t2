@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { Customer, UserRole } from '@/types/auth';
+import { Customer } from '@/types/auth';
 import { JwtPayload, JwtVerificationResult } from '@/types/common';
 import models from '@/models';
 
@@ -20,7 +20,7 @@ export const generateToken = (user: Customer): string => {
 };
 
 // Verify a token
-export const verifyToken = async (token: string): Promise<JwtVerificationResult | null> => {
+export const verifyToken = async (token: string): Promise<JwtVerificationResult> => {
   try {
     // First check if token is blacklisted
     const blacklistedToken = await models.BlacklistedToken.findOne({
@@ -28,28 +28,34 @@ export const verifyToken = async (token: string): Promise<JwtVerificationResult 
     });
 
     if (blacklistedToken) {
-      return { valid: false, expired: false, decoded: null, blacklisted: true };
+      return {
+        valid: false,
+        expired: false,
+        decoded: null,
+        blacklisted: true
+      };
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    return { 
-      valid: true, 
-      expired: false, 
-      decoded: {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role,
-        managed_branch_id: decoded.managed_branch_id,
-        iat: decoded.iat,
-        exp: decoded.exp
-      }, 
-      blacklisted: false 
+    return {
+      valid: true,
+      expired: false,
+      decoded,
+      blacklisted: false
     };
   } catch (error) {
-    const err = error as Error;
+    if (error instanceof jwt.TokenExpiredError) {
+      return {
+        valid: false,
+        expired: true,
+        decoded: null,
+        blacklisted: false
+      };
+    }
+    
     return {
       valid: false,
-      expired: err.message === 'jwt expired',
+      expired: false,
       decoded: null,
       blacklisted: false
     };

@@ -28,10 +28,15 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const verificationResult = await verifyToken(token);
-    if (verificationResult.type !== 'valid') {
+    const { valid, expired, blacklisted } = await verifyToken(token);
+    
+    if (!valid) {
+      let message = 'Invalid token';
+      if (expired) message = 'Token has expired';
+      if (blacklisted) message = 'Token has been revoked';
+      
       return new NextResponse(
-        JSON.stringify({ message: 'Invalid token' }),
+        JSON.stringify({ message }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
