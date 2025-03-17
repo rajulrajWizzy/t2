@@ -54,8 +54,6 @@ async function up(): Promise<void> {
         opening_time TIME NOT NULL DEFAULT '08:00:00',
         closing_time TIME NOT NULL DEFAULT '22:00:00',
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        images JSONB,
-        amenities JSONB,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -72,28 +70,6 @@ async function up(): Promise<void> {
       console.log('Added short_code column to branches table');
     }
 
-    // Add images column to branches table if it doesn't exist
-    const branchImagesExists = await columnExists(transaction, 'branches', 'images');
-    if (!branchImagesExists) {
-      await sequelize.query(`
-        ALTER TABLE branches
-        ADD COLUMN images JSONB;
-      `, { transaction });
-      
-      console.log('Added images column to branches table');
-    }
-
-    // Add amenities column to branches table if it doesn't exist
-    const branchAmenitiesExists = await columnExists(transaction, 'branches', 'amenities');
-    if (!branchAmenitiesExists) {
-      await sequelize.query(`
-        ALTER TABLE branches
-        ADD COLUMN amenities JSONB;
-      `, { transaction });
-      
-      console.log('Added amenities column to branches table');
-    }
-
     // Create customers table
     await sequelize.query(`
       CREATE TABLE IF NOT EXISTS customers (
@@ -102,34 +78,10 @@ async function up(): Promise<void> {
         email VARCHAR(255) NOT NULL UNIQUE,
         phone VARCHAR(255),
         password VARCHAR(255) NOT NULL,
-        profile_picture VARCHAR(255),
-        company_name VARCHAR(255),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `, { transaction });
-
-    // Add profile_picture column to customers table if it doesn't exist
-    const profilePictureExists = await columnExists(transaction, 'customers', 'profile_picture');
-    if (!profilePictureExists) {
-      await sequelize.query(`
-        ALTER TABLE customers
-        ADD COLUMN profile_picture VARCHAR(255);
-      `, { transaction });
-      
-      console.log('Added profile_picture column to customers table');
-    }
-
-    // Add company_name column to customers table if it doesn't exist
-    const companyNameExists = await columnExists(transaction, 'customers', 'company_name');
-    if (!companyNameExists) {
-      await sequelize.query(`
-        ALTER TABLE customers
-        ADD COLUMN company_name VARCHAR(255);
-      `, { transaction });
-      
-      console.log('Added company_name column to customers table');
-    }
 
     // Check if seating_type_enum exists before creating
     const seatingTypeEnumExists = await typeExists(transaction, 'seating_type_enum');

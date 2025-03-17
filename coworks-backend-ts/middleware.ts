@@ -10,22 +10,14 @@ const PUBLIC_PATHS: string[] = [
   '/api/auth/reset-password',
   '/',
   '/api/test',
-  '/api/health',
-  '/api/direct-register'
+  '/api/health'
 ];
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
-  // IMPORTANT: Explicitly check for registration paths and bypass middleware
-  if (path === '/api/auth/register' || path === '/api/direct-register') {
-    console.log(`Explicitly bypassing middleware for registration path: ${path}`);
-    return NextResponse.next();
-  }
-  
-  // Check if the path is public - use exact matching or includes for more flexibility
-  if (PUBLIC_PATHS.includes(path) || PUBLIC_PATHS.some(publicPath => path.includes(publicPath))) {
-    console.log(`Bypassing middleware for public path: ${path}`);
+  // Check if the path is public
+  if (PUBLIC_PATHS.includes(path)) {
     return NextResponse.next();
   }
   
@@ -66,10 +58,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure the middleware to run on specific paths, excluding public paths
+// Configure the middleware to run on all /api routes
 export const config = {
-  matcher: [
-    // Exclude all public paths explicitly
-    '/((?!api/auth/register|api/auth/login|api/auth/forgot-password|api/auth/reset-password|api/test|api/health|api/direct-register).*)',
-  ],
+  matcher: '/api/:path*',
 };
