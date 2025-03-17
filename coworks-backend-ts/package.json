@@ -30,6 +30,7 @@
         "jose": "^5.2.0",
         "jsonwebtoken": "^9.0.2",
         "next": "^14.2.24",
+        "node-fetch": "3.3.2",
         "nodemailer": "^6.9.12",
         "pg": "^8.13.3",
         "pg-hstore": "^2.3.4",
