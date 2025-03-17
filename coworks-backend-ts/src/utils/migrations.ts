@@ -26,6 +26,16 @@ async function typeExists(transaction: any, typeName: string): Promise<boolean> 
   return (result[0] as any[]).length > 0;
 }
 
+// Function to check if a column exists in a table
+async function columnExists(transaction: any, tableName: string, columnName: string): Promise<boolean> {
+  const result = await sequelize.query(`
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = '${tableName}' AND column_name = '${columnName}'
+  `, { transaction });
+  
+  return (result[0] as any[]).length > 0;
+}
+
 // Migration Up Function
 async function up(): Promise<void> {
   const transaction = await sequelize.transaction();
@@ -48,6 +58,17 @@ async function up(): Promise<void> {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `, { transaction });
+
+    // Add short_code column to branches table if it doesn't exist
+    const branchShortCodeExists = await columnExists(transaction, 'branches', 'short_code');
+    if (!branchShortCodeExists) {
+      await sequelize.query(`
+        ALTER TABLE branches
+        ADD COLUMN short_code VARCHAR(10) UNIQUE;
+      `, { transaction });
+      
+      console.log('Added short_code column to branches table');
+    }
 
     // Create customers table
     await sequelize.query(`
@@ -83,6 +104,28 @@ async function up(): Promise<void> {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `, { transaction });
+
+    // Add short_code column to seating_types table if it doesn't exist
+    const seatingTypeShortCodeExists = await columnExists(transaction, 'seating_types', 'short_code');
+    if (!seatingTypeShortCodeExists) {
+      await sequelize.query(`
+        ALTER TABLE seating_types
+        ADD COLUMN short_code VARCHAR(10) UNIQUE;
+      `, { transaction });
+      
+      console.log('Added short_code column to seating_types table');
+      
+      // Populate short_code values for existing seating types
+      await sequelize.query(`
+        UPDATE seating_types SET short_code = 'hot' WHERE name = 'HOT_DESK';
+        UPDATE seating_types SET short_code = 'ded' WHERE name = 'DEDICATED_DESK';
+        UPDATE seating_types SET short_code = 'cub' WHERE name = 'CUBICLE';
+        UPDATE seating_types SET short_code = 'meet' WHERE name = 'MEETING_ROOM';
+        UPDATE seating_types SET short_code = 'day' WHERE name = 'DAILY_PASS';
+      `, { transaction });
+      
+      console.log('Populated short_code values for existing seating types');
+    }
 
     // Check if availability_status_enum exists before creating
     const availabilityStatusEnumExists = await typeExists(transaction, 'availability_status_enum');
@@ -213,6 +256,27 @@ async function down(): Promise<void> {
   const transaction = await sequelize.transaction();
   
   try {
+    // Remove short_code columns
+    const branchShortCodeExists = await columnExists(transaction, 'branches', 'short_code');
+    if (branchShortCodeExists) {
+      await sequelize.query(`
+        ALTER TABLE branches
+        DROP COLUMN short_code;
+      `, { transaction });
+      
+      console.log('Removed short_code column from branches table');
+    }
+    
+    const seatingTypeShortCodeExists = await columnExists(transaction, 'seating_types', 'short_code');
+    if (seatingTypeShortCodeExists) {
+      await sequelize.query(`
+        ALTER TABLE seating_types
+        DROP COLUMN short_code;
+      `, { transaction });
+      
+      console.log('Removed short_code column from seating_types table');
+    }
+
     // Drop tables in reverse order (to handle foreign key constraints)
     await sequelize.query('DROP TABLE IF EXISTS time_slots;', { transaction });
     await sequelize.query('DROP TABLE IF EXISTS payments;', { transaction });

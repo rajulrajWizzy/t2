@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
-import { getBranchShortCode } from '@/utils/shortCodes';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -44,18 +43,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ]
     });
     
-    // Add short codes to the response
-    const branchesWithShortCodes = branches.map(branch => {
-      const branchData = branch.toJSON();
-      return {
-        ...branchData,
-        short_code: getBranchShortCode(branchData.name)
-      };
-    });
-    
+    // No need to add short codes manually as they are now in the database
     const response: ApiResponse = {
       success: true,
-      data: branchesWithShortCodes
+      data: branches
     };
     
     return NextResponse.json(response);
@@ -107,7 +98,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       opening_time, 
       closing_time,
       images,
-      amenities
+      amenities,
+      short_code
     } = body;
     
     // Basic validation
@@ -129,7 +121,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       opening_time: opening_time || '08:00:00',
       closing_time: closing_time || '22:00:00',
       images: images || undefined,
-      amenities: amenities || null
+      amenities: amenities || null,
+      short_code: short_code || undefined
     });
     
     const response: ApiResponse = {

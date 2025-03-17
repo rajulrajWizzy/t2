@@ -3,13 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
+import { Op } from 'sequelize';
+import { SeatingTypeEnum, AvailabilityStatusEnum } from '@/types/seating';
 import { 
   getBranchFromShortCode, 
   getSeatingTypeFromShortCode,
   formatApiEndpoint
 } from '@/utils/shortCodes';
-import { Op } from 'sequelize';
-import { SeatingTypeEnum, AvailabilityStatusEnum } from '@/types/seating';
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
 
 // POST create a new booking
@@ -337,124 +337,83 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 // GET bookings with optional filtering by branch and seating type short codes
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    // Get token from the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+    const token = req.headers.get('authorization')?.split(' ')[1];
+    if (!token) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
     }
-    
-    const token = authHeader.split(' ')[1];
-    
-    // Verify the token
-    const { valid, decoded } = await verifyToken(token);
-    if (!valid || !decoded) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Invalid token',
+        data: null
+      }, { status: 401 });
     }
-    
-    // Extract query parameters using the helper function
-    const url = new URL(request.url);
-    const { branchName, seatingType } = parseUrlParams(url);
-    
+
+    // Extract query parameters
+    const url = new URL(req.url);
+    const branchCode = url.searchParams.get('branch');
+    const seatingTypeCode = url.searchParams.get('type');
+
     // Prepare filter conditions
     const whereConditions: any = {};
-    
-    // If branch name is provided, filter by branch
-    if (branchName) {
-      // Find the branch by name
+
+    // Filter by branch if provided
+    if (branchCode) {
       const branch = await models.Branch.findOne({
-        where: { name: branchName }
+        where: { short_code: branchCode }
       });
       
       if (branch) {
         whereConditions.branch_id = branch.id;
       }
     }
-    
-    // If seating type is provided, filter by seating type
-    if (seatingType) {
-      // Find the seating type by name
-      const seatingTypeRecord = await models.SeatingType.findOne({
-        where: { name: seatingType }
+
+    // Filter by seating type if provided
+    if (seatingTypeCode) {
+      const seatingType = await models.SeatingType.findOne({
+        where: { short_code: seatingTypeCode }
       });
       
-      if (seatingTypeRecord) {
-        whereConditions.seating_type_id = seatingTypeRecord.id;
+      if (seatingType) {
+        whereConditions.seating_type_id = seatingType.id;
       }
     }
-    
+
     // Fetch bookings with filters
     const bookings = await models.SeatBooking.findAll({
       where: whereConditions,
       include: [
-        {
-          model: models.Branch,
-          as: 'Branch'
-        },
-        {
-          model: models.Seat,
-          as: 'Seat',
-          include: [
-            {
-              model: models.SeatingType,
-              as: 'SeatingType'
-            }
-          ]
-        },
-        {
-          model: models.Customer,
-          as: 'Customer'
-        }
+        { model: models.Branch, as: 'Branch' },
+        { model: models.Seat, as: 'Seat' },
+        { model: models.Customer, as: 'Customer' }
       ]
     });
-    
-    // Add short codes to the response
-    const bookingsWithShortCodes = bookings.map(booking => {
-      // Use any type to avoid TypeScript errors with dynamic properties
-      const bookingData: any = booking.toJSON();
-      
-      // Add short code to branch if it exists
-      if (bookingData.Branch) {
-        bookingData.Branch = addBranchShortCode(bookingData.Branch);
-      }
-      
-      // Add short code to seating type if it exists
-      if (bookingData.Seat && bookingData.Seat.SeatingType) {
-        bookingData.Seat.SeatingType = addSeatingTypeShortCode(bookingData.Seat.SeatingType);
-      }
-      
-      return bookingData;
-    });
-    
-    const response: ApiResponse = {
+
+    return NextResponse.json<ApiResponse<any>>({
       success: true,
-      data: bookingsWithShortCodes
-    };
-    
-    return NextResponse.json(response);
+      message: 'Bookings fetched successfully',
+      data: bookings
+    });
   } catch (error) {
     console.error('Error fetching bookings:', error);
-    
-    const response: ApiResponse = {
+    return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to fetch bookings',
-      error: (error as Error).message
-    };
-    
-    return NextResponse.json(response, { status: 500 });
+      data: null
+    }, { status: 500 });
   }
 }
 
 // Example of using formatApiEndpoint function
 // Removed export to fix Next.js route error
 function getBookingApiUrl(branch: string, seatingType: any): string {
-  const baseEndpoint = '/api/bookings?branch={branch}&type={seatingType}';
-  return formatApiEndpoint(baseEndpoint, branch, seatingType);
+  return `/api/bookings?branch=${branch}&type=${seatingType}`;
 }

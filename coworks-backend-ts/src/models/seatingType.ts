@@ -4,7 +4,7 @@ import sequelize from '@/config/database';
 import { SeatingType, SeatingTypeAttributes, SeatingTypeEnum } from '@/types/seating';
 
 // Interface for creation attributes
-interface SeatingTypeCreationAttributes extends Optional<SeatingTypeAttributes, 'id' | 'created_at' | 'updated_at'> {}
+interface SeatingTypeCreationAttributes extends Optional<SeatingTypeAttributes, 'id' | 'created_at' | 'updated_at' | 'short_code'> {}
 
 // Define the SeatingType model
 class SeatingTypeModel extends Model<SeatingType, SeatingTypeCreationAttributes> implements SeatingType {
@@ -15,6 +15,7 @@ class SeatingTypeModel extends Model<SeatingType, SeatingTypeCreationAttributes>
   public is_hourly!: boolean;
   public min_booking_duration!: number;
   public min_seats!: number; // Added new field for minimum seats
+  public short_code?: string; // Short code for API calls
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -56,18 +57,25 @@ SeatingTypeModel.init(
       allowNull: false,
       defaultValue: 1,
     },
+    short_code: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      unique: true,
+    },
     created_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
     updated_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
   },
   {
-    tableName: 'seating_types',
     sequelize,
+    tableName: 'seating_types',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',

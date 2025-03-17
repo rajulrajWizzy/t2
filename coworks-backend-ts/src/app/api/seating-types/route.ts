@@ -3,25 +3,16 @@ import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { SeatingTypeInput } from '@/types/seating';
 import { ApiResponse } from '@/types/common';
-import { getSeatingTypeShortCode } from '@/utils/shortCodes';
 
 // GET all seating types
 export async function GET(): Promise<NextResponse> {
   try {
     const seatingTypes = await models.SeatingType.findAll();
     
-    // Add short codes to the response
-    const seatingTypesWithShortCodes = seatingTypes.map(seatingType => {
-      const seatingTypeData = seatingType.toJSON();
-      return {
-        ...seatingTypeData,
-        short_code: getSeatingTypeShortCode(seatingTypeData.name)
-      };
-    });
-    
+    // No need to add short codes manually as they are now in the database
     const response: ApiResponse = {
       success: true,
-      data: seatingTypesWithShortCodes
+      data: seatingTypes
     };
     
     return NextResponse.json(response);
@@ -67,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Parse the request body
     const body = await request.json() as SeatingTypeInput;
-    const { name, description, hourly_rate, is_hourly, min_booking_duration } = body;
+    const { name, description, hourly_rate, is_hourly, min_booking_duration, min_seats, short_code } = body;
     
     // Validate input
     if (!name) {
@@ -96,7 +87,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       description,
       hourly_rate: hourly_rate || 0.00,
       is_hourly: is_hourly !== undefined ? is_hourly : true,
-      min_booking_duration: min_booking_duration || 2
+      min_booking_duration: min_booking_duration || 2,
+      min_seats: min_seats || 1,
+      short_code: short_code || undefined
     });
     
     const response: ApiResponse = {

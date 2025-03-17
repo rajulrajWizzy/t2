@@ -21,6 +21,7 @@ export interface SeatingType {
   is_hourly: boolean;
   min_booking_duration: number;
   min_seats: number; // Added field for minimum seats requirement
+  short_code?: string; // Short code for API calls
   created_at: Date;
   updated_at: Date;
 }
@@ -32,6 +33,7 @@ export interface SeatingTypeInput {
   is_hourly?: boolean;
   min_booking_duration?: number;
   min_seats?: number; // Added field
+  short_code?: string; // Short code for API calls
 }
 
 export interface SeatingTypeAttributes extends SeatingTypeInput {

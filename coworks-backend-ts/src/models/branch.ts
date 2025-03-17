@@ -4,7 +4,7 @@ import sequelize from '@/config/database';
 import { Branch, BranchAttributes } from '@/types/branch';
 
 // Interface for creation attributes
-interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at' | 'images' | 'amenities'> {}
+interface BranchCreationAttributes extends Optional<BranchAttributes, 'id' | 'created_at' | 'updated_at' | 'images' | 'amenities' | 'short_code'> {}
 
 // Define the Branch model
 class BranchModel extends Model<Branch, BranchCreationAttributes> implements Branch {
@@ -20,6 +20,7 @@ class BranchModel extends Model<Branch, BranchCreationAttributes> implements Bra
   public is_active!: boolean;
   public images!: object | null;
   public amenities!: object | null;
+  public short_code?: string;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -74,25 +75,32 @@ BranchModel.init(
       defaultValue: true,
     },
     images: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: true,
     },
     amenities: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: true,
+    },
+    short_code: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      unique: true,
     },
     created_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
     updated_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
   },
   {
-    tableName: 'branches',
     sequelize,
+    tableName: 'branches',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
