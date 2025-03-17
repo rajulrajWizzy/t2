@@ -12,7 +12,8 @@ export function generateToken(user: Customer): string {
     { 
       id: user.id,
       email: user.email,
-      name: user.name
+      name: user.name,
+      is_admin: user.is_admin
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions

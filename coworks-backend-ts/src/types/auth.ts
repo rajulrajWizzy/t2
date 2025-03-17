@@ -7,6 +7,7 @@ export interface Customer {
   password: string;
   profile_picture: string | null;
   company_name: string | null;
+  is_admin: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -18,6 +19,7 @@ export interface CustomerInput {
   password: string;
   profile_picture?: string;
   company_name?: string;
+  is_admin?: boolean;
 }
 
 export interface CustomerAttributes extends CustomerInput {
@@ -44,6 +46,7 @@ export interface RegisterRequest {
   password: string;
   profile_picture?: string;
   company_name?: string;
+  is_admin?: boolean;
 }
 
 export interface RegisterResponse {
