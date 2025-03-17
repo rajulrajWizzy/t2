@@ -16,8 +16,9 @@ const PUBLIC_PATHS: string[] = [
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
-  // Check if the path is public
-  if (PUBLIC_PATHS.some(publicPath => path.includes(publicPath))) {
+  // Check if the path is public - use exact matching or includes for more flexibility
+  if (PUBLIC_PATHS.includes(path) || PUBLIC_PATHS.some(publicPath => path.includes(publicPath))) {
+    console.log(`Bypassing middleware for public path: ${path}`);
     return NextResponse.next();
   }
   
@@ -61,7 +62,9 @@ export async function middleware(request: NextRequest) {
 // Configure the middleware to run on specific paths, excluding public paths
 export const config = {
   matcher: [
-    '/api/:path*',
-    '/((?!api/auth/register|api/auth/login|api/auth/forgot-password|api/auth/reset-password|api/test|api/health).*)'
+    // Exclude all public paths explicitly
+    '/((?!api/auth/register|api/auth/login|api/auth/forgot-password|api/auth/reset-password|api/test|api/health).*)',
+    // Only include API paths that are not public
+    '/api/:path*'
   ],
 };
