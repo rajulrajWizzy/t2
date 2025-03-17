@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
+import { getBranchShortCode } from '@/utils/shortCodes';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -43,9 +44,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ]
     });
     
+    // Add short codes to the response
+    const branchesWithShortCodes = branches.map(branch => {
+      const branchData = branch.toJSON();
+      return {
+        ...branchData,
+        short_code: getBranchShortCode(branchData.name)
+      };
+    });
+    
     const response: ApiResponse = {
       success: true,
-      data: branches
+      data: branchesWithShortCodes
     };
     
     return NextResponse.json(response);

@@ -3,15 +3,25 @@ import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { SeatingTypeInput } from '@/types/seating';
 import { ApiResponse } from '@/types/common';
+import { getSeatingTypeShortCode } from '@/utils/shortCodes';
 
 // GET all seating types
 export async function GET(): Promise<NextResponse> {
   try {
     const seatingTypes = await models.SeatingType.findAll();
     
+    // Add short codes to the response
+    const seatingTypesWithShortCodes = seatingTypes.map(seatingType => {
+      const seatingTypeData = seatingType.toJSON();
+      return {
+        ...seatingTypeData,
+        short_code: getSeatingTypeShortCode(seatingTypeData.name)
+      };
+    });
+    
     const response: ApiResponse = {
       success: true,
-      data: seatingTypes
+      data: seatingTypesWithShortCodes
     };
     
     return NextResponse.json(response);
