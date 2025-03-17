@@ -1,5 +1,5 @@
 // test_register.js
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 async function testRegistration() {
   const userData = {

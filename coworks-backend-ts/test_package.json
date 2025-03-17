@@ -1,0 +1,13 @@
+{
+  "name": "test-register",
+  "version": "1.0.0",
+  "description": "Test script for registration endpoint",
+  "main": "test_register.js",
+  "type": "module",
+  "scripts": {
+    "test": "node test_register.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  }
+} 
