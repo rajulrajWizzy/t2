@@ -1,0 +1,7 @@
+.git
+node_modules
+scripts
+migrate.js
+deploy.js
+README.md
+*.log 
