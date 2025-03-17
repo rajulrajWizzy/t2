@@ -147,7 +147,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     // Get the seating type
-    const seatingType = await models.SeatingType.findByPk(seat.seating_type_id);
+    const seatingType = seat.SeatingType;
     if (!seatingType) {
       return NextResponse.json({
         success: false,
@@ -506,7 +506,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           attributes: ['id', 'name', 'email', 'phone', 'company_name']
         }
       ]
-    });
+    }) as any[];
 
     // Fetch meeting bookings
     const meetingBookings = await models.MeetingBooking.findAll({
@@ -543,7 +543,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           attributes: ['id', 'name', 'email', 'phone', 'company_name']
         }
       ]
-    });
+    }) as any[];
 
     // Filter out bookings where Seat/MeetingRoom is null (when filtering by seating type)
     const filteredSeatBookings = seatingTypeCode 
@@ -556,7 +556,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // Combine both types of bookings and format the response
     const bookings = [...filteredSeatBookings, ...filteredMeetingBookings].map(booking => {
-      const isSeatBooking = 'Seat' in booking;
+      const isSeatBooking = 'seat_id' in booking;
       const seatOrRoom = isSeatBooking ? booking.Seat : booking.MeetingRoom;
       
       return {
@@ -591,12 +591,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           amenities: seatOrRoom.Branch.amenities,
           images: seatOrRoom.Branch.images
         } : null,
-        customer: booking.Customer ? {
-          id: booking.Customer.id,
-          name: booking.Customer.name,
-          email: booking.Customer.email,
-          phone: booking.Customer.phone,
-          company_name: booking.Customer.company_name
+        customer: (booking as any).Customer ? {
+          id: (booking as any).Customer.id,
+          name: (booking as any).Customer.name,
+          email: (booking as any).Customer.email,
+          phone: (booking as any).Customer.phone,
+          company_name: (booking as any).Customer.company_name
         } : null
       };
     });
