@@ -1,33 +1,55 @@
 // src/models/customer.ts
-import { DataTypes, Model, Optional } from 'sequelize';
+import { Model, DataTypes, Optional } from 'sequelize';
+import { UserRole } from '@/types/auth';
 import sequelize from '@/config/database';
-import { Customer, CustomerAttributes } from '@/types/auth';
 
-// Interface for creation attributes
-interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'company_name' | 'is_admin'> {}
+interface CustomerAttributes {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  managed_branch_id?: number | null;
+  created_at: Date;
+  updated_at: Date;
+}
 
-// Define the Customer model
-class CustomerModel extends Model<Customer, CustomerCreationAttributes> implements Customer {
+interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at'> {}
+
+class CustomerModel extends Model<CustomerAttributes, CustomerCreationAttributes> {
   public id!: number;
   public name!: string;
   public email!: string;
-  public phone!: string | null;
   public password!: string;
-  public profile_picture!: string | null;
-  public company_name!: string | null;
-  public is_admin!: boolean;
-  public created_at!: Date;
-  public updated_at!: Date;
+  public role!: UserRole;
+  public managed_branch_id?: number | null;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
 
-  // Add any instance methods here
+  // Helper methods for role checks
+  public isSuperAdmin(): boolean {
+    return this.role === UserRole.SUPER_ADMIN;
+  }
+
+  public isBranchAdmin(): boolean {
+    return this.role === UserRole.BRANCH_ADMIN;
+  }
+
+  public isCustomer(): boolean {
+    return this.role === UserRole.CUSTOMER;
+  }
+
+  public canManageBranch(branchId: number): boolean {
+    return this.isSuperAdmin() || (this.isBranchAdmin() && this.managed_branch_id === branchId);
+  }
 }
 
 CustomerModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
-      primaryKey: true,
       autoIncrement: true,
+      primaryKey: true,
     },
     name: {
       type: DataTypes.STRING,
@@ -37,47 +59,42 @@ CustomerModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
-      validate: {
-        isEmail: true,
-      },
-    },
-    phone: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    profile_picture: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    company_name: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    is_admin: {
-      type: DataTypes.BOOLEAN,
+    role: {
+      type: DataTypes.ENUM(...Object.values(UserRole)),
       allowNull: false,
-      defaultValue: false,
+      defaultValue: UserRole.CUSTOMER,
+    },
+    managed_branch_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'branches',
+        key: 'id',
+      },
     },
     created_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
     updated_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
   },
   {
-    tableName: 'customers',
     sequelize,
+    tableName: 'customers',
     timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
+    underscored: true,
   }
 );
 
+export { CustomerModel };
 export default CustomerModel;

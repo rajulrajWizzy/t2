@@ -3,15 +3,18 @@ export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
-  error?: string;
+  error?: any;
 }
 
 // JWT token payload type
+import { UserRole } from './auth';
+
 export interface JwtPayload {
   id: number;
   email: string;
   name: string;
-  is_admin: boolean;
+  role: UserRole;
+  managed_branch_id?: number | null;
   iat?: number;
   exp?: number;
 }
@@ -21,7 +24,7 @@ export interface JwtVerificationResult {
   valid: boolean;
   expired: boolean;
   decoded: JwtPayload | null;
-  blacklisted?: boolean;
+  blacklisted: boolean;
 }
 
 // Pagination params

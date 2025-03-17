@@ -1,129 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminToken } from '@/middleware/adminAuth';
-import models from '@/models';
+import models, { sequelize } from '@/models';
+import { requireSuperAdmin, requireBranchAdmin } from '@/middleware/roleAuth';
+import { verifyToken } from '@/config/jwt';
+import { UserRole } from '@/types/auth';
 
-/**
- * GET all branches for admin
- * Includes additional data like seat counts
- */
-export async function GET(request: NextRequest): Promise<NextResponse> {
+// GET /api/admin/branches - Get all branches with metrics
+export async function GET(req: NextRequest) {
   try {
-    // Verify admin authentication
-    const authResponse = await verifyAdminToken(request);
-    if (authResponse) return authResponse;
+    // Check authorization
+    const token = req.headers.get('authorization')?.split(' ')[1];
+    if (!token) {
+      return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Get branches with additional metrics
+    const verificationResult = await verifyToken(token);
+    if (!verificationResult?.decoded) {
+      return new NextResponse(JSON.stringify({ message: 'Invalid token' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Build query based on user role
+    let whereClause = {};
+    if (verificationResult.decoded.role === UserRole.BRANCH_ADMIN) {
+      whereClause = { id: verificationResult.decoded.managed_branch_id };
+    }
+
+    // Get all branches with metrics
     const branches = await models.Branch.findAll({
-      include: [
-        {
-          model: models.Seat,
-          as: 'Seats',
-          attributes: []
-        }
-      ],
+      where: whereClause,
       attributes: {
         include: [
-          [models.sequelize.fn('COUNT', models.sequelize.col('Seats.id')), 'seatCount']
+          [
+            sequelize.literal(`(
+              SELECT COUNT(*)
+              FROM Seats
+              WHERE Seats.branch_id = Branch.id
+            )`),
+            'seatCount'
+          ],
+          [
+            sequelize.literal(`(
+              SELECT COUNT(*)
+              FROM Seats
+              JOIN SeatBookings ON SeatBookings.seat_id = Seats.id
+              WHERE Seats.branch_id = Branch.id
+            )`),
+            'bookingCount'
+          ],
+          [
+            sequelize.literal(`(
+              SELECT COALESCE(SUM(SeatBookings.total_price), 0)
+              FROM Seats
+              JOIN SeatBookings ON SeatBookings.seat_id = Seats.id
+              WHERE Seats.branch_id = Branch.id
+            )`),
+            'revenue'
+          ]
         ]
-      },
-      group: ['Branch.id']
+      }
     });
 
-    // Get additional metrics for each branch
-    const branchesWithMetrics = await Promise.all(
-      branches.map(async (branch: any) => {
-        const branchData = branch.get({ plain: true });
-        
-        // Get booking count for this branch
-        const bookingCount = await models.SeatBooking.count({
-          include: [{
-            model: models.Seat,
-            as: 'Seat',
-            where: { branch_id: branch.id }
-          }]
-        });
-        
-        // Get revenue for this branch
-        const revenue = await models.SeatBooking.sum('total_price', {
-          include: [{
-            model: models.Seat,
-            as: 'Seat',
-            where: { branch_id: branch.id }
-          }]
-        });
-        
-        return {
-          ...branchData,
-          bookingCount,
-          revenue: revenue || 0
-        };
-      })
-    );
-    
-    return NextResponse.json({
-      success: true,
-      data: branchesWithMetrics
+    return new NextResponse(JSON.stringify({ data: branches }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error fetching branches for admin:', error);
-    
-    return NextResponse.json({
-      success: false,
-      message: 'Failed to fetch branches',
-      error: (error as Error).message
-    }, { status: 500 });
+    console.error('Error fetching branches:', error);
+    return new NextResponse(JSON.stringify({ message: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
-/**
- * POST create a new branch (admin only)
- */
-export async function POST(request: NextRequest): Promise<NextResponse> {
+// POST /api/admin/branches - Create a new branch (Super Admin only)
+export async function POST(req: NextRequest) {
   try {
-    // Verify admin authentication
-    const authResponse = await verifyAdminToken(request);
-    if (authResponse) return authResponse;
-    
-    // Parse the request body
-    const body = await request.json();
-    const { 
-      name, 
-      address, 
-      location, 
-      latitude, 
-      longitude, 
-      cost_multiplier, 
-      opening_time, 
+    // Check if user is super admin
+    const authResponse = await requireSuperAdmin(req);
+    if (authResponse.status !== 200) {
+      return authResponse;
+    }
+
+    const body = await req.json();
+    const {
+      name,
+      address,
+      location,
+      latitude,
+      longitude,
+      cost_multiplier,
+      opening_time,
       closing_time,
       is_active,
-      images,
-      amenities,
-      short_code
+      short_code,
     } = body;
-    
-    // Basic validation
-    if (!name || !address || !location) {
-      return NextResponse.json({
-        success: false,
-        message: 'Name, address, and location are required'
-      }, { status: 400 });
-    }
-    
-    // Check if branch with short_code already exists
-    if (short_code) {
-      const existingBranch = await models.Branch.findOne({
-        where: { short_code }
+
+    // Validate required fields
+    if (!name || !address || !location || !cost_multiplier || !opening_time || !closing_time || !short_code) {
+      return new NextResponse(JSON.stringify({ message: 'Missing required fields' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
       });
-      
-      if (existingBranch) {
-        return NextResponse.json({
-          success: false,
-          message: 'Branch with this short code already exists'
-        }, { status: 409 });
-      }
     }
-    
-    // Create a new branch
+
+    // Create new branch
     const branch = await models.Branch.create({
       name,
       address,
@@ -133,24 +119,117 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       cost_multiplier,
       opening_time,
       closing_time,
-      is_active: is_active !== undefined ? is_active : true,
-      images,
-      amenities,
-      short_code
+      is_active: is_active ?? true,
+      short_code,
     });
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Branch created successfully',
-      data: branch
-    }, { status: 201 });
+
+    return new NextResponse(JSON.stringify({ data: branch }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error creating branch:', error);
-    
-    return NextResponse.json({
-      success: false,
-      message: 'Failed to create branch',
-      error: (error as Error).message
-    }, { status: 500 });
+    return new NextResponse(JSON.stringify({ message: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// DELETE /api/admin/branches - Delete a branch (Super Admin only)
+export async function DELETE(req: NextRequest) {
+  try {
+    // Check if user is super admin
+    const authResponse = await requireSuperAdmin(req);
+    if (authResponse.status !== 200) {
+      return authResponse;
+    }
+
+    const url = new URL(req.url);
+    const id = url.searchParams.get('id');
+
+    if (!id) {
+      return new NextResponse(JSON.stringify({ message: 'Branch ID is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if branch exists
+    const branch = await models.Branch.findByPk(id);
+    if (!branch) {
+      return new NextResponse(JSON.stringify({ message: 'Branch not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if branch has any seats
+    const seatCount = await models.Seat.count({ where: { branch_id: id } });
+    if (seatCount > 0) {
+      return new NextResponse(JSON.stringify({ message: 'Cannot delete branch with existing seats' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Delete branch
+    await branch.destroy();
+
+    return new NextResponse(JSON.stringify({ message: 'Branch deleted successfully' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error deleting branch:', error);
+    return new NextResponse(JSON.stringify({ message: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// PATCH /api/admin/branches - Update branch details (Super Admin only)
+export async function PATCH(req: NextRequest) {
+  try {
+    // Check if user is super admin
+    const authResponse = await requireSuperAdmin(req);
+    if (authResponse.status !== 200) {
+      return authResponse;
+    }
+
+    const url = new URL(req.url);
+    const id = url.searchParams.get('id');
+    const body = await req.json();
+
+    if (!id) {
+      return new NextResponse(JSON.stringify({ message: 'Branch ID is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if branch exists
+    const branch = await models.Branch.findByPk(id);
+    if (!branch) {
+      return new NextResponse(JSON.stringify({ message: 'Branch not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update branch
+    await branch.update(body);
+
+    return new NextResponse(JSON.stringify({ data: branch }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error updating branch:', error);
+    return new NextResponse(JSON.stringify({ message: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

@@ -10,42 +10,51 @@ dotenv.config();
 const dbSchema = process.env.DB_SCHEMA || 'public';
 
 // Create Sequelize instance
+export const config = {
+  database: process.env.DB_NAME || 'coworks_db',
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASS || '',
+  host: process.env.DB_HOST || 'localhost',
+  dialect: 'postgres' as const,
+  logging: console.log,
+  schema: dbSchema,
+  dialectOptions: {
+    ssl: process.env.DATABASE_URL ? {
+      require: true,
+      rejectUnauthorized: false
+    } : process.env.DB_SSL === 'true' ? {
+      require: true,
+      rejectUnauthorized: false
+    } : undefined
+  }
+};
+
 let sequelize: Sequelize;
 
 // Check if DATABASE_URL exists (Vercel/Production)
 if (process.env.DATABASE_URL) {
   console.log('Using DATABASE_URL for connection');
   sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
+    dialect: config.dialect,
     dialectModule: pg,
-    logging: console.log,
-    schema: dbSchema,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    }
+    logging: config.logging,
+    schema: config.schema,
+    dialectOptions: config.dialectOptions
   });
 } else {
   // Fallback to individual credentials (local development)
   console.log('Using individual credentials for connection');
   sequelize = new Sequelize(
-    process.env.DB_NAME || 'coworks_db',
-    process.env.DB_USER || 'postgres',
-    process.env.DB_PASS || '',
+    config.database,
+    config.username,
+    config.password,
     {
-      host: process.env.DB_HOST || 'localhost',
-      dialect: 'postgres',
+      host: config.host,
+      dialect: config.dialect,
       dialectModule: pg,
-      logging: console.log,
-      schema: dbSchema,
-      dialectOptions: {
-        ssl: process.env.DB_SSL === 'true' ? {
-          require: true,
-          rejectUnauthorized: false
-        } : undefined
-      }
+      logging: config.logging,
+      schema: config.schema,
+      dialectOptions: config.dialectOptions
     }
   );
 }
