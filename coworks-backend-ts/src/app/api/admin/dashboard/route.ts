@@ -4,7 +4,7 @@ import models, { sequelize } from '@/models';
 import { UserRole } from '@/types/auth';
 import { BookingMetrics, DashboardResponse } from '@/types/common';
 import { Op, WhereOptions } from 'sequelize';
-import { Seat } from '@/models/seat';
+import { Seat } from '@/types/seating';
 
 /**
  * GET dashboard metrics for admin
@@ -42,10 +42,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
     // Prepare branch condition based on role
-    const branchCondition: WhereOptions<Seat> = decoded.role === UserRole.BRANCH_ADMIN ? 
+    const branchCondition: WhereOptions<Seat> = decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id ? 
       { branch_id: { [Op.eq]: decoded.managed_branch_id } } : {};
 
-    // Get seat bookings metrics
+    // Get seat bookings metrics (excluding meeting rooms)
     const seatBookingsMetrics = await models.SeatBooking.findOne({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'booking_count'],
@@ -55,6 +55,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         model: models.Seat,
         as: 'Seat',
         attributes: [],
+        include: [{
+          model: models.SeatingType,
+          as: 'SeatingType',
+          where: {
+            name: {
+              [Op.ne]: 'MEETING_ROOM'
+            }
+          },
+          required: true
+        }],
         where: branchCondition,
         required: true
       }],
@@ -67,15 +77,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }) as unknown as BookingMetrics;
 
     // Get meeting room bookings metrics
-    const meetingBookingsMetrics = await models.MeetingRoomBooking.findOne({
+    const meetingBookingsMetrics = await models.MeetingBooking.findOne({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'booking_count'],
         [sequelize.fn('SUM', sequelize.col('total_price')), 'total_revenue']
       ],
       include: [{
-        model: models.MeetingRoom,
+        model: models.Seat,
         as: 'MeetingRoom',
         attributes: [],
+        include: [{
+          model: models.SeatingType,
+          as: 'SeatingType',
+          where: {
+            name: 'MEETING_ROOM'
+          },
+          required: true
+        }],
         where: branchCondition,
         required: true
       }],
@@ -87,8 +105,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       raw: true
     }) as unknown as BookingMetrics;
 
-    // Get total seats and occupied seats
+    // Get total seats and occupied seats (excluding meeting rooms)
     const totalSeats = await models.Seat.count({
+      include: [{
+        model: models.SeatingType,
+        as: 'SeatingType',
+        where: {
+          name: {
+            [Op.ne]: 'MEETING_ROOM'
+          }
+        },
+        required: true
+      }],
       where: branchCondition
     });
 
@@ -96,6 +124,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       include: [{
         model: models.Seat,
         as: 'Seat',
+        include: [{
+          model: models.SeatingType,
+          as: 'SeatingType',
+          where: {
+            name: {
+              [Op.ne]: 'MEETING_ROOM'
+            }
+          },
+          required: true
+        }],
         where: branchCondition,
         required: true
       }],
@@ -114,7 +152,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const totalCustomers = await models.Customer.count({
       where: {
         role: UserRole.CUSTOMER,
-        ...(decoded.role === UserRole.BRANCH_ADMIN ? {
+        ...(decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id ? {
           '$SeatBookings.Seat.branch_id$': decoded.managed_branch_id
         } : {})
       },
@@ -132,20 +170,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     });
 
     // Get seating type metrics
-    const seatingTypeMetrics = await models.Seat.findAll({
+    const seatingTypeMetricsResults = await models.Seat.findAll({
       attributes: [
-        'type',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        [sequelize.col('SeatingType.name'), 'type'],
+        [sequelize.fn('COUNT', sequelize.col('Seat.id')), 'count']
       ],
+      include: [{
+        model: models.SeatingType,
+        as: 'SeatingType',
+        attributes: [],
+        required: true
+      }],
       where: branchCondition,
-      group: ['type'],
+      group: ['SeatingType.name'],
       raw: true
-    }).then(results => 
-      results.reduce((acc: { [key: string]: number }, curr: any) => {
-        acc[curr.type] = Number(curr.count);
-        return acc;
-      }, {})
-    );
+    });
+
+    const seatingTypeMetrics = seatingTypeMetricsResults.reduce((acc: { [key: string]: number }, curr: any) => {
+      acc[curr.type] = Number(curr.count);
+      return acc;
+    }, {});
 
     const response: DashboardResponse = {
       success: true,
