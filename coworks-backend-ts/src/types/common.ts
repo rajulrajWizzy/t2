@@ -1,9 +1,8 @@
 // Common response type
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   success: boolean;
+  data: T;
   message?: string;
-  data?: T;
-  error?: any;
 }
 
 // JWT token payload type
@@ -44,3 +43,32 @@ export interface QueryParams extends PaginationParams, SortingParams {
   search?: string;
   [key: string]: any;
 }
+
+// Booking metrics
+export interface BookingMetrics {
+  booking_count: number;
+  total_revenue: number;
+}
+
+// Dashboard metrics
+export interface DashboardMetrics {
+  totalBookings: number;
+  totalRevenue: number;
+  totalCustomers: number;
+  totalSeats: number;
+  occupiedSeats: number;
+  seatBookings: {
+    count: number;
+    revenue: number;
+  };
+  meetingBookings: {
+    count: number;
+    revenue: number;
+  };
+  seatingTypeMetrics: {
+    [key: string]: number;
+  };
+}
+
+// Dashboard response
+export interface DashboardResponse extends ApiResponse<DashboardMetrics> {}

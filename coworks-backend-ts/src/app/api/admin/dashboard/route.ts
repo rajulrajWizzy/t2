@@ -1,163 +1,189 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminToken } from '@/middleware/adminAuth';
-import models from '@/models';
-import { Op } from 'sequelize';
+import { verifyToken } from '@/config/jwt';
+import models, { sequelize } from '@/models';
+import { UserRole } from '@/types/auth';
+import { BookingMetrics, DashboardResponse } from '@/types/common';
+import { Op, WhereOptions } from 'sequelize';
+import { Seat } from '@/models/seat';
 
 /**
  * GET dashboard metrics for admin
  * Returns metrics about bookings, seats, and revenue
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    // Verify admin authentication
-    const authResponse = await verifyAdminToken(request);
-    if (authResponse) return authResponse;
+    // Verify token
+    const token = req.headers.get('authorization')?.split(' ')[1];
+    if (!token) {
+      return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Get URL parameters
-    const url = new URL(request.url);
-    const startDate = url.searchParams.get('startDate') || new Date(new Date().setDate(new Date().getDate() - 30)).toISOString();
-    const endDate = url.searchParams.get('endDate') || new Date().toISOString();
-    
-    // Calculate dashboard metrics
-    const [
-      totalSeats,
-      totalBranches,
-      totalCustomers,
-      bookingMetrics,
-      seatingTypeMetrics
-    ] = await Promise.all([
-      // Count total seats
-      models.Seat.count(),
-      
-      // Count total branches
-      models.Branch.count(),
-      
-      // Count total customers
-      models.Customer.count(),
-      
-      // Get booking metrics
-      getBookingMetrics(startDate, endDate),
-      
-      // Get seating type metrics
-      getSeatingTypeMetrics()
-    ]);
-    
-    return NextResponse.json({
+    const { valid, decoded } = await verifyToken(token);
+    if (!valid || !decoded) {
+      return new NextResponse(JSON.stringify({ message: 'Invalid token' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if user is admin
+    if (decoded.role !== UserRole.SUPER_ADMIN && decoded.role !== UserRole.BRANCH_ADMIN) {
+      return new NextResponse(JSON.stringify({ message: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const currentDate = new Date();
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+    // Prepare branch condition based on role
+    const branchCondition: WhereOptions<Seat> = decoded.role === UserRole.BRANCH_ADMIN ? 
+      { branch_id: { [Op.eq]: decoded.managed_branch_id } } : {};
+
+    // Get seat bookings metrics
+    const seatBookingsMetrics = await models.SeatBooking.findOne({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'booking_count'],
+        [sequelize.fn('SUM', sequelize.col('total_price')), 'total_revenue']
+      ],
+      include: [{
+        model: models.Seat,
+        as: 'Seat',
+        attributes: [],
+        where: branchCondition,
+        required: true
+      }],
+      where: {
+        start_time: {
+          [Op.between]: [startOfMonth, endOfMonth]
+        }
+      },
+      raw: true
+    }) as unknown as BookingMetrics;
+
+    // Get meeting room bookings metrics
+    const meetingBookingsMetrics = await models.MeetingRoomBooking.findOne({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'booking_count'],
+        [sequelize.fn('SUM', sequelize.col('total_price')), 'total_revenue']
+      ],
+      include: [{
+        model: models.MeetingRoom,
+        as: 'MeetingRoom',
+        attributes: [],
+        where: branchCondition,
+        required: true
+      }],
+      where: {
+        start_time: {
+          [Op.between]: [startOfMonth, endOfMonth]
+        }
+      },
+      raw: true
+    }) as unknown as BookingMetrics;
+
+    // Get total seats and occupied seats
+    const totalSeats = await models.Seat.count({
+      where: branchCondition
+    });
+
+    const occupiedSeats = await models.SeatBooking.count({
+      include: [{
+        model: models.Seat,
+        as: 'Seat',
+        where: branchCondition,
+        required: true
+      }],
+      where: {
+        start_time: {
+          [Op.lte]: currentDate
+        },
+        end_time: {
+          [Op.gte]: currentDate
+        }
+      },
+      distinct: true
+    });
+
+    // Get total customers
+    const totalCustomers = await models.Customer.count({
+      where: {
+        role: UserRole.CUSTOMER,
+        ...(decoded.role === UserRole.BRANCH_ADMIN ? {
+          '$SeatBookings.Seat.branch_id$': decoded.managed_branch_id
+        } : {})
+      },
+      include: [{
+        model: models.SeatBooking,
+        as: 'SeatBookings',
+        required: true,
+        include: [{
+          model: models.Seat,
+          as: 'Seat',
+          required: true
+        }]
+      }],
+      distinct: true
+    });
+
+    // Get seating type metrics
+    const seatingTypeMetrics = await models.Seat.findAll({
+      attributes: [
+        'type',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+      ],
+      where: branchCondition,
+      group: ['type'],
+      raw: true
+    }).then(results => 
+      results.reduce((acc: { [key: string]: number }, curr: any) => {
+        acc[curr.type] = Number(curr.count);
+        return acc;
+      }, {})
+    );
+
+    const response: DashboardResponse = {
       success: true,
       data: {
-        totalSeats,
-        totalBranches,
+        totalBookings: 
+          (Number(seatBookingsMetrics?.booking_count) || 0) + 
+          (Number(meetingBookingsMetrics?.booking_count) || 0),
+        totalRevenue: 
+          (Number(seatBookingsMetrics?.total_revenue) || 0) + 
+          (Number(meetingBookingsMetrics?.total_revenue) || 0),
         totalCustomers,
-        bookingMetrics,
+        totalSeats,
+        occupiedSeats,
+        seatBookings: {
+          count: Number(seatBookingsMetrics?.booking_count) || 0,
+          revenue: Number(seatBookingsMetrics?.total_revenue) || 0
+        },
+        meetingBookings: {
+          count: Number(meetingBookingsMetrics?.booking_count) || 0,
+          revenue: Number(meetingBookingsMetrics?.total_revenue) || 0
+        },
         seatingTypeMetrics
       }
+    };
+
+    return new NextResponse(JSON.stringify(response), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error fetching admin dashboard metrics:', error);
-    
-    return NextResponse.json({
+    console.error('Dashboard error:', error);
+    return new NextResponse(JSON.stringify({ 
       success: false,
-      message: 'Failed to fetch dashboard metrics',
-      error: (error as Error).message
-    }, { status: 500 });
+      message: 'Internal server error',
+      data: null
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
-}
-
-/**
- * Get booking metrics including counts and revenue
- */
-async function getBookingMetrics(startDate: string, endDate: string) {
-  const dateFilter = {
-    [Op.between]: [new Date(startDate), new Date(endDate)]
-  };
-  
-  // Get seat booking metrics
-  const seatBookings = await models.SeatBooking.findAll({
-    where: {
-      start_time: dateFilter
-    },
-    attributes: [
-      [models.sequelize.fn('COUNT', models.sequelize.col('id')), 'count'],
-      [models.sequelize.fn('SUM', models.sequelize.col('total_price')), 'revenue']
-    ],
-    raw: true
-  });
-  
-  // Get meeting room booking metrics
-  const meetingBookings = await models.MeetingBooking.findAll({
-    where: {
-      start_time: dateFilter
-    },
-    attributes: [
-      [models.sequelize.fn('COUNT', models.sequelize.col('id')), 'count'],
-      [models.sequelize.fn('SUM', models.sequelize.col('total_price')), 'revenue']
-    ],
-    raw: true
-  });
-  
-  // Calculate totals
-  const totalBookings = (Number(seatBookings[0]?.count) || 0) + (Number(meetingBookings[0]?.count) || 0);
-  const totalRevenue = (Number(seatBookings[0]?.revenue) || 0) + (Number(meetingBookings[0]?.revenue) || 0);
-  
-  return {
-    totalBookings,
-    totalRevenue,
-    seatBookings: {
-      count: Number(seatBookings[0]?.count) || 0,
-      revenue: Number(seatBookings[0]?.revenue) || 0
-    },
-    meetingBookings: {
-      count: Number(meetingBookings[0]?.count) || 0,
-      revenue: Number(meetingBookings[0]?.revenue) || 0
-    }
-  };
-}
-
-/**
- * Get metrics for each seating type
- */
-async function getSeatingTypeMetrics() {
-  // Get all seating types
-  const seatingTypes = await models.SeatingType.findAll({
-    attributes: ['id', 'name', 'short_code']
-  });
-  
-  // Get metrics for each seating type
-  const seatingTypeMetrics = await Promise.all(
-    seatingTypes.map(async (seatingType: any) => {
-      // Count seats of this type
-      const seatCount = await models.Seat.count({
-        where: { seating_type_id: seatingType.id }
-      });
-      
-      // Count bookings for this seating type
-      const bookingCount = await models.SeatBooking.count({
-        include: [{
-          model: models.Seat,
-          as: 'Seat',
-          where: { seating_type_id: seatingType.id }
-        }]
-      });
-      
-      // Calculate revenue for this seating type
-      const bookingRevenue = await models.SeatBooking.sum('total_price', {
-        include: [{
-          model: models.Seat,
-          as: 'Seat',
-          where: { seating_type_id: seatingType.id }
-        }]
-      });
-      
-      return {
-        id: seatingType.id,
-        name: seatingType.name,
-        shortCode: seatingType.short_code,
-        seatCount,
-        bookingCount,
-        revenue: bookingRevenue || 0
-      };
-    })
-  );
-  
-  return seatingTypeMetrics;
 }
