@@ -7,6 +7,19 @@ import { generateToken } from '@/config/jwt';
 import validation from '@/utils/validation';
 import mailService from '@/utils/mailService';
 
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json() as RegisterRequest;
@@ -98,12 +111,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       token // Add token to the response
     };
     
-    return NextResponse.json(response, { status: 201 });
+    return NextResponse.json(response, { 
+      status: 201,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
+    });
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
       { message: 'Registration failed', error: (error as Error).message },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      }
     );
   }
 }

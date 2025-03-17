@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // Check if the path is public
-  if (PUBLIC_PATHS.includes(path)) {
+  if (PUBLIC_PATHS.some(publicPath => path.includes(publicPath))) {
     return NextResponse.next();
   }
   
@@ -58,7 +58,10 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure the middleware to run on all /api routes
+// Configure the middleware to run on specific paths, excluding public paths
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    '/api/:path*',
+    '/((?!api/auth/register|api/auth/login|api/auth/forgot-password|api/auth/reset-password|api/test|api/health).*)'
+  ],
 };
