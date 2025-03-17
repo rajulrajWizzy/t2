@@ -15,7 +15,8 @@
         "migrate:short-codes": "node scripts/migrate-short-codes.js",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js"
+        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js",
+        "update:branches": "node scripts/update-branches.js"
     },
     "dependencies": {
         "@types/bcryptjs": "^2.4.6",
