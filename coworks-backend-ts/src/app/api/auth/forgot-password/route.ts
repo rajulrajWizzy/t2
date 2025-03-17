@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
 import mailService from '@/utils/mailService';
+import validation from '@/utils/validation';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -13,6 +14,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const response: ApiResponse = {
         success: false,
         message: 'Email is required'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
+    }
+    
+    // Email format validation
+    if (!validation.isValidEmail(email)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Invalid email format',
+        error: 'Email must be in a valid format (e.g., user@example.com)'
       };
       
       return NextResponse.json(response, { status: 400 });

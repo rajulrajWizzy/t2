@@ -31,7 +31,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Email validation
     if (!validation.isValidEmail(email)) {
       return NextResponse.json(
-        { message: 'Please provide a valid email address' },
+        { 
+          message: 'Please provide a valid email address',
+          details: 'Email must be in a valid format (e.g., user@example.com)'
+        },
         { status: 400 }
       );
     }
@@ -47,7 +50,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Password validation
     if (!validation.isValidPassword(password)) {
       return NextResponse.json(
-        { message: 'Password must be at least 8 characters long' },
+        { 
+          message: 'Password does not meet security requirements',
+          details: validation.getPasswordRequirements()
+        },
         { status: 400 }
       );
     }

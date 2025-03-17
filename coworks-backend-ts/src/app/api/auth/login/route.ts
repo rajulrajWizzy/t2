@@ -3,6 +3,7 @@ import models from '@/models';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '@/config/jwt';
 import { LoginRequest, LoginResponse } from '@/types/auth';
+import validation from '@/utils/validation';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -13,6 +14,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Email format validation
+    if (!validation.isValidEmail(email)) {
+      return NextResponse.json(
+        { 
+          message: 'Invalid email format',
+          details: 'Email must be in a valid format (e.g., user@example.com)'
+        },
         { status: 400 }
       );
     }
@@ -41,11 +53,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Return token and customer data (excluding password)
     const customerData = customer.get({ plain: true });
     const { password: _, ...customerWithoutPassword } = customerData;    
-    //test
+    
     const response: LoginResponse = {
       message: 'Login successful',
       token,
-      customer: customerData as any // Need to cast here as we've removed password field
+      customer: customerWithoutPassword as any // Need to cast here as we've removed password field
     };
     
     return NextResponse.json(response);

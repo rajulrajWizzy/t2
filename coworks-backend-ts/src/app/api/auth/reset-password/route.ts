@@ -3,6 +3,7 @@ import models from '@/models';
 import bcrypt from 'bcryptjs';
 import { ApiResponse } from '@/types/common';
 import { Op } from 'sequelize';
+import validation from '@/utils/validation';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -19,11 +20,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(response, { status: 400 });
     }
     
-    // Password strength validation (minimum 8 characters)
-    if (password.length < 8) {
+    // Enhanced password validation
+    if (!validation.isValidPassword(password)) {
       const response: ApiResponse = {
         success: false,
-        message: 'Password must be at least 8 characters long'
+        message: 'Password does not meet security requirements',
+        error: validation.getPasswordRequirements()
       };
       
       return NextResponse.json(response, { status: 400 });
