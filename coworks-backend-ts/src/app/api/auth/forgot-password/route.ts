@@ -11,9 +11,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Basic validation
     if (!email) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Email is required'
+        message: 'Email is required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -21,10 +22,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Email format validation
     if (!validation.isValidEmail(email)) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
         message: 'Invalid email format',
-        error: 'Email must be in a valid format (e.g., user@example.com)'
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -35,9 +36,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Even if customer is not found, return success for security
     if (!customer) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: true,
-        message: 'If your email is registered with us, you will receive password reset instructions'
+        message: 'If your email is registered with us, you will receive password reset instructions',
+        data: null
       };
       
       return NextResponse.json(response);
@@ -49,40 +51,45 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { where: { customer_id: customer.id, used: false } }
     );
     
-    // Create a new password reset token
-    const token = models.PasswordReset.generateToken();
-    const expires_at = models.PasswordReset.getExpiryDate();
-    
-    await models.PasswordReset.create({
+    // Generate and save new reset token
+    const resetToken = await models.PasswordReset.create({
       customer_id: customer.id,
-      token,
-      expires_at
+      token: Math.random().toString(36).substring(2, 15),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      used: false
     });
     
-    // Send password reset email
+    // Send reset email
     const emailSent = await mailService.sendPasswordResetEmail(
       customer.email,
       customer.name,
-      token
+      resetToken.token
     );
-    
+
     if (!emailSent) {
       console.error('Failed to send password reset email');
+      const response: ApiResponse<null> = {
+        success: false,
+        message: 'Failed to send password reset email. Please try again later.',
+        data: null
+      };
+      return NextResponse.json(response, { status: 500 });
     }
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: true,
-      message: 'If your email is registered with us, you will receive password reset instructions'
+      message: 'If your email is registered with us, you will receive password reset instructions',
+      data: null
     };
     
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error('Password reset error:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
-      message: 'Failed to process forgot password request',
-      error: (error as Error).message
+      message: 'An error occurred while processing your request',
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });
