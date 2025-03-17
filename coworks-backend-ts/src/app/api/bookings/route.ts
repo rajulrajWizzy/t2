@@ -417,7 +417,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Add short codes to the response
     const bookingsWithShortCodes = bookings.map(booking => {
-      const bookingData = booking.toJSON();
+      // Use any type to avoid TypeScript errors with dynamic properties
+      const bookingData: any = booking.toJSON();
       
       // Add short code to branch if it exists
       if (bookingData.Branch) {
@@ -452,7 +453,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 // Example of using formatApiEndpoint function
-export function getBookingApiUrl(branch: string, seatingType: any): string {
+// Removed export to fix Next.js route error
+function getBookingApiUrl(branch: string, seatingType: any): string {
   const baseEndpoint = '/api/bookings?branch={branch}&type={seatingType}';
   return formatApiEndpoint(baseEndpoint, branch, seatingType);
 }
