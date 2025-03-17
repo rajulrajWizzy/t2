@@ -14,7 +14,7 @@
         "migrate:seating-types": "node scripts/migrate-seating-types.js",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js"
+        "postinstall": ""
     },
     "dependencies": {
         "@types/bcryptjs": "^2.4.6",
