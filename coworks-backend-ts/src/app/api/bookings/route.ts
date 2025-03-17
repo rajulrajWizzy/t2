@@ -137,7 +137,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           attributes: ['id', 'name', 'short_code', 'description']
         }
       ]
-    });
+    }) as any;
     
     if (!seat) {
       return NextResponse.json({
