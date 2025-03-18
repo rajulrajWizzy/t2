@@ -58,18 +58,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       : {};
       
     // For branch admin, only show customers from their managed branch
-    let branchCondition = {};
+    let customerIdCondition = {};
     if (decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id) {
-      // Get bookings for the branch to find customers
-      const branchBookings = await models.SeatBooking.findAll({
+      // First find seats that belong to the branch
+      const branchSeats = await models.Seat.findAll({
         where: { branch_id: decoded.managed_branch_id },
+        attributes: ['id'],
+        raw: true
+      });
+      
+      const seatIds = branchSeats.map(seat => seat.id);
+      
+      // Get bookings for these seats to find customers
+      const branchBookings = await models.SeatBooking.findAll({
+        where: { seat_id: { [Op.in]: seatIds } },
         attributes: ['customer_id'],
         raw: true
       });
       
       const customerIds = branchBookings.map(booking => booking.customer_id);
       
-      branchCondition = {
+      customerIdCondition = {
         id: { [Op.in]: customerIds }
       };
     }
@@ -78,7 +87,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { count, rows } = await models.Customer.findAndCountAll({
       where: {
         ...searchCondition,
-        ...branchCondition
+        ...customerIdCondition
       },
       attributes: { exclude: ['password'] },
       limit,
@@ -201,12 +210,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Return customer data without password
     const customerData = newCustomer.get({ plain: true });
-    delete customerData.password;
+    const { password: _, ...customerWithoutPassword } = customerData;
     
     return NextResponse.json<ApiResponse<Omit<Customer, 'password'>>>({
       success: true,
       message: 'Customer created successfully',
-      data: customerData as Omit<Customer, 'password'>
+      data: customerWithoutPassword as Omit<Customer, 'password'>
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating customer:', error);

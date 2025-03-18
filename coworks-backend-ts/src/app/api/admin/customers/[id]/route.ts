@@ -4,6 +4,7 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { Customer, UserRole } from '@/types/auth';
 import bcrypt from 'bcryptjs';
+import { Op } from 'sequelize';
 
 // GET a single customer by ID
 export async function GET(
@@ -60,10 +61,19 @@ export async function GET(
     
     // Branch admin can only view customers from their branch
     if (decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id) {
-      // Get bookings for the branch to see if this customer has booked there
+      // First find seats that belong to the branch
+      const branchSeats = await models.Seat.findAll({
+        where: { branch_id: decoded.managed_branch_id },
+        attributes: ['id'],
+        raw: true
+      });
+      
+      const seatIds = branchSeats.map(seat => seat.id);
+      
+      // Then check if this customer has bookings for any of these seats
       const branchBooking = await models.SeatBooking.findOne({
         where: { 
-          branch_id: decoded.managed_branch_id,
+          seat_id: { [Op.in]: seatIds },
           customer_id: customer.id
         }
       });
@@ -144,10 +154,19 @@ export async function PUT(
     
     // Branch admin can only update customers from their branch
     if (decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id) {
-      // Get bookings for the branch to see if this customer has booked there
+      // First find seats that belong to the branch
+      const branchSeats = await models.Seat.findAll({
+        where: { branch_id: decoded.managed_branch_id },
+        attributes: ['id'],
+        raw: true
+      });
+      
+      const seatIds = branchSeats.map(seat => seat.id);
+      
+      // Then check if this customer has bookings for any of these seats
       const branchBooking = await models.SeatBooking.findOne({
         where: { 
-          branch_id: decoded.managed_branch_id,
+          seat_id: { [Op.in]: seatIds },
           customer_id: customer.id
         }
       });
