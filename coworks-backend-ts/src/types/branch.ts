@@ -2,13 +2,21 @@
 export interface Branch {
   id: number;
   name: string;
+  code: string; // Added code field
   address: string;
-  location: string;
-  latitude: number | null;
-  longitude: number | null;
+  location?: string;
+  latitude: number;
+  longitude: number;
   cost_multiplier: number;
   opening_time: string;
   closing_time: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  phone?: string;
+  email?: string;
+  capacity?: number;
   is_active: boolean;
   images: object | null; // Images for different seating types
   amenities: object | null; // Amenities available in JSON format
@@ -19,13 +27,21 @@ export interface Branch {
 
 export interface BranchInput {
   name: string;
+  code: string; // Added code field
   address: string;
-  location: string;
-  latitude?: number;
-  longitude?: number;
-  cost_multiplier?: number;
-  opening_time?: string;
-  closing_time?: string;
+  location?: string;
+  latitude: number;
+  longitude: number;
+  cost_multiplier: number;
+  opening_time: string;
+  closing_time: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  phone?: string;
+  email?: string;
+  capacity?: number;
   is_active?: boolean;
   images?: object; // Images for different seating types
   amenities?: object; // Amenities available in JSON format

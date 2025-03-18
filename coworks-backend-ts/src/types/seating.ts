@@ -1,10 +1,19 @@
 // src/types/seating.ts
 export enum SeatingTypeEnum {
-  HOT_DESK = 'HOT_DESK',
-  DEDICATED_DESK = 'DEDICATED_DESK',
-  CUBICLE = 'CUBICLE',
-  MEETING_ROOM = 'MEETING_ROOM',
-  DAILY_PASS = 'DAILY_PASS'
+  HOT_DESK = 'Hot Desk', // Changed from HOT_DESK to 'Hot Desk'
+  DEDICATED_DESK = 'Dedicated Desk', // Changed from DEDICATED_DESK to 'Dedicated Desk'
+  CUBICLE = 'Cubicle', // Changed from CUBICLE to 'Cubicle'
+  MEETING_ROOM = 'Meeting Room', // Changed from MEETING_ROOM to 'Meeting Room'
+  DAILY_PASS = 'Daily Pass' // Changed from DAILY_PASS to 'Daily Pass'
+}
+
+// Added code words for seating types
+export enum SeatingTypeCode {
+  HOT_DESK = 'hot',
+  DEDICATED_DESK = 'ded',
+  CUBICLE = 'cub',
+  MEETING_ROOM = 'meet',
+  DAILY_PASS = 'day'
 }
 
 export enum AvailabilityStatusEnum {
@@ -16,24 +25,28 @@ export enum AvailabilityStatusEnum {
 export interface SeatingType {
   id: number;
   name: SeatingTypeEnum;
+  code: string; // Added code field
   description: string | null;
   hourly_rate: number;
   is_hourly: boolean;
   min_booking_duration: number;
   min_seats: number; // Added field for minimum seats requirement
   short_code?: string; // Short code for API calls
+  min_seats: number;
   created_at: Date;
   updated_at: Date;
 }
 
 export interface SeatingTypeInput {
   name: SeatingTypeEnum;
+  code: string; // Added code field
   description?: string;
   hourly_rate?: number;
   is_hourly?: boolean;
   min_booking_duration?: number;
   min_seats?: number; // Added field
   short_code?: string; // Short code for API calls
+  min_seats?: number;
 }
 
 export interface SeatingTypeAttributes extends SeatingTypeInput {
