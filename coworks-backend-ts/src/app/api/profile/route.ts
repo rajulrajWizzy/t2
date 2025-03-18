@@ -3,22 +3,26 @@ import { verifyToken } from '@/config/jwt';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
 import { Customer } from '@/types/auth';
-import { hashPassword } from '@/utils/auth';
+import bcrypt from 'bcryptjs';
 import validation from '@/utils/validation';
+import { Op } from 'sequelize';
 
 // GET current user profile
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify token
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
+    // Get token from the authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
-        message: 'Unauthorized',
+        message: 'Authorization token is required',
         data: null
       }, { status: 401 });
     }
-
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       return NextResponse.json<ApiResponse<null>>({
@@ -27,19 +31,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         data: null
       }, { status: 401 });
     }
-
-    // Get user profile
-    const customer = await models.Customer.findByPk(decoded.id, {
-      attributes: { 
-        exclude: ['password'],
-        include: [
-          'id', 'name', 'email', 'phone', 'profile_picture', 
-          'company_name', 'role', 'managed_branch_id', 'is_admin',
-          'created_at', 'updated_at'
-        ]
-      }
-    });
-
+    
+    // Get the customer data
+    const customer = await models.Customer.findByPk(decoded.id);
+    
     if (!customer) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -47,16 +42,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         data: null
       }, { status: 404 });
     }
-
-    const customerData = customer.get({ plain: true }) as Omit<Customer, 'password'>;
-
+    
+    // Return customer data without password
+    const customerData = customer.get({ plain: true });
+    const { password, ...customerWithoutPassword } = customerData;
+    
     return NextResponse.json<ApiResponse<Omit<Customer, 'password'>>>({
       success: true,
       message: 'Profile retrieved successfully',
-      data: customerData
+      data: customerWithoutPassword
     });
   } catch (error) {
     console.error('Error fetching profile:', error);
+    
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to fetch profile',
@@ -68,16 +66,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 // PUT update user profile
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify token
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
+    // Get token from the authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
-        message: 'Unauthorized',
+        message: 'Authorization token is required',
         data: null
       }, { status: 401 });
     }
-
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       return NextResponse.json<ApiResponse<null>>({
@@ -86,22 +87,10 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         data: null
       }, { status: 401 });
     }
-
-    // Parse request body
-    const body = await request.json();
-    const { name, email, current_password, new_password } = body;
-
-    // Validate input
-    if (!name && !email && !new_password) {
-      return NextResponse.json<ApiResponse<null>>({
-        success: false,
-        message: 'At least one field must be provided for update',
-        data: null
-      }, { status: 400 });
-    }
-
-    // Get current user
+    
+    // Get the customer to update
     const customer = await models.Customer.findByPk(decoded.id);
+    
     if (!customer) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -109,35 +98,47 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         data: null
       }, { status: 404 });
     }
-
-    // Prepare update data
+    
+    // Parse the request body
+    const body = await request.json();
+    const { 
+      name, 
+      email, 
+      phone, 
+      current_password, 
+      new_password,
+      profile_picture,
+      company_name 
+    } = body;
+    
+    // Create update object
     const updateData: any = {};
-
-    // Update name if provided
-    if (name) {
+    
+    // Validate and update name if provided
+    if (name !== undefined) {
       if (!validation.isValidName(name)) {
         return NextResponse.json<ApiResponse<null>>({
           success: false,
-          message: 'Invalid name format',
+          message: 'Name is invalid',
           data: null
         }, { status: 400 });
       }
       updateData.name = name;
     }
-
-    // Update email if provided
-    if (email) {
+    
+    // Validate and update email if provided
+    if (email !== undefined) {
       if (!validation.isValidEmail(email)) {
         return NextResponse.json<ApiResponse<null>>({
           success: false,
-          message: 'Invalid email format',
+          message: 'Email is invalid',
           data: null
         }, { status: 400 });
       }
 
       // Check if email is already taken
       const existingCustomer = await models.Customer.findOne({
-        where: { email, id: { [models.Sequelize.Op.ne]: decoded.id } }
+        where: { email, id: { [Op.ne]: decoded.id } }
       });
 
       if (existingCustomer) {
@@ -145,24 +146,38 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           success: false,
           message: 'Email is already in use',
           data: null
-        }, { status: 400 });
+        }, { status: 409 });
       }
-
+      
       updateData.email = email;
     }
-
-    // Update password if provided
-    if (new_password) {
-      if (!current_password) {
+    
+    // Validate and update phone if provided
+    if (phone !== undefined) {
+      if (phone && !validation.isValidPhone(phone)) {
         return NextResponse.json<ApiResponse<null>>({
           success: false,
-          message: 'Current password is required to update password',
+          message: 'Phone number is invalid',
           data: null
         }, { status: 400 });
       }
-
+      updateData.phone = phone;
+    }
+    
+    // Update profile picture if provided
+    if (profile_picture !== undefined) {
+      updateData.profile_picture = profile_picture;
+    }
+    
+    // Update company name if provided
+    if (company_name !== undefined) {
+      updateData.company_name = company_name;
+    }
+    
+    // Update password if both current_password and new_password are provided
+    if (current_password && new_password) {
       // Verify current password
-      const isPasswordValid = await customer.validatePassword(current_password);
+      const isPasswordValid = await bcrypt.compare(current_password, customer.password);
       if (!isPasswordValid) {
         return NextResponse.json<ApiResponse<null>>({
           success: false,
@@ -170,34 +185,27 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           data: null
         }, { status: 400 });
       }
-
+      
       // Validate new password
       if (!validation.isValidPassword(new_password)) {
         return NextResponse.json<ApiResponse<null>>({
           success: false,
-          message: 'Invalid password format. Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.',
+          message: 'New password does not meet security requirements',
           data: null
         }, { status: 400 });
       }
-
-      updateData.password = await hashPassword(new_password);
+      
+      // Hash new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(new_password, salt);
+      updateData.password = hashedPassword;
     }
-
+    
     // Update customer
     await customer.update(updateData);
-
-    // Get updated customer without password
-    const updatedCustomer = await models.Customer.findByPk(decoded.id, {
-      attributes: { 
-        exclude: ['password'],
-        include: [
-          'id', 'name', 'email', 'phone', 'profile_picture', 
-          'company_name', 'role', 'managed_branch_id', 'is_admin',
-          'created_at', 'updated_at'
-        ]
-      }
-    });
-
+    
+    // Get updated customer data without password
+    const updatedCustomer = await models.Customer.findByPk(decoded.id);
     if (!updatedCustomer) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -205,16 +213,18 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         data: null
       }, { status: 500 });
     }
-
-    const updatedCustomerData = updatedCustomer.get({ plain: true }) as Omit<Customer, 'password'>;
-
+    
+    const customerData = updatedCustomer.get({ plain: true });
+    const { password, ...customerWithoutPassword } = customerData;
+    
     return NextResponse.json<ApiResponse<Omit<Customer, 'password'>>>({
       success: true,
       message: 'Profile updated successfully',
-      data: updatedCustomerData
+      data: customerWithoutPassword
     });
   } catch (error) {
     console.error('Error updating profile:', error);
+    
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to update profile',
