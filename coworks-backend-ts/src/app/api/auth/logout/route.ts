@@ -8,9 +8,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Authorization token is required'
+        message: 'Authorization token is required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -23,9 +24,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const decoded = jwt.decode(token) as { exp?: number };
       
       if (!decoded || !decoded.exp) {
-        return NextResponse.json({
+        return NextResponse.json<ApiResponse<null>>({
           success: false,
-          message: 'Invalid token format'
+          message: 'Invalid token format',
+          data: null
         }, { status: 400 });
       }
       
@@ -35,27 +37,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         expires_at: new Date(decoded.exp * 1000) // Convert UNIX timestamp to Date
       });
       
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: true,
-        message: 'Logout successful'
+        message: 'Logout successful',
+        data: null
       };
       
       return NextResponse.json(response);
     } catch (error) {
       console.error('Error decoding token:', error);
       
-      return NextResponse.json({
+      return NextResponse.json<ApiResponse<null>>({
         success: false,
-        message: 'Invalid token'
+        message: 'Invalid token',
+        data: null
       }, { status: 400 });
     }
   } catch (error) {
     console.error('Logout error:', error);
     
-    return NextResponse.json({
+    return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Logout failed',
-      error: (error as Error).message
+      data: null
     }, { status: 500 });
   }
 }
