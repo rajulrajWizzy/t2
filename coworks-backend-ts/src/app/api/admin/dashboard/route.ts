@@ -49,179 +49,170 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const seatBookingsMetrics = await models.SeatBooking.findOne({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'booking_count'],
-        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN status = \'ACTIVE\' THEN 1 END')), 'active_count'],
-        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN status = \'PENDING\' THEN 1 END')), 'pending_count'],
-        [sequelize.fn('SUM', sequelize.col('price')), 'total_price'],
+        [sequelize.fn('SUM', sequelize.col('total_price')), 'total_revenue']
       ],
-      include: [
-        {
-          model: models.Seat,
-          as: 'seat',
-          attributes: [],
-          where: branchCondition,
-          required: true,
-        },
-      ],
-    });
-
-    // Get daily, weekly and monthly metrics
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-    
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59);
-
-    // Daily bookings
-    const dailyBookings = await models.SeatBooking.count({
-      include: [
-        {
-          model: models.Seat,
-          as: 'seat',
-          attributes: [],
-          where: branchCondition,
-          required: true,
-        },
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [startOfDay, endOfDay],
-        },
-      },
-    });
-
-    // Weekly bookings
-    const weeklyBookings = await models.SeatBooking.count({
-      include: [
-        {
-          model: models.Seat,
-          as: 'seat',
-          attributes: [],
-          where: branchCondition,
-          required: true,
-        },
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [startOfWeek, endOfWeek],
-        },
-      },
-    });
-
-    // Monthly bookings
-    const monthlyBookings = await models.SeatBooking.count({
-      include: [
-        {
-          model: models.Seat,
-          as: 'seat',
-          attributes: [],
-          where: branchCondition,
-          required: true,
-        },
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [startOfMonth, endOfMonth],
-        },
-      },
-    });
-
-    // Get total customers count
-    const totalCustomers = await models.Customer.count({
-      ...(decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id ? {
-        include: [
-          {
-            model: models.SeatBooking,
-            as: 'bookings',
-            required: true,
-            include: [
-              {
-                model: models.Seat,
-                as: 'seat',
-                required: true,
-                where: {
-                  branch_id: decoded.managed_branch_id,
-                },
-              },
-            ],
+      include: [{
+        model: models.Seat,
+        as: 'Seat',
+        attributes: [],
+        include: [{
+          model: models.SeatingType,
+          as: 'SeatingType',
+          where: {
+            name: {
+              [Op.ne]: 'MEETING_ROOM'
+            }
           },
-        ],
-      } : {}),
-    });
+          required: true
+        }],
+        where: branchCondition,
+        required: true
+      }],
+      where: {
+        start_time: {
+          [Op.between]: [startOfMonth, endOfMonth]
+        }
+      },
+      raw: true
+    }) as unknown as BookingMetrics;
 
-    // Get available seats count and total seats count
-    const seatsData = await models.Seat.findAll({
+    // Get meeting room bookings metrics
+    const meetingBookingsMetrics = await models.MeetingBooking.findOne({
       attributes: [
-        [sequelize.literal('COUNT(DISTINCT id)'), 'total_count'],
-        [sequelize.literal('COUNT(DISTINCT CASE WHEN "Seat"."status" = \'AVAILABLE\' THEN "Seat"."id" END)'), 'available_count'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'booking_count'],
+        [sequelize.fn('SUM', sequelize.col('total_price')), 'total_revenue']
       ],
-      where: branchCondition,
-      raw: true,
+      include: [{
+        model: models.Seat,
+        as: 'MeetingRoom',
+        attributes: [],
+        include: [{
+          model: models.SeatingType,
+          as: 'SeatingType',
+          where: {
+            name: 'MEETING_ROOM'
+          },
+          required: true
+        }],
+        where: branchCondition,
+        required: true
+      }],
+      where: {
+        start_time: {
+          [Op.between]: [startOfMonth, endOfMonth]
+        }
+      },
+      raw: true
+    }) as unknown as BookingMetrics;
+
+    // Get total seats and occupied seats (excluding meeting rooms)
+    const totalSeats = await models.Seat.count({
+      include: [{
+        model: models.SeatingType,
+        as: 'SeatingType',
+        where: {
+          name: {
+            [Op.ne]: 'MEETING_ROOM'
+          }
+        },
+        required: true
+      }],
+      where: branchCondition
     });
 
-    // Calculate occupancy rate
-    const totalSeats = parseInt(seatsData[0].total_count as string, 10) || 0;
-    const availableSeats = parseInt(seatsData[0].available_count as string, 10) || 0;
-    const occupiedSeats = totalSeats - availableSeats;
-    const occupancyRate = totalSeats > 0 ? Math.round((occupiedSeats / totalSeats) * 100) : 0;
+    const occupiedSeats = await models.SeatBooking.count({
+      include: [{
+        model: models.Seat,
+        as: 'Seat',
+        include: [{
+          model: models.SeatingType,
+          as: 'SeatingType',
+          where: {
+            name: {
+              [Op.ne]: 'MEETING_ROOM'
+            }
+          },
+          required: true
+        }],
+        where: branchCondition,
+        required: true
+      }],
+      where: {
+        start_time: {
+          [Op.lte]: currentDate
+        },
+        end_time: {
+          [Op.gte]: currentDate
+        }
+      },
+      distinct: true
+    });
 
-    // Get additional chart data for visualizations
-    // Monthly revenue data (for the past 12 months)
-    const revenueData = await generateMonthlyRevenueData(branchCondition, decoded);
+    // Get total customers
+    const totalCustomers = await models.Customer.count({
+      where: {
+        role: UserRole.CUSTOMER,
+        ...(decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id ? {
+          '$SeatBookings.Seat.branch_id$': decoded.managed_branch_id
+        } : {})
+      },
+      include: [{
+        model: models.SeatBooking,
+        as: 'SeatBookings',
+        required: true,
+        include: [{
+          model: models.Seat,
+          as: 'Seat',
+          required: true
+        }]
+      }],
+      distinct: true
+    });
 
-    // Weekly booking trends data
-    const bookingTrendsData = await generateBookingTrendsData(branchCondition);
+    // Get seating type metrics
+    const seatingTypeMetricsResults = await models.Seat.findAll({
+      attributes: [
+        [sequelize.col('SeatingType.name'), 'type'],
+        [sequelize.fn('COUNT', sequelize.col('Seat.id')), 'count']
+      ],
+      include: [{
+        model: models.SeatingType,
+        as: 'SeatingType',
+        attributes: [],
+        required: true
+      }],
+      where: branchCondition,
+      group: ['SeatingType.name'],
+      raw: true
+    });
 
-    // Customer distribution by plan type
-    const customerDistributionData = await generateCustomerDistributionData(decoded);
-
-    // Get top branches data (for super admin only)
-    let topBranches = [];
-    if (decoded.role === UserRole.SUPER_ADMIN) {
-      topBranches = await models.Branch.findAll({
-        attributes: [
-          'id',
-          'name',
-          [sequelize.literal('(SELECT COUNT(*) FROM "SeatBookings" sb JOIN "Seats" s ON sb.seat_id = s.id WHERE s.branch_id = "Branch".id)'), 'booking_count'],
-          [sequelize.literal('(SELECT COALESCE(SUM(price), 0) FROM "SeatBookings" sb JOIN "Seats" s ON sb.seat_id = s.id WHERE s.branch_id = "Branch".id)'), 'revenue'],
-        ],
-        order: [
-          [sequelize.literal('revenue'), 'DESC'],
-        ],
-        limit: 5,
-        raw: true,
-      });
-
-      topBranches = topBranches.map((branch: any) => ({
-        id: branch.id,
-        name: branch.name,
-        bookings: parseInt(branch.booking_count, 10),
-        revenue: parseFloat(branch.revenue),
-      }));
-    }
+    const seatingTypeMetrics = seatingTypeMetricsResults.reduce((acc: { [key: string]: number }, curr: any) => {
+      acc[curr.type] = Number(curr.count);
+      return acc;
+    }, {});
 
     const response: DashboardResponse = {
       success: true,
       data: {
-        activeBookings: parseInt(seatBookingsMetrics?.getDataValue('active_count') as string, 10) || 0,
-        pendingBookings: parseInt(seatBookingsMetrics?.getDataValue('pending_count') as string, 10) || 0,
-        totalUsers: totalCustomers,
-        currentMonthRevenue: parseFloat(seatBookingsMetrics?.getDataValue('total_price') as string) || 0,
-        bookingsMetrics: {
-          daily: dailyBookings,
-          weekly: weeklyBookings,
-          monthly: monthlyBookings,
+        totalBookings: 
+          (Number(seatBookingsMetrics?.booking_count) || 0) + 
+          (Number(meetingBookingsMetrics?.booking_count) || 0),
+        totalRevenue: 
+          (Number(seatBookingsMetrics?.total_revenue) || 0) + 
+          (Number(meetingBookingsMetrics?.total_revenue) || 0),
+        totalCustomers,
+        totalSeats,
+        occupiedSeats,
+        seatBookings: {
+          count: Number(seatBookingsMetrics?.booking_count) || 0,
+          revenue: Number(seatBookingsMetrics?.total_revenue) || 0
         },
-        availableSeats,
-        occupancyRate,
-        ...(topBranches.length > 0 && { topBranches }),
-        revenueData,
-        bookingTrends: bookingTrendsData,
-        customerDistribution: customerDistributionData,
-      },
+        meetingBookings: {
+          count: Number(meetingBookingsMetrics?.booking_count) || 0,
+          revenue: Number(meetingBookingsMetrics?.total_revenue) || 0
+        },
+        seatingTypeMetrics
+      }
     };
 
     return new NextResponse(JSON.stringify(response), {
@@ -229,149 +220,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in dashboard route:', error);
-    return new NextResponse(JSON.stringify({ message: 'Internal server error' }), {
+    console.error('Dashboard error:', error);
+    return new NextResponse(JSON.stringify({ 
+      success: false,
+      message: 'Internal server error',
+      data: null
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
-  }
-}
-
-// Helper function to generate monthly revenue data for the past 12 months
-async function generateMonthlyRevenueData(branchCondition: WhereOptions<Seat>, decoded: any) {
-  const months = [];
-  const values = [];
-  const today = new Date();
-  
-  // Get the past 12 months
-  for (let i = 11; i >= 0; i--) {
-    const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const month = date.toLocaleString('default', { month: 'short' });
-    months.push(month);
-    
-    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-    
-    // Query the revenue for this month
-    const monthlyRevenue = await models.SeatBooking.sum('price', {
-      include: [
-        {
-          model: models.Seat,
-          as: 'seat',
-          attributes: [],
-          where: branchCondition,
-          required: true,
-        },
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [startOfMonth, endOfMonth],
-        },
-      },
-    });
-    
-    values.push(monthlyRevenue || 0);
-  }
-  
-  return { labels: months, values };
-}
-
-// Helper function to generate booking trends data for the week
-async function generateBookingTrendsData(branchCondition: WhereOptions<Seat>) {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const values = [];
-  const today = new Date();
-  const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
-  
-  // Start from the most recent Monday
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-  startOfWeek.setHours(0, 0, 0, 0);
-  
-  // For each day of the week
-  for (let i = 0; i < 7; i++) {
-    const currentDate = new Date(startOfWeek);
-    currentDate.setDate(startOfWeek.getDate() + i);
-    const nextDate = new Date(currentDate);
-    nextDate.setDate(currentDate.getDate() + 1);
-    
-    // Query the booking count for this day
-    const dailyBookings = await models.SeatBooking.count({
-      include: [
-        {
-          model: models.Seat,
-          as: 'seat',
-          attributes: [],
-          where: branchCondition,
-          required: true,
-        },
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [currentDate, nextDate],
-        },
-      },
-    });
-    
-    values.push(dailyBookings || 0);
-  }
-  
-  return { labels: shortDays, values };
-}
-
-// Helper function to generate customer distribution data
-async function generateCustomerDistributionData(decoded: any) {
-  const planTypes = ['Basic', 'Standard', 'Premium', 'Enterprise'];
-  let values = [0, 0, 0, 0];
-  
-  try {
-    // In a real application, this would be based on actual plan types in the database
-    // This is a mock implementation
-    if (decoded.role === UserRole.BRANCH_ADMIN && decoded.managed_branch_id) {
-      // For branch admin, get distribution for their specific branch
-      const branchId = decoded.managed_branch_id;
-      const totalCustomers = await models.Customer.count({
-        include: [
-          {
-            model: models.SeatBooking,
-            as: 'bookings',
-            required: true,
-            include: [
-              {
-                model: models.Seat,
-                as: 'seat',
-                required: true,
-                where: {
-                  branch_id: branchId,
-                },
-              },
-            ],
-          },
-        ],
-      });
-      
-      // Mock distribution - in a real app, we would query the actual distribution
-      values = [
-        Math.round(totalCustomers * 0.4), // 40% Basic
-        Math.round(totalCustomers * 0.3), // 30% Standard
-        Math.round(totalCustomers * 0.2), // 20% Premium
-        Math.round(totalCustomers * 0.1), // 10% Enterprise
-      ];
-    } else {
-      // For super admin, get overall distribution
-      const totalCustomers = await models.Customer.count();
-      values = [
-        Math.round(totalCustomers * 0.35), // 35% Basic
-        Math.round(totalCustomers * 0.25), // 25% Standard
-        Math.round(totalCustomers * 0.25), // 25% Premium
-        Math.round(totalCustomers * 0.15), // 15% Enterprise
-      ];
-    }
-    
-    return { labels: planTypes, values };
-  } catch (error) {
-    console.error('Error generating customer distribution:', error);
-    return { labels: planTypes, values: [0, 0, 0, 0] };
   }
 }
