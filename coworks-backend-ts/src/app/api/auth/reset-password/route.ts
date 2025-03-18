@@ -12,9 +12,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Basic validation
     if (!token || !password) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Token and new password are required'
+        message: 'Token and new password are required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -22,10 +23,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Enhanced password validation
     if (!validation.isValidPassword(password)) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
         message: 'Password does not meet security requirements',
-        error: validation.getPasswordRequirements()
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -43,9 +44,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     if (!passwordReset) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Invalid or expired reset token'
+        message: 'Invalid or expired reset token',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -54,16 +56,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Find the customer
     const customer = await models.Customer.findByPk(passwordReset.customer_id);
     if (!customer) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Customer not found'
+        message: 'Customer not found',
+        data: null
       };
       
       return NextResponse.json(response, { status: 404 });
     }
     
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     
     // Update the customer's password
     await customer.update({ password: hashedPassword });
@@ -71,19 +75,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Mark the token as used
     await passwordReset.update({ used: true });
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: true,
-      message: 'Password has been reset successfully'
+      message: 'Password has been reset successfully',
+      data: null
     };
     
     return NextResponse.json(response);
   } catch (error) {
     console.error('Reset password error:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to reset password',
-      error: (error as Error).message
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });
