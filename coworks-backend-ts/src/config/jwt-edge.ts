@@ -1,6 +1,6 @@
 // src/config/jwt-edge.ts
 import * as jose from 'jose';
-import { Customer } from '@/types/auth';
+import { Customer, UserRole } from '@/types/auth';
 import { JwtPayload, JwtVerificationResult } from '@/types/common';
 
 const secret = new TextEncoder().encode(
@@ -14,7 +14,9 @@ export async function generateToken(user: Customer): Promise<string> {
   const jwt = await new jose.SignJWT({ 
     id: user.id,
     email: user.email,
-    name: user.name
+    name: user.name,
+    role: user.role || UserRole.CUSTOMER,
+    managed_branch_id: user.managed_branch_id
   })
     .setProtectedHeader({ alg })
     .setIssuedAt()
@@ -34,6 +36,8 @@ export async function verifyToken(token: string): Promise<JwtVerificationResult>
       id: payload.id as number,
       email: payload.email as string,
       name: payload.name as string,
+      role: (payload.role as UserRole) || UserRole.CUSTOMER,
+      managed_branch_id: payload.managed_branch_id as number | null,
       // Optional properties that might be present in the token
       iat: payload.iat,
       exp: payload.exp
@@ -42,14 +46,16 @@ export async function verifyToken(token: string): Promise<JwtVerificationResult>
     return { 
       valid: true, 
       expired: false, 
-      decoded: jwtPayload
+      decoded: jwtPayload,
+      blacklisted: false
     };
   } catch (error) {
     const err = error as Error;
     return {
       valid: false,
       expired: err.message.includes('expired'),
-      decoded: null
+      decoded: null,
+      blacklisted: false
     };
   }
 }
