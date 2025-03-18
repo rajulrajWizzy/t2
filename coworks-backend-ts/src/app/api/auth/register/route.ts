@@ -1,109 +1,120 @@
 // src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import bcrypt from 'bcryptjs';
-import { RegisterRequest, RegisterResponse } from '@/types/auth';
 import { generateToken } from '@/config/jwt';
+import { UserRole, RegisterResponse } from '@/types/auth';
+import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
+import bcrypt from 'bcryptjs';
 import mailService from '@/utils/mailService';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json() as RegisterRequest;
-    const { name, email, phone, password, profile_picture, company_name } = body;
+    // Parse the request body
+    const body = await request.json();
+    const { name, email, password, phone, company_name, profile_picture } = body;
     
-    // Basic validation
+    // Validate required fields
     if (!name || !email || !password) {
-      return NextResponse.json(
-        { message: 'Name, email, and password are required' },
-        { status: 400 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Name, email, and password are required',
+        data: null
+      }, { status: 400 });
     }
     
-    // Name validation
+    // Validate name
     if (!validation.isValidName(name)) {
-      return NextResponse.json(
-        { message: 'Name cannot be empty or contain only whitespace' },
-        { status: 400 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Name is invalid',
+        data: null
+      }, { status: 400 });
     }
     
-    // Email validation
+    // Validate email
     if (!validation.isValidEmail(email)) {
-      return NextResponse.json(
-        { 
-          message: 'Please provide a valid email address',
-          details: 'Email must be in a valid format (e.g., user@example.com)'
-        },
-        { status: 400 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Email is invalid',
+        data: null
+      }, { status: 400 });
     }
     
-    // Phone validation (if provided)
-    if (phone && !validation.isValidPhone(phone)) {
-      return NextResponse.json(
-        { message: 'Phone number must be 10 digits' },
-        { status: 400 }
-      );
-    }
-    
-    // Password validation
+    // Validate password
     if (!validation.isValidPassword(password)) {
-      return NextResponse.json(
-        { 
-          message: 'Password does not meet security requirements',
-          details: validation.getPasswordRequirements()
-        },
-        { status: 400 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, and one number',
+        data: null
+      }, { status: 400 });
+    }
+    
+    // Check if phone is provided and validate
+    if (phone && !validation.isValidPhone(phone)) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Phone number is invalid',
+        data: null
+      }, { status: 400 });
     }
     
     // Check if email already exists
-    const existingUser = await models.Customer.findOne({ where: { email } });
-    if (existingUser) {
-      return NextResponse.json(
-        { message: 'Email already registered' },
-        { status: 409 }
-      );
+    const existingCustomer = await models.Customer.findOne({ where: { email } });
+    if (existingCustomer) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Email already registered',
+        data: null
+      }, { status: 409 });
     }
     
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     
-    // Create new customer
+    // Create the customer
     const customer = await models.Customer.create({
       name,
       email,
-      phone,
       password: hashedPassword,
-      profile_picture: profile_picture || undefined,
-      company_name: company_name || undefined
+      phone: phone || null,
+      profile_picture: profile_picture || null,
+      company_name: company_name || null,
+      role: UserRole.CUSTOMER,
+      is_admin: false,
+      managed_branch_id: null
     });
     
-    console.log('Customer created successfully with ID:', customer.id);
+    // Generate token
+    const token = generateToken(customer);
     
-    // Return response without password
+    // Send welcome email if the service exists
+    if (mailService.sendWelcomeEmail) {
+      await mailService.sendWelcomeEmail(email, name);
+    }
+    
+    // Return customer data (excluding password) and token
     const customerData = customer.get({ plain: true });
     const { password: _, ...customerWithoutPassword } = customerData;
     
-    // Generate token for immediate use
-    const token = generateToken(customer);
-    
-    // Send welcome email
-    await mailService.sendWelcomeEmail(email, name);
-    
-    const response: RegisterResponse = {
+    const response: ApiResponse<RegisterResponse> = {
+      success: true,
       message: 'Registration successful',
-      customer: customerWithoutPassword as any,
-      token // Add token to the response
+      data: {
+        message: 'Registration successful',
+        customer: customerWithoutPassword,
+        token
+      }
     };
     
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json(
-      { message: 'Registration failed', error: (error as Error).message },
-      { status: 500 }
-    );
+    return NextResponse.json<ApiResponse<null>>({
+      success: false,
+      message: 'Registration failed',
+      data: null
+    }, { status: 500 });
   }
 }

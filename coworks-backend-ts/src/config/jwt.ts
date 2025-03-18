@@ -1,13 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { Customer } from '@/types/auth';
 import { JwtPayload, JwtVerificationResult } from '@/types/common';
+import CustomerModel from '@/models/customer';
 import models from '@/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = '24h';
 
 // Generate a token for a user
-export const generateToken = (user: Customer): string => {
+export const generateToken = (user: CustomerModel | Customer): string => {
   const payload: JwtPayload = {
     id: user.id,
     email: user.email,
