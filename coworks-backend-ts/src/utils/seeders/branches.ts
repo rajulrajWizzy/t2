@@ -13,6 +13,7 @@ const branches = [
     cost_multiplier: 1.00,
     opening_time: '08:00:00',
     closing_time: '22:00:00',
+    short_code: 'orr'
     is_active: true
   },
   {
@@ -29,6 +30,7 @@ const branches = [
     cost_multiplier: 1.10,
     opening_time: '08:00:00',
     closing_time: '22:00:00',
+    short_code: 'ngb'
     is_active: true
   },
   {
@@ -45,6 +47,7 @@ const branches = [
     cost_multiplier: 0.95,
     opening_time: '08:00:00',
     closing_time: '22:00:00',
+    short_code: 'krr'
     is_active: true
   },
   {
@@ -61,6 +64,7 @@ const branches = [
     cost_multiplier: 1.05,
     opening_time: '08:00:00',
     closing_time: '22:00:00',
+    short_code: 'prp'
     is_active: true
   }
 ];

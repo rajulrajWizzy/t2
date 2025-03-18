@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
+import validation from '@/utils/validation';
+import { Branch } from '@/types/branch';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -10,10 +12,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -21,10 +24,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
     }
     
     // Fetch all branches
@@ -43,8 +47,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ]
     });
     
-    const response: ApiResponse = {
+    // No need to add short codes manually as they are now in the database
+    const response: ApiResponse<Branch[]> = {
       success: true,
+      message: 'Branches retrieved successfully',
       data: branches
     };
     
@@ -52,10 +58,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error fetching branches:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch branches',
-      error: (error as Error).message
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });
@@ -68,10 +74,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -79,10 +86,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
     }
     
     // Parse the request body
@@ -97,32 +105,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       opening_time, 
       closing_time,
       images,
-      amenities
+      amenities,
+      short_code 
     } = body;
     
     // Basic validation
     if (!name || !address || !location) {
-      return NextResponse.json({
+      return NextResponse.json<ApiResponse<null>>({
         success: false,
-        message: 'Name, address, and location are required'
+        message: 'Name, address, and location are required',
+        data: null
       }, { status: 400 });
     }
     
-    // Create a new branch
+    // Name validation - check for blank or whitespace-only names
+    if (!validation.isValidName(name)) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Name cannot be empty or contain only whitespace',
+        data: null
+      }, { status: 400 });
+    }
+    
+    // Create branch
     const branch = await models.Branch.create({
       name,
       address,
       location,
       latitude: latitude || null,
       longitude: longitude || null,
-      cost_multiplier: cost_multiplier || 1.00,
-      opening_time: opening_time || '08:00:00',
-      closing_time: closing_time || '22:00:00',
-      images: images || null,
-      amenities: amenities || null
+      cost_multiplier: cost_multiplier || 1.0,
+      opening_time: opening_time || '09:00:00',
+      closing_time: closing_time || '18:00:00',
+      images: images || [],
+      amenities: amenities || null,
+      short_code: short_code || null
     });
     
-    const response: ApiResponse = {
+    const response: ApiResponse<Branch> = {
       success: true,
       message: 'Branch created successfully',
       data: branch
@@ -132,10 +152,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error creating branch:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to create branch',
-      error: (error as Error).message
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });

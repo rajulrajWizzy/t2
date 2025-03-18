@@ -1,4 +1,5 @@
-import sequelize from '@/config/database';
+import { Sequelize } from 'sequelize';
+import { config } from '@/config/database';
 import BranchModel from './branch';
 import CustomerModel from './customer';
 import SeatingTypeModel from './seatingType';
@@ -60,18 +61,32 @@ TimeSlotModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 SeatModel.hasMany(TimeSlotModel, { foreignKey: 'seat_id', as: 'TimeSlots' });
 TimeSlotModel.belongsTo(SeatModel, { foreignKey: 'seat_id', as: 'Seat' });
 
-// Export models
-const models = {
+// Initialize sequelize instance
+export const sequelize = new Sequelize(config);
+
+// Initialize models
+export const Branch = BranchModel;
+export const Customer = CustomerModel;
+export const SeatingType = SeatingTypeModel;
+export const Seat = SeatModel;
+export const SeatBooking = SeatBookingModel;
+export const MeetingBooking = MeetingBookingModel;
+export const Payment = PaymentModel;
+export const TimeSlot = TimeSlotModel;
+export const BlacklistedToken = BlacklistedTokenModel;
+export const PasswordReset = PasswordResetModel;
+
+// Export models and sequelize instance
+export default {
+  Branch,
+  Customer,
+  SeatingType,
+  Seat,
+  SeatBooking,
+  MeetingBooking,
+  Payment,
+  TimeSlot,
+  BlacklistedToken,
+  PasswordReset,
   sequelize,
-  Branch: BranchModel,
-  Customer: CustomerModel,
-  SeatingType: SeatingTypeModel,
-  Seat: SeatModel,
-  SeatBooking: SeatBookingModel,
-  MeetingBooking: MeetingBookingModel,
-  Payment: PaymentModel,
-  TimeSlot: TimeSlotModel,
-  BlacklistedToken: BlacklistedTokenModel,
-  PasswordReset: PasswordResetModel  // Add this line
 };
-export default models;

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
-import { PaymentStatusEnum } from '@/types/payment';
+import { Payment, PaymentStatusEnum } from '@/types/payment';
 import { BookingStatusEnum } from '@/types/booking';
-import { AvailabilityStatusEnum } from '../../../../types/seating';
+import { AvailabilityStatusEnum } from '@/types/seating';
+import { UserRole } from '@/types/auth';
 
 // GET a single payment by ID
 export async function GET(
@@ -17,9 +18,10 @@ export async function GET(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -30,9 +32,10 @@ export async function GET(
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -42,10 +45,11 @@ export async function GET(
     const payment = await models.Payment.findByPk(parseInt(id));
     
     if (!payment) {
-      return NextResponse.json(
-        { message: 'Payment not found' },
-        { status: 404 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Payment not found',
+        data: null
+      }, { status: 404 });
     }
     
     // Find the associated booking to check ownership
@@ -57,32 +61,39 @@ export async function GET(
     }
     
     if (!booking) {
-      return NextResponse.json(
-        { message: 'Associated booking not found' },
-        { status: 404 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Associated booking not found',
+        data: null
+      }, { status: 404 });
     }
     
     // Check if the logged-in user is the owner of the booking
     if (booking.customer_id !== decoded.id) {
       // If not the owner, check if admin (implement admin check if needed)
       // For now, just return unauthorized
-      return NextResponse.json(
-        { message: 'Unauthorized to view this payment' },
-        { status: 403 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized to view this payment',
+        data: null
+      }, { status: 403 });
     }
     
-    return NextResponse.json({
-      payment,
-      booking
+    return NextResponse.json<ApiResponse<{payment: any, booking: any}>>({
+      success: true,
+      message: 'Payment retrieved successfully',
+      data: {
+        payment,
+        booking
+      }
     });
   } catch (error) {
     console.error('Error fetching payment:', error);
-    return NextResponse.json(
-      { message: 'Failed to fetch payment', error: (error as Error).message },
-      { status: 500 }
-    );
+    return NextResponse.json<ApiResponse<null>>({
+      success: false,
+      message: 'Failed to fetch payment',
+      data: null
+    }, { status: 500 });
   }
 }
 
@@ -97,9 +108,10 @@ export async function PUT(
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -110,106 +122,118 @@ export async function PUT(
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
     }
     
-    // Parse the request body
-    const body = await request.json();
-    const { status } = body;
+    // Check if admin (for refund)
+    // Assume role is included in the decoded token
+    const userRole = decoded.role as UserRole;
+    if (userRole !== UserRole.BRANCH_ADMIN && userRole !== UserRole.SUPER_ADMIN) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Only admins can update payment status',
+        data: null
+      }, { status: 403 });
+    }
+    
+    // Parse request body
+    const { status } = await request.json();
+    
+    if (!status || !Object.values(PaymentStatusEnum).includes(status)) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Invalid payment status',
+        data: null
+      }, { status: 400 });
+    }
     
     // Find the payment
     const payment = await models.Payment.findByPk(parseInt(id));
     
     if (!payment) {
-      return NextResponse.json(
-        { message: 'Payment not found' },
-        { status: 404 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Payment not found',
+        data: null
+      }, { status: 404 });
     }
     
-    // Find the associated booking to check ownership
-    let booking;
-    if (payment.booking_type === 'seat') {
-      booking = await models.SeatBooking.findByPk(payment.booking_id);
-    } else if (payment.booking_type === 'meeting') {
-      booking = await models.MeetingBooking.findByPk(payment.booking_id);
-    }
-    
-    if (!booking) {
-      return NextResponse.json(
-        { message: 'Associated booking not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Check if the logged-in user is the owner of the booking
-    if (booking.customer_id !== decoded.id) {
-      // If not the owner, check if admin (implement admin check if needed)
-      // For now, just return unauthorized
-      return NextResponse.json(
-        { message: 'Unauthorized to update this payment' },
-        { status: 403 }
-      );
-    }
-    
-    // Update payment status
-    if (status && Object.values(PaymentStatusEnum).includes(status as PaymentStatusEnum)) {
-      await payment.update({ payment_status: status });
+    // Handle refund logic
+    if (status === PaymentStatusEnum.REFUNDED) {
+      // Check if payment can be refunded
+      if (payment.payment_status === PaymentStatusEnum.REFUNDED) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Payment has already been refunded',
+          data: null
+        }, { status: 400 });
+      }
       
-      // If payment is refunded, update booking status to cancelled
-      if (status === PaymentStatusEnum.REFUNDED) {
-        if (payment.booking_type === 'seat') {
+      // Get the associated booking
+      let booking;
+      if (payment.booking_type === 'seat') {
+        booking = await models.SeatBooking.findByPk(payment.booking_id);
+        
+        if (booking) {
+          // Update booking status to CANCELLED
           await models.SeatBooking.update(
             { status: BookingStatusEnum.CANCELLED },
-            { where: { id: payment.booking_id } }
+            { where: { id: booking.id } }
           );
-        } else {
+          
+          // Update seat availability if it exists
+          const seatId = booking.seat_id;
+          if (seatId) {
+            const seat = await models.Seat.findByPk(seatId);
+            if (seat) {
+              await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
+            }
+          }
+        }
+      } else if (payment.booking_type === 'meeting') {
+        booking = await models.MeetingBooking.findByPk(payment.booking_id);
+        
+        if (booking) {
+          // Update booking status to CANCELLED
           await models.MeetingBooking.update(
             { status: BookingStatusEnum.CANCELLED },
-            { where: { id: payment.booking_id } }
-          );
-        }
-        
-        // Release seat if booking is cancelled
-        let seatId: number;
-        if (payment.booking_type === 'seat' && booking) {
-          seatId = (booking as any).seat_id;
-        } else if (booking) {
-          seatId = (booking as any).meeting_room_id;
-        } else {
-          // Handle the case where booking is null
-          throw new Error('Booking not found');
-        }
-        const seat = await models.Seat.findByPk(seatId);
-        
-        if (seat) {
-          await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE });
-        }
-        
-        // Release time slots if they exist and it's a seat booking
-        if (payment.booking_type === 'seat') {
-          await models.TimeSlot.update(
-            { is_available: true, booking_id: null },
-            { where: { booking_id: payment.booking_id } }
+            { where: { id: booking.id } }
           );
         }
       }
+      
+      if (!booking) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Associated booking not found',
+          data: null
+        }, { status: 404 });
+      }
     }
     
-    return NextResponse.json({
-      message: 'Payment updated successfully',
-      payment
+    // Update payment status
+    await payment.update({ payment_status: status });
+    
+    // Refresh payment data
+    const updatedPayment = await models.Payment.findByPk(parseInt(id));
+    
+    return NextResponse.json<ApiResponse<any>>({
+      success: true,
+      message: 'Payment status updated successfully',
+      data: updatedPayment
     });
   } catch (error) {
     console.error('Error updating payment:', error);
-    return NextResponse.json(
-      { message: 'Failed to update payment', error: (error as Error).message },
-      { status: 500 }
-    );
+    return NextResponse.json<ApiResponse<null>>({
+      success: false,
+      message: 'Failed to update payment',
+      data: null
+    }, { status: 500 });
   }
 }

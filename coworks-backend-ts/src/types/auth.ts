@@ -1,4 +1,10 @@
 // src/types/auth.ts
+export enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  BRANCH_ADMIN = 'BRANCH_ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN'
+}
+
 export interface Customer {
   id: number;
   name: string;
@@ -7,6 +13,9 @@ export interface Customer {
   password: string;
   profile_picture: string | null;
   company_name: string | null;
+  role: UserRole;
+  managed_branch_id: number | null;
+  is_admin: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -18,6 +27,9 @@ export interface CustomerInput {
   password: string;
   profile_picture?: string;
   company_name?: string;
+  role?: UserRole;
+  managed_branch_id?: number | null;
+  is_admin?: boolean;
 }
 
 export interface CustomerAttributes extends CustomerInput {
@@ -44,6 +56,9 @@ export interface RegisterRequest {
   password: string;
   profile_picture?: string;
   company_name?: string;
+  role?: UserRole;
+  managed_branch_id?: number | null;
+  is_admin?: boolean;
 }
 
 export interface RegisterResponse {
