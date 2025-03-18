@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/config/jwt';
+import { UserRole } from '@/types/auth';
 
 /**
  * Middleware to verify that a user is an admin
@@ -34,7 +35,7 @@ export async function verifyAdminToken(request: NextRequest): Promise<NextRespon
     }
     
     // Check if user is admin
-    if (!decoded?.is_admin) {
+    if (!decoded || (decoded.role !== UserRole.BRANCH_ADMIN && decoded.role !== UserRole.SUPER_ADMIN)) {
       return NextResponse.json({
         success: false,
         message: 'Forbidden - Admin access required'
