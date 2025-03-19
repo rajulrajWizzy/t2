@@ -13,9 +13,10 @@
         "migrate:password-resets": "node scripts/migrate-password-resets.js",
         "migrate:seating-types": "node scripts/migrate-seating-types.js",
         "migrate:short-codes": "node scripts/migrate-short-codes.js",
+        "migrate:profile-picture": "node scripts/add-profile-picture.js",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js",
+        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js && node scripts/add-profile-picture.js",
         "update:branches": "node scripts/update-branches.js",
         "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js"
     },
