@@ -11,8 +11,13 @@ export async function GET(
   try {
     const { id } = params;
     
-    // Find the branch with its seats
+    // Find the branch with its seats, using explicit attributes to avoid alias issues
     const branch = await models.Branch.findByPk(parseInt(id), {
+      attributes: [
+        'id', 'name', 'address', 'location', 'latitude', 'longitude',
+        'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
+        'images', 'amenities', 'short_code', 'created_at', 'updated_at'
+      ],
       include: [
         { 
           model: models.Seat,
@@ -69,8 +74,14 @@ export async function PUT(
       amenities
     } = body;
     
-    // Find the branch
-    const branch = await models.Branch.findByPk(parseInt(id));
+    // Find the branch with explicit attributes
+    const branch = await models.Branch.findByPk(parseInt(id), {
+      attributes: [
+        'id', 'name', 'address', 'location', 'latitude', 'longitude',
+        'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
+        'images', 'amenities', 'short_code', 'created_at', 'updated_at'
+      ]
+    });
     
     if (!branch) {
       return NextResponse.json(
@@ -117,8 +128,14 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    // Find the branch
-    const branch = await models.Branch.findByPk(parseInt(id));
+    // Find the branch with explicit attributes
+    const branch = await models.Branch.findByPk(parseInt(id), {
+      attributes: [
+        'id', 'name', 'address', 'location', 'latitude', 'longitude',
+        'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
+        'images', 'amenities', 'short_code', 'created_at', 'updated_at'
+      ]
+    });
     
     if (!branch) {
       return NextResponse.json(
