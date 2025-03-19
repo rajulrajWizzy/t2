@@ -16,9 +16,10 @@
         "migrate:profile-picture": "node scripts/add-profile-picture.js",
         "migrate:branch-short-code": "node scripts/add-branch-short-code.js",
         "migrate:branch-images": "node scripts/add-branch-images.js",
+        "migrate:branch-amenities": "node scripts/add-branch-amenities.js",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js && node scripts/add-profile-picture.js && node scripts/add-branch-short-code.js && node scripts/add-branch-images.js",
+        "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js && node scripts/add-profile-picture.js && node scripts/add-branch-short-code.js && node scripts/add-branch-images.js && node scripts/add-branch-amenities.js",
         "update:branches": "node scripts/update-branches.js",
         "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js"
     },

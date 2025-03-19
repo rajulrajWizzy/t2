@@ -11,8 +11,13 @@ export async function GET(
   try {
     const { id } = params;
     
+    // Define safe attributes to fetch that are known to exist
+    const safeAttributes = ['id', 'name', 'address', 'location', 'latitude', 'longitude', 
+      'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 'created_at', 'updated_at'];
+    
     // Find the branch with its seats
     const branch = await models.Branch.findByPk(parseInt(id), {
+      attributes: safeAttributes,
       include: [
         { 
           model: models.Seat,
@@ -34,15 +39,83 @@ export async function GET(
       );
     }
     
+    // Now try to fetch optional attributes that might not exist in the schema
+    try {
+      // Try to fetch images and amenities columns if they exist
+      const extendedAttributes = await models.Branch.findByPk(parseInt(id), {
+        attributes: ['images', 'amenities', 'short_code'],
+        raw: true
+      });
+      
+      if (extendedAttributes) {
+        // Add each extended attribute if it exists
+        if (extendedAttributes.images !== undefined) {
+          branch.dataValues.images = extendedAttributes.images;
+        }
+        
+        if (extendedAttributes.amenities !== undefined) {
+          branch.dataValues.amenities = extendedAttributes.amenities;
+        }
+        
+        if (extendedAttributes.short_code !== undefined) {
+          branch.dataValues.short_code = extendedAttributes.short_code;
+        }
+      }
+    } catch (err) {
+      // If the columns don't exist, just continue without them
+      const error = err as Error;
+      console.warn('Some extended attributes might not exist in the schema:', error.message);
+    }
+    
     return NextResponse.json({
       success: true,
       data: branch
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error fetching branch:', error);
     
+    // If there's a schema error, try a simpler approach
+    if (error.message && (
+        error.message.includes('column p.amenities does not exist') ||
+        error.message.includes('column p.images does not exist') ||
+        error.message.includes('does not exist')
+    )) {
+      try {
+        // Get the id from params again
+        const branchId = parseInt(params.id);
+        
+        // Fallback to simpler query with minimal attributes
+        const simpleBranch = await models.Branch.findByPk(branchId, {
+          attributes: ['id', 'name', 'address', 'location', 'is_active'],
+          include: [
+            { 
+              model: models.Seat,
+              as: 'Seats',
+              attributes: ['id', 'seat_number']
+            }
+          ]
+        });
+        
+        if (!simpleBranch) {
+          return NextResponse.json(
+            { success: false, message: 'Branch not found' },
+            { status: 404 }
+          );
+        }
+        
+        return NextResponse.json({
+          success: true,
+          data: simpleBranch
+        });
+      } catch (fallbackErr) {
+        const fallbackError = fallbackErr as Error;
+        console.error('Fallback query also failed:', fallbackError);
+      }
+    }
+    
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch branch', error: (error as Error).message },
+      { success: false, message: 'Failed to fetch branch', error: error.message },
       { status: 500 }
     );
   }
@@ -90,8 +163,29 @@ export async function PUT(
     if (cost_multiplier !== undefined) updateData.cost_multiplier = cost_multiplier;
     if (opening_time) updateData.opening_time = opening_time;
     if (closing_time) updateData.closing_time = closing_time;
-    if (images !== undefined) updateData.images = images;
-    if (amenities !== undefined) updateData.amenities = amenities;
+    
+    // Only include optional columns if they're both provided and the column exists
+    try {
+      // Check if images column exists before setting it
+      if (images !== undefined) {
+        await models.Branch.findOne({ attributes: ['images'], limit: 1 });
+        updateData.images = images;
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.warn('Could not set images, column might not exist in database:', error.message);
+    }
+    
+    try {
+      // Check if amenities column exists before setting it
+      if (amenities !== undefined) {
+        await models.Branch.findOne({ attributes: ['amenities'], limit: 1 });
+        updateData.amenities = amenities;
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.warn('Could not set amenities, column might not exist in database:', error.message);
+    }
     
     await branch.update(updateData);
     
@@ -100,10 +194,11 @@ export async function PUT(
       message: 'Branch updated successfully',
       data: branch
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error updating branch:', error);
     return NextResponse.json(
-      { success: false, message: 'Failed to update branch', error: (error as Error).message },
+      { success: false, message: 'Failed to update branch', error: error.message },
       { status: 500 }
     );
   }
@@ -144,10 +239,11 @@ export async function DELETE(
       success: true,
       message: 'Branch deleted successfully'
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error deleting branch:', error);
     return NextResponse.json(
-      { success: false, message: 'Failed to delete branch', error: (error as Error).message },
+      { success: false, message: 'Failed to delete branch', error: error.message },
       { status: 500 }
     );
   }
