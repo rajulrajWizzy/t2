@@ -42,6 +42,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const seating_type_id = url.searchParams.get('seating_type_id');
     const seating_type_code = url.searchParams.get('seating_type_code');
     const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const availability = url.searchParams.get('availability'); // 'available', 'booked', 'maintenance', or 'all'
     
     // Validate required filters - need either branch_id or branch_code
     if (!branch_id && !branch_code) {
@@ -98,6 +99,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
+    // Prepare seat availability conditions
+    let seatAvailabilityWhere = {};
+    if (availability === 'available') {
+      seatAvailabilityWhere = { availability_status: 'AVAILABLE' };
+    } else if (availability === 'maintenance') {
+      seatAvailabilityWhere = { availability_status: 'MAINTENANCE' };
+    }
+    
     // Find all time slots for this branch, date, and seating type
     const timeSlots = await models.TimeSlot.findAll({
       where: {
@@ -115,7 +124,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           model: models.Seat,
           as: 'Seat',
           required: true,
-          where: { seating_type_id: seatingType.id },
+          where: { 
+            seating_type_id: seatingType.id,
+            ...seatAvailabilityWhere
+          },
           attributes: ['id', 'seat_number', 'price', 'availability_status'],
           include: [
             {
@@ -128,7 +140,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.SeatBooking,
           as: 'Booking',
-          required: false,
+          required: availability === 'booked', // Only require bookings if filtering for booked slots
           attributes: ['id', 'customer_id', 'status', 'total_price', 'start_time', 'end_time'],
           include: [
             {
@@ -156,6 +168,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
+    // Calculate which slots to include in response based on availability filter
+    let slotsToReturn = {
+      available: {
+        count: availableSlots.length,
+        slots: availableSlots
+      },
+      booked: {
+        count: bookedSlots.length,
+        slots: bookedSlots
+      },
+      maintenance: {
+        count: maintenanceSlots.length,
+        slots: maintenanceSlots
+      }
+    };
+    
+    // Filter response based on availability parameter if present
+    if (availability === 'available') {
+      slotsToReturn.booked.slots = [];
+      slotsToReturn.maintenance.slots = [];
+    } else if (availability === 'booked') {
+      slotsToReturn.available.slots = [];
+      slotsToReturn.maintenance.slots = [];
+    } else if (availability === 'maintenance') {
+      slotsToReturn.available.slots = [];
+      slotsToReturn.booked.slots = [];
+    }
+    
     const responseData: SlotResponse = {
       date,
       branch: {
@@ -171,18 +211,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         short_code: seatingType.short_code
       },
       total_slots: timeSlots.length,
-      available: {
-        count: availableSlots.length,
-        slots: availableSlots
-      },
-      booked: {
-        count: bookedSlots.length,
-        slots: bookedSlots
-      },
-      maintenance: {
-        count: maintenanceSlots.length,
-        slots: maintenanceSlots
-      }
+      ...slotsToReturn
     };
     
     const response: ApiResponse = {

@@ -14,6 +14,7 @@ interface SlotCategory {
 interface SlotsBranchResponse {
   date: string;
   branch_id: number;
+  branch_code?: string;
   total_slots: number;
   available: SlotCategory;
   booked: SlotCategory;
@@ -30,24 +31,46 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Extract query parameters
     const url = new URL(request.url);
     const branch_id = url.searchParams.get('branch_id');
+    const branch_code = url.searchParams.get('branch_code');
     const seat_id = url.searchParams.get('seat_id');
     const seating_type_id = url.searchParams.get('seating_type_id');
     const seating_type_code = url.searchParams.get('seating_type_code');
     const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const availability = url.searchParams.get('availability'); // 'available', 'booked', 'maintenance', or 'all'
     
-    // Validate required filters
-    if (!branch_id) {
+    // Validate required filters - need either branch_id or branch_code
+    if (!branch_id && !branch_code) {
       const response: ApiResponse = {
         success: false,
-        message: 'Branch ID is required'
+        message: 'Branch ID or branch code is required'
       };
       
       return NextResponse.json(response, { status: 400 });
     }
     
+    // Find branch if branch_code is provided
+    let branchIdToUse = branch_id;
+    let branchRecord = null;
+    
+    if (branch_code) {
+      branchRecord = await models.Branch.findOne({
+        where: { short_code: branch_code },
+        attributes: ['id', 'name', 'short_code']
+      });
+      
+      if (!branchRecord) {
+        return NextResponse.json({
+          success: false,
+          message: `Branch with code ${branch_code} not found`
+        }, { status: 404 });
+      }
+      
+      branchIdToUse = branchRecord.id.toString();
+    }
+    
     // Prepare filter conditions
     const whereConditions: any = {
-      branch_id: parseInt(branch_id),
+      branch_id: parseInt(branchIdToUse as string),
       date
     };
     
@@ -56,12 +79,37 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       whereConditions.seat_id = parseInt(seat_id);
     }
     
+    // Find seating type ID from code if code is provided
+    let seatingTypeIdToUse = seating_type_id;
+    let seatingTypeRecord = null;
+    
+    if (seating_type_code && !seating_type_id) {
+      seatingTypeRecord = await models.SeatingType.findOne({
+        where: { short_code: seating_type_code }
+      });
+      
+      if (seatingTypeRecord) {
+        seatingTypeIdToUse = seatingTypeRecord.id.toString();
+      } else {
+        return NextResponse.json({
+          success: false,
+          message: `Seating type with code ${seating_type_code} not found`
+        }, { status: 404 });
+      }
+    }
+    
     // Prepare include for seating type filtering
     let seatingTypeWhere = {};
-    if (seating_type_id) {
-      seatingTypeWhere = { id: parseInt(seating_type_id) };
-    } else if (seating_type_code) {
-      seatingTypeWhere = { short_code: seating_type_code };
+    if (seatingTypeIdToUse) {
+      seatingTypeWhere = { id: parseInt(seatingTypeIdToUse as string) };
+    }
+    
+    // Prepare seat availability conditions
+    let seatAvailabilityWhere = {};
+    if (availability === 'available') {
+      seatAvailabilityWhere = { availability_status: 'AVAILABLE' };
+    } else if (availability === 'maintenance') {
+      seatAvailabilityWhere = { availability_status: 'MAINTENANCE' };
     }
     
     // Find all time slots matching the filters, including those that are not available
@@ -78,6 +126,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           model: models.Seat,
           as: 'Seat',
           attributes: ['id', 'seat_number', 'price', 'availability_status'],
+          where: seatAvailabilityWhere,
           include: [
             {
               model: models.SeatingType,
@@ -90,7 +139,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.SeatBooking,
           as: 'Booking',
-          required: false
+          required: availability === 'booked', // Only require bookings if filtering for booked slots
+          attributes: ['id', 'customer_id', 'status', 'total_price', 'start_time', 'end_time'],
+          include: [
+            {
+              model: models.Customer,
+              as: 'Customer',
+              attributes: ['id', 'name', 'email']
+            }
+          ]
         }
       ]
     }) as any[];
@@ -102,7 +159,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     for (const slot of timeSlots) {
       // Skip slots where the seat doesn't match our seating type filter
-      if ((seating_type_id || seating_type_code) && !slot.Seat?.SeatingType) {
+      if ((seatingTypeIdToUse) && !slot.Seat?.SeatingType) {
         continue;
       }
       
@@ -116,10 +173,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    const responseData: SlotsBranchResponse = {
-      date,
-      branch_id: parseInt(branch_id),
-      total_slots: timeSlots.length,
+    // Calculate which slots to include in response based on availability filter
+    let slotsToReturn = {
       available: {
         count: availableSlots.length,
         slots: availableSlots
@@ -132,6 +187,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         count: maintenanceSlots.length,
         slots: maintenanceSlots
       }
+    };
+    
+    // Filter response based on availability parameter if present
+    if (availability === 'available') {
+      slotsToReturn.booked.slots = [];
+      slotsToReturn.maintenance.slots = [];
+    } else if (availability === 'booked') {
+      slotsToReturn.available.slots = [];
+      slotsToReturn.maintenance.slots = [];
+    } else if (availability === 'maintenance') {
+      slotsToReturn.available.slots = [];
+      slotsToReturn.booked.slots = [];
+    }
+    
+    // Get branch short code if not already retrieved
+    let branchShortCode = branchRecord?.short_code;
+    if (!branchShortCode && branchIdToUse) {
+      const branch = await models.Branch.findByPk(parseInt(branchIdToUse as string));
+      branchShortCode = branch?.short_code;
+    }
+    
+    const responseData: SlotsBranchResponse = {
+      date,
+      branch_id: parseInt(branchIdToUse as string),
+      branch_code: branchShortCode || undefined,
+      total_slots: timeSlots.length,
+      ...slotsToReturn
     };
     
     const response: ApiResponse = {
@@ -182,20 +264,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Parse the request body
     const body = await request.json() as TimeSlotGenerationParams;
-    const { branch_id, date, regenerate } = body;
+    const { branch_id: bodyBranchId, branch_code, date, regenerate } = body;
     
-    // Validate input
-    if (!branch_id || !date) {
+    // Validate we have either branch_id or branch_code
+    if (!bodyBranchId && !branch_code) {
       const response: ApiResponse = {
         success: false,
-        message: 'Branch ID and date are required'
+        message: 'Branch ID or branch code is required'
       };
       
       return NextResponse.json(response, { status: 400 });
     }
     
-    // Check if branch exists
-    const branch = await models.Branch.findByPk(branch_id);
+    if (!date) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Date is required'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
+    }
+    
+    // Find branch based on branch_id or branch_code
+    let branch;
+    
+    if (bodyBranchId) {
+      branch = await models.Branch.findByPk(bodyBranchId);
+    } else if (branch_code) {
+      branch = await models.Branch.findOne({
+        where: { short_code: branch_code }
+      });
+    }
+    
     if (!branch) {
       const response: ApiResponse = {
         success: false,
@@ -204,6 +304,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       
       return NextResponse.json(response, { status: 404 });
     }
+    
+    const branch_id = branch.id;
     
     // If regenerate is true, delete existing slots for this branch and date
     if (regenerate) {

@@ -93,7 +93,8 @@ export enum BookingStatusEnum {
   }
   
   export interface TimeSlotGenerationParams {
-    branch_id: number;
+    branch_id?: number;
+    branch_code?: string;
     date: string;
     regenerate?: boolean;
   }

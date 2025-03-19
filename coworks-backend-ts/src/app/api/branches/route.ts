@@ -4,6 +4,7 @@ import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
+import { Op } from 'sequelize';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -31,6 +32,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const seatingTypeId = searchParams.get('seating_type_id');
+    const seatingTypeCode = searchParams.get('seating_type_code');
+    const branchShortCode = searchParams.get('branch_code');
     
     // Get pagination parameters with defaults
     const page = parseInt(searchParams.get('page') || '1');
@@ -48,14 +51,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     };
     
+    // Add branch filter if short code is provided
+    if (branchShortCode) {
+      query.where = {
+        short_code: branchShortCode
+      };
+    }
+    
+    // Find seating type ID from code if code is provided
+    let seatingTypeIdToUse = seatingTypeId;
+    if (seatingTypeCode && !seatingTypeId) {
+      const seatingType = await models.SeatingType.findOne({
+        where: { short_code: seatingTypeCode }
+      });
+      
+      if (seatingType) {
+        seatingTypeIdToUse = seatingType.id.toString();
+      }
+    }
+    
     // Add relationship includes
-    if (seatingTypeId) {
+    if (seatingTypeIdToUse) {
       // If seating_type_id is provided, get only branches that have seats of that type
       query.include = [
         {
           model: models.Seat,
           as: 'Seats',
-          where: { seating_type_id: seatingTypeId },
+          where: { seating_type_id: seatingTypeIdToUse },
           required: true,
           include: [
             {
@@ -81,19 +103,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ];
     }
     
+    // Prepare count query conditions
+    const countConditions: any = {};
+    
+    if (branchShortCode) {
+      countConditions.where = { short_code: branchShortCode };
+    }
+    
+    if (seatingTypeIdToUse) {
+      countConditions.include = [
+        {
+          model: models.Seat,
+          as: 'Seats',
+          where: { seating_type_id: seatingTypeIdToUse },
+          required: true
+        }
+      ];
+    }
+    
     // Get total count for pagination
-    const count = await models.Branch.count({
-      ...(seatingTypeId ? {
-        include: [
-          {
-            model: models.Seat,
-            as: 'Seats',
-            where: { seating_type_id: seatingTypeId },
-            required: true
-          }
-        ]
-      } : {})
-    });
+    const countResult = await models.Branch.count(countConditions);
+    // Handle potential type issues by ensuring count is a number
+    const count = typeof countResult === 'number' ? countResult : parseInt(countResult.toString());
     
     // Execute query with pagination
     const branches = await models.Branch.findAll(query);
