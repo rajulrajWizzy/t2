@@ -3,7 +3,7 @@ import models from '../../../../models';
 import { verifyToken } from '../../../../config/jwt';
 import { BookingStatusEnum } from '../../../../types/booking';
 import { AvailabilityStatusEnum } from '../../../../types/seating';
-import { BRANCH_SAFE_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES } from '@/utils/modelAttributes';
+import { BRANCH_SAFE_ATTRIBUTES, BRANCH_MINIMAL_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // GET a single booking by ID
 export async function GET(
@@ -45,7 +45,7 @@ export async function GET(
             {
               model: models.Branch,
               as: 'Branch',
-              attributes: BRANCH_SAFE_ATTRIBUTES
+              attributes: BRANCH_MINIMAL_ATTRIBUTES
             },
             {
               model: models.SeatingType,
@@ -77,7 +77,7 @@ export async function GET(
               {
                 model: models.Branch,
                 as: 'Branch',
-                attributes: BRANCH_SAFE_ATTRIBUTES
+                attributes: BRANCH_MINIMAL_ATTRIBUTES
               },
               {
                 model: models.SeatingType,

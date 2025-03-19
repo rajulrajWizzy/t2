@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
 import { Op } from 'sequelize';
+import { BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // Define interfaces for the response structure
 interface SlotCategory {
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.Branch,
           as: 'Branch',
-          attributes: ['id', 'name', 'address', 'location', 'short_code']
+          attributes: BRANCH_MINIMAL_ATTRIBUTES
         },
         {
           model: models.Seat,

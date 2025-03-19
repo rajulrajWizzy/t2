@@ -11,7 +11,7 @@ import {
   formatApiEndpoint
 } from '@/utils/shortCodes';
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
-import { BRANCH_SAFE_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES } from '@/utils/modelAttributes';
+import { BRANCH_SAFE_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES, BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // POST create a new booking
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -497,7 +497,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               model: models.Branch, 
               as: 'Branch',
               where: branchCode ? { short_code: branchCode } : undefined,
-              attributes: BRANCH_SAFE_ATTRIBUTES
+              attributes: BRANCH_MINIMAL_ATTRIBUTES
             },
             { 
               model: models.SeatingType, 
@@ -528,7 +528,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               model: models.Branch, 
               as: 'Branch',
               where: branchCode ? { short_code: branchCode } : undefined,
-              attributes: BRANCH_SAFE_ATTRIBUTES
+              attributes: BRANCH_MINIMAL_ATTRIBUTES
             },
             { 
               model: models.SeatingType, 

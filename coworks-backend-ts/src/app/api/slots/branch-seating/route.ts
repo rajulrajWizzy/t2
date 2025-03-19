@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
+import { BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // Add export config to mark this route as dynamic
 export const dynamic = 'force-dynamic';
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     const branch = await models.Branch.findOne({
       where: branchWhere,
-      attributes: ['id', 'name', 'short_code', 'location', 'address']
+      attributes: BRANCH_MINIMAL_ATTRIBUTES
     });
     
     if (!branch) {

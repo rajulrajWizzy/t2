@@ -7,13 +7,18 @@
 export const BRANCH_SAFE_ATTRIBUTES = [
   'id', 'name', 'address', 'location', 'latitude', 'longitude',
   'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
-  'short_code', 'created_at', 'updated_at'
+  'created_at', 'updated_at'
 ];
 
-// Include JSONB fields when needed directly (not in nested queries)
+// Include JSONB fields and short_code when needed directly (not in nested queries)
 export const BRANCH_FULL_ATTRIBUTES = [
   ...BRANCH_SAFE_ATTRIBUTES,
-  'images', 'amenities'
+  'images', 'amenities', 'short_code'
+];
+
+// Safe attributes for Branch model in nested queries with potential alias issues
+export const BRANCH_MINIMAL_ATTRIBUTES = [
+  'id', 'name', 'address', 'location'
 ];
 
 // Safe attributes for Seat model

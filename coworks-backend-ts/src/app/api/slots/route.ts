@@ -6,6 +6,7 @@ import { Op } from 'sequelize';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { TimeSlotGenerationParams } from '@/types/booking';
+import { BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // Define interfaces for our response structure
 interface SlotCategory {
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (branch_code) {
       branchRecord = await models.Branch.findOne({
         where: { short_code: branch_code },
-        attributes: ['id', 'name', 'short_code']
+        attributes: ['id', 'name']
       });
       
       if (!branchRecord) {
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.Branch,
           as: 'Branch',
-          attributes: ['id', 'name', 'address', 'location', 'short_code']
+          attributes: BRANCH_MINIMAL_ATTRIBUTES
         },
         {
           model: models.Seat,

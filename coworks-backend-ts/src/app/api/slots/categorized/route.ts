@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { SeatingTypeEnum } from '@/types/seating';
+import { BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // Add export config to mark this route as dynamic
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get all branches or the specific branch
     const branches = await models.Branch.findAll({
       where: branchConditions,
-      attributes: ['id', 'name', 'short_code', 'location', 'address']
+      attributes: BRANCH_MINIMAL_ATTRIBUTES
     });
     
     if (!branches || branches.length === 0) {
