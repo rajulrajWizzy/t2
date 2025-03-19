@@ -18,7 +18,8 @@
         "seed:seating-types": "node scripts/seed-seating-types.js",
         "postinstall": "node scripts/migrate.js && node scripts/smart-seed.js && node scripts/migrate-blacklisted-tokens.js && node scripts/migrate-password-resets.js && node scripts/migrate-seating-types.js && node scripts/migrate-short-codes.js && node scripts/add-profile-picture.js",
         "update:branches": "node scripts/update-branches.js",
-        "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js"
+        "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js",
+        "fix:dynamic-routes": "node scripts/ensure-dynamic-routes.js"
     },
     "dependencies": {
         "@types/bcryptjs": "^2.4.6",

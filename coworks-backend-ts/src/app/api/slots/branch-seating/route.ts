@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
 
+// Add export config to mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 // Define interfaces for our response structure
 interface SlotCategory {
   count: number;

@@ -5,6 +5,9 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { SeatingTypeEnum } from '@/types/seating';
 
+// Add export config to mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 // Define interfaces for the response structure
 interface SlotCategory {
   count: number;
