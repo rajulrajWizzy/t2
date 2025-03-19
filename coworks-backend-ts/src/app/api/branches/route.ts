@@ -44,11 +44,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const query: any = {
       offset,
       limit,
-      attributes: {
-        include: ['id', 'name', 'address', 'location', 'latitude', 'longitude', 
-                 'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 
-                 'images', 'amenities', 'short_code', 'created_at', 'updated_at']
-      }
+      // Explicitly list all attributes to avoid issues with aliased columns
+      attributes: [
+        'id', 
+        'name', 
+        'address', 
+        'location', 
+        'latitude', 
+        'longitude', 
+        'cost_multiplier', 
+        'opening_time', 
+        'closing_time', 
+        'is_active', 
+        'images', 
+        'amenities', 
+        'short_code', 
+        'created_at', 
+        'updated_at'
+      ]
     };
     
     // Add branch filter if short code is provided
