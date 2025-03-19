@@ -40,37 +40,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const limit = parseInt(searchParams.get('limit') || '50'); // Default limit of 50, can be increased
     const offset = (page - 1) * limit;
     
-    // Prepare base query
-    const query: any = {
-      offset,
-      limit,
-      // Explicitly list all attributes to avoid issues with aliased columns
-      attributes: [
-        'id', 
-        'name', 
-        'address', 
-        'location', 
-        'latitude', 
-        'longitude', 
-        'cost_multiplier', 
-        'opening_time', 
-        'closing_time', 
-        'is_active', 
-        'images', 
-        'amenities', 
-        'short_code', 
-        'created_at', 
-        'updated_at'
-      ]
-    };
-    
-    // Add branch filter if short code is provided
-    if (branchShortCode) {
-      query.where = {
-        short_code: branchShortCode
-      };
-    }
-    
     // Find seating type ID from code if code is provided
     let seatingTypeIdToUse = seatingTypeId;
     if (seatingTypeCode && !seatingTypeId) {
@@ -83,89 +52,162 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    // Add relationship includes
-    if (seatingTypeIdToUse) {
-      // If seating_type_id is provided, get only branches that have seats of that type
-      query.include = [
-        {
-          model: models.Seat,
-          as: 'Seats',
-          where: { seating_type_id: seatingTypeIdToUse },
-          required: true,
-          include: [
-            {
-              model: models.SeatingType,
-              as: 'SeatingType'
-            }
-          ]
-        }
-      ];
-    } else {
-      // If no seating_type_id, get all branches
-      query.include = [
-        {
-          model: models.Seat,
-          as: 'Seats',
-          include: [
-            {
-              model: models.SeatingType,
-              as: 'SeatingType'
-            }
-          ]
-        }
-      ];
-    }
+    // Prepare query options
+    let whereCondition = {};
     
-    // Prepare count query conditions
-    const countConditions: any = {};
-    
+    // Add branch filter if short code is provided
     if (branchShortCode) {
-      countConditions.where = { short_code: branchShortCode };
+      whereCondition = {
+        short_code: branchShortCode
+      };
     }
     
+    // Different approach for filtered vs unfiltered query
     if (seatingTypeIdToUse) {
-      countConditions.include = [
-        {
-          model: models.Seat,
-          as: 'Seats',
-          where: { seating_type_id: seatingTypeIdToUse },
-          required: true
-        }
-      ];
-    }
-    
-    // Get total count for pagination
-    const countResult = await models.Branch.count(countConditions);
-    // Handle potential type issues by ensuring count is a number
-    const count = typeof countResult === 'number' ? countResult : parseInt(countResult.toString());
-    
-    // Execute query with pagination
-    const branches = await models.Branch.findAll(query);
-    
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(count / limit);
-    const hasMore = page < totalPages;
-    const hasNext = page < totalPages;
-    const hasPrev = page > 1;
-    
-    // Return paginated response
-    const response: ApiResponse = {
-      success: true,
-      data: branches,
-      meta: {
-        pagination: {
-          total: count,
-          page,
-          limit,
-          pages: totalPages,
-          hasMore,
-          hasNext,
-          hasPrev
-        }
+      // When filtering by seating type, first find branch IDs that have the seating type
+      const seatsWithType = await models.Seat.findAll({
+        attributes: ['branch_id'],
+        where: { seating_type_id: seatingTypeIdToUse },
+        group: ['branch_id']
+      });
+      
+      const branchIds = seatsWithType.map(seat => seat.branch_id);
+      
+      if (branchIds.length === 0) {
+        // No branches have this seating type
+        return NextResponse.json({
+          success: true,
+          data: [],
+          meta: {
+            pagination: {
+              total: 0,
+              page,
+              limit,
+              pages: 0,
+              hasMore: false,
+              hasNext: false,
+              hasPrev: page > 1
+            }
+          }
+        });
       }
-    };
-    
-    return NextResponse.json(response);
+      
+      // Add branch IDs to the where condition
+      whereCondition = {
+        ...whereCondition,
+        id: {
+          [Op.in]: branchIds
+        }
+      };
+      
+      // Get total count for pagination
+      const count = await models.Branch.count({
+        where: whereCondition
+      });
+      
+      // Fetch branches with the seating type
+      const branches = await models.Branch.findAll({
+        where: whereCondition,
+        attributes: [
+          'id', 'name', 'address', 'location', 'latitude', 'longitude',
+          'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
+          'images', 'amenities', 'short_code', 'created_at', 'updated_at'
+        ],
+        include: [
+          {
+            model: models.Seat,
+            as: 'Seats',
+            where: { seating_type_id: seatingTypeIdToUse },
+            include: [
+              {
+                model: models.SeatingType,
+                as: 'SeatingType'
+              }
+            ]
+          }
+        ],
+        offset,
+        limit
+      });
+      
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(count / limit);
+      const hasMore = page < totalPages;
+      const hasNext = page < totalPages;
+      const hasPrev = page > 1;
+      
+      // Return paginated response
+      const response: ApiResponse = {
+        success: true,
+        data: branches,
+        meta: {
+          pagination: {
+            total: count,
+            page,
+            limit,
+            pages: totalPages,
+            hasMore,
+            hasNext,
+            hasPrev
+          }
+        }
+      };
+      
+      return NextResponse.json(response);
+    } else {
+      // No seating type filter, so simple query
+      const count = await models.Branch.count({
+        where: whereCondition
+      });
+      
+      const branches = await models.Branch.findAll({
+        where: whereCondition,
+        attributes: [
+          'id', 'name', 'address', 'location', 'latitude', 'longitude',
+          'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
+          'images', 'amenities', 'short_code', 'created_at', 'updated_at'
+        ],
+        include: [
+          {
+            model: models.Seat,
+            as: 'Seats',
+            include: [
+              {
+                model: models.SeatingType,
+                as: 'SeatingType'
+              }
+            ]
+          }
+        ],
+        offset,
+        limit
+      });
+      
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(count / limit);
+      const hasMore = page < totalPages;
+      const hasNext = page < totalPages;
+      const hasPrev = page > 1;
+      
+      // Return paginated response
+      const response: ApiResponse = {
+        success: true,
+        data: branches,
+        meta: {
+          pagination: {
+            total: count,
+            page,
+            limit,
+            pages: totalPages,
+            hasMore,
+            hasNext,
+            hasPrev
+          }
+        }
+      };
+      
+      return NextResponse.json(response);
+    }
   } catch (error) {
     console.error('Error fetching branches:', error);
     
