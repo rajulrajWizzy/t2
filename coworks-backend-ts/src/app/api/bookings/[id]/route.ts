@@ -3,6 +3,7 @@ import models from '../../../../models';
 import { verifyToken } from '../../../../config/jwt';
 import { BookingStatusEnum } from '../../../../types/booking';
 import { AvailabilityStatusEnum } from '../../../../types/seating';
+import { BRANCH_SAFE_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // GET a single booking by ID
 export async function GET(
@@ -39,23 +40,24 @@ export async function GET(
         {
           model: models.Seat,
           as: 'Seat',
+          attributes: SEAT_ATTRIBUTES,
           include: [
             {
               model: models.Branch,
               as: 'Branch',
-              attributes: ['name', 'address', 'location']
+              attributes: BRANCH_SAFE_ATTRIBUTES
             },
             {
               model: models.SeatingType,
               as: 'SeatingType',
-              attributes: ['name', 'description']
+              attributes: SEATING_TYPE_ATTRIBUTES
             }
           ]
         },
         {
           model: models.Customer,
           as: 'Customer',
-          attributes: ['name', 'email', 'phone']
+          attributes: CUSTOMER_ATTRIBUTES
         }
       ]
     });
@@ -70,23 +72,24 @@ export async function GET(
           {
             model: models.Seat,
             as: 'MeetingRoom',
+            attributes: SEAT_ATTRIBUTES,
             include: [
               {
                 model: models.Branch,
                 as: 'Branch',
-                attributes: ['name', 'address', 'location']
+                attributes: BRANCH_SAFE_ATTRIBUTES
               },
               {
                 model: models.SeatingType,
                 as: 'SeatingType',
-                attributes: ['name', 'description']
+                attributes: SEATING_TYPE_ATTRIBUTES
               }
             ]
           },
           {
             model: models.Customer,
             as: 'Customer',
-            attributes: ['name', 'email', 'phone']
+            attributes: CUSTOMER_ATTRIBUTES
           }
         ]
       });

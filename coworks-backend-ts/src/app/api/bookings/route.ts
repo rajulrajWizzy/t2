@@ -11,6 +11,7 @@ import {
   formatApiEndpoint
 } from '@/utils/shortCodes';
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
+import { BRANCH_SAFE_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // POST create a new booking
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -490,32 +491,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         { 
           model: models.Seat, 
           as: 'Seat',
+          attributes: SEAT_ATTRIBUTES,
           include: [
             { 
               model: models.Branch, 
               as: 'Branch',
               where: branchCode ? { short_code: branchCode } : undefined,
-              attributes: [
-                'id', 'name', 'address', 'location', 'latitude', 'longitude',
-                'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
-                'images', 'amenities', 'short_code'
-              ]
+              attributes: BRANCH_SAFE_ATTRIBUTES
             },
             { 
               model: models.SeatingType, 
               as: 'SeatingType',
               where: seatingTypeWhere,
-              attributes: [
-                'id', 'name', 'description', 'hourly_rate', 'is_hourly',
-                'min_booking_duration', 'min_seats', 'short_code'
-              ]
+              attributes: SEATING_TYPE_ATTRIBUTES
             }
           ]
         },
         { 
           model: models.Customer, 
           as: 'Customer',
-          attributes: ['id', 'name', 'email', 'phone', 'company_name']
+          attributes: CUSTOMER_ATTRIBUTES
         }
       ]
     }) as any[];
@@ -527,32 +522,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         { 
           model: models.Seat, 
           as: 'MeetingRoom',
+          attributes: SEAT_ATTRIBUTES,
           include: [
             { 
               model: models.Branch, 
               as: 'Branch',
               where: branchCode ? { short_code: branchCode } : undefined,
-              attributes: [
-                'id', 'name', 'address', 'location', 'latitude', 'longitude',
-                'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
-                'images', 'amenities', 'short_code'
-              ]
+              attributes: BRANCH_SAFE_ATTRIBUTES
             },
             { 
               model: models.SeatingType, 
               as: 'SeatingType',
               where: seatingTypeWhere,
-              attributes: [
-                'id', 'name', 'description', 'hourly_rate', 'is_hourly',
-                'min_booking_duration', 'min_seats', 'short_code'
-              ]
+              attributes: SEATING_TYPE_ATTRIBUTES
             }
           ]
         },
         { 
           model: models.Customer, 
           as: 'Customer',
-          attributes: ['id', 'name', 'email', 'phone', 'company_name']
+          attributes: CUSTOMER_ATTRIBUTES
         }
       ]
     }) as any[];

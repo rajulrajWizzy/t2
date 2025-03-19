@@ -5,6 +5,7 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 import { Op } from 'sequelize';
+import { BRANCH_FULL_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -108,20 +109,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Fetch branches with the seating type
       const branches = await models.Branch.findAll({
         where: whereCondition,
-        attributes: [
-          'id', 'name', 'address', 'location', 'latitude', 'longitude',
-          'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
-          'images', 'amenities', 'short_code', 'created_at', 'updated_at'
-        ],
+        attributes: BRANCH_FULL_ATTRIBUTES,
         include: [
           {
             model: models.Seat,
             as: 'Seats',
+            attributes: SEAT_ATTRIBUTES,
             where: { seating_type_id: seatingTypeIdToUse },
             include: [
               {
                 model: models.SeatingType,
-                as: 'SeatingType'
+                as: 'SeatingType',
+                attributes: SEATING_TYPE_ATTRIBUTES
               }
             ]
           }
@@ -162,19 +161,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       
       const branches = await models.Branch.findAll({
         where: whereCondition,
-        attributes: [
-          'id', 'name', 'address', 'location', 'latitude', 'longitude',
-          'cost_multiplier', 'opening_time', 'closing_time', 'is_active',
-          'images', 'amenities', 'short_code', 'created_at', 'updated_at'
-        ],
+        attributes: BRANCH_FULL_ATTRIBUTES,
         include: [
           {
             model: models.Seat,
             as: 'Seats',
+            attributes: SEAT_ATTRIBUTES,
             include: [
               {
                 model: models.SeatingType,
-                as: 'SeatingType'
+                as: 'SeatingType',
+                attributes: SEATING_TYPE_ATTRIBUTES
               }
             ]
           }
