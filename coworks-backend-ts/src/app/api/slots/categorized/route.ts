@@ -3,6 +3,37 @@ import models from '@/models';
 import { Op } from 'sequelize';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
+import { SeatingTypeEnum } from '@/types/seating';
+
+// Define interfaces for the response structure
+interface SlotCategory {
+  count: number;
+  slots: any[];
+}
+
+interface SeatingTypeData {
+  id: number;
+  name: string | SeatingTypeEnum;
+  short_code: string | undefined;
+  total_slots: number;
+  available: SlotCategory;
+  booked: SlotCategory;
+  maintenance: SlotCategory;
+}
+
+interface BranchData {
+  id: number;
+  name: string;
+  short_code: string | undefined;
+  location: string;
+  address: string;
+  seating_types: SeatingTypeData[];
+}
+
+interface CategorizedResult {
+  date: string;
+  branches: BranchData[];
+}
 
 // GET slots categorized by seating type
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -57,14 +88,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // Create result structure
-    const result = {
+    const result: CategorizedResult = {
       date,
       branches: []
     };
     
     // For each branch
     for (const branch of branches) {
-      const branchData = {
+      const branchData: BranchData = {
         id: branch.id,
         name: branch.name,
         short_code: branch.short_code,

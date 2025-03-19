@@ -5,6 +5,25 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { TimeSlotGenerationParams } from '@/types/booking';
 
+// Define interfaces for our response structure
+interface SlotCategory {
+  count: number;
+  slots: any[];
+}
+
+interface SlotsBranchResponse {
+  date: string;
+  branch_id: number;
+  total_slots: number;
+  available: SlotCategory;
+  booked: SlotCategory;
+  maintenance: SlotCategory;
+}
+
+interface SlotGenerationResponse {
+  count: number;
+}
+
 // GET slots based on filters
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -97,25 +116,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
+    const responseData: SlotsBranchResponse = {
+      date,
+      branch_id: parseInt(branch_id),
+      total_slots: timeSlots.length,
+      available: {
+        count: availableSlots.length,
+        slots: availableSlots
+      },
+      booked: {
+        count: bookedSlots.length,
+        slots: bookedSlots
+      },
+      maintenance: {
+        count: maintenanceSlots.length,
+        slots: maintenanceSlots
+      }
+    };
+    
     const response: ApiResponse = {
       success: true,
-      data: {
-        date,
-        branch_id: parseInt(branch_id),
-        total_slots: timeSlots.length,
-        available: {
-          count: availableSlots.length,
-          slots: availableSlots
-        },
-        booked: {
-          count: bookedSlots.length,
-          slots: bookedSlots
-        },
-        maintenance: {
-          count: maintenanceSlots.length,
-          slots: maintenanceSlots
-        }
-      }
+      data: responseData
     };
     
     return NextResponse.json(response);
@@ -205,10 +226,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     if (existingSlots > 0 && !regenerate) {
+      const generationResponse: SlotGenerationResponse = { count: existingSlots };
+      
       const response: ApiResponse = {
         success: false,
         message: 'Time slots already exist for this branch and date. Set regenerate to true to recreate.',
-        data: { count: existingSlots }
+        data: generationResponse
       };
       
       return NextResponse.json(response);
@@ -262,10 +285,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Bulk create slots
     const createdSlots = await models.TimeSlot.bulkCreate(newSlots);
     
+    const generationResponse: SlotGenerationResponse = { count: createdSlots.length };
+    
     const response: ApiResponse = {
       success: true,
       message: 'Time slots created successfully',
-      data: { count: createdSlots.length }
+      data: generationResponse
     };
     
     return NextResponse.json(response);

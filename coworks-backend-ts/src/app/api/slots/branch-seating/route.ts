@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
 
+// Define interfaces for our response structure
+interface SlotCategory {
+  count: number;
+  slots: any[];
+}
+
+interface BranchInfo {
+  id: number;
+  name: string;
+  short_code: string | undefined;
+  location: string;
+  address: string;
+}
+
+interface SeatingTypeInfo {
+  id: number;
+  name: string;
+  short_code: string | undefined;
+}
+
+interface SlotResponse {
+  date: string;
+  branch: BranchInfo;
+  seating_type: SeatingTypeInfo;
+  total_slots: number;
+  available: SlotCategory;
+  booked: SlotCategory;
+  maintenance: SlotCategory;
+}
+
 // GET slots by branch and seating type
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -126,36 +156,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
+    const responseData: SlotResponse = {
+      date,
+      branch: {
+        id: branch.id,
+        name: branch.name,
+        short_code: branch.short_code,
+        location: branch.location,
+        address: branch.address
+      },
+      seating_type: {
+        id: seatingType.id,
+        name: seatingType.name,
+        short_code: seatingType.short_code
+      },
+      total_slots: timeSlots.length,
+      available: {
+        count: availableSlots.length,
+        slots: availableSlots
+      },
+      booked: {
+        count: bookedSlots.length,
+        slots: bookedSlots
+      },
+      maintenance: {
+        count: maintenanceSlots.length,
+        slots: maintenanceSlots
+      }
+    };
+    
     const response: ApiResponse = {
       success: true,
-      data: {
-        date,
-        branch: {
-          id: branch.id,
-          name: branch.name,
-          short_code: branch.short_code,
-          location: branch.location,
-          address: branch.address
-        },
-        seating_type: {
-          id: seatingType.id,
-          name: seatingType.name,
-          short_code: seatingType.short_code
-        },
-        total_slots: timeSlots.length,
-        available: {
-          count: availableSlots.length,
-          slots: availableSlots
-        },
-        booked: {
-          count: bookedSlots.length,
-          slots: bookedSlots
-        },
-        maintenance: {
-          count: maintenanceSlots.length,
-          slots: maintenanceSlots
-        }
-      }
+      data: responseData
     };
     
     return NextResponse.json(response);
