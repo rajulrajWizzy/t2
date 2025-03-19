@@ -3,6 +3,28 @@ import models from '@/models';
 import { ApiResponse } from '@/types/common';
 import { Op } from 'sequelize';
 
+// Define interfaces for the response structure
+interface SlotCategory {
+  count: number;
+  slots: any[];
+}
+
+interface SeatingTypeInfo {
+  id: number;
+  name: string;
+  short_code: string | undefined;
+}
+
+interface SlotsBySeatingTypeResponse {
+  seating_type: SeatingTypeInfo;
+  date: string;
+  branch_id: number;
+  total_slots: number;
+  available: SlotCategory;
+  booked: SlotCategory;
+  maintenance: SlotCategory;
+}
+
 // GET slots by seating type
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -59,7 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.Branch,
           as: 'Branch',
-          attributes: ['id', 'name', 'address', 'short_code']
+          attributes: ['id', 'name', 'address', 'location', 'short_code']
         },
         {
           model: models.Seat,
@@ -98,30 +120,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
+    const responseData: SlotsBySeatingTypeResponse = {
+      seating_type: {
+        id: seatingType.id,
+        name: seatingType.name,
+        short_code: seatingType.short_code
+      },
+      date,
+      branch_id: parseInt(branch_id),
+      total_slots: timeSlots.length,
+      available: {
+        count: availableSlots.length,
+        slots: availableSlots
+      },
+      booked: {
+        count: bookedSlots.length,
+        slots: bookedSlots
+      },
+      maintenance: {
+        count: maintenanceSlots.length,
+        slots: maintenanceSlots
+      }
+    };
+    
     const response: ApiResponse = {
       success: true,
-      data: {
-        seating_type: {
-          id: seatingType.id,
-          name: seatingType.name,
-          short_code: seatingType.short_code
-        },
-        date,
-        branch_id: parseInt(branch_id),
-        total_slots: timeSlots.length,
-        available: {
-          count: availableSlots.length,
-          slots: availableSlots
-        },
-        booked: {
-          count: bookedSlots.length,
-          slots: bookedSlots
-        },
-        maintenance: {
-          count: maintenanceSlots.length,
-          slots: maintenanceSlots
-        }
-      }
+      data: responseData
     };
     
     return NextResponse.json(response);

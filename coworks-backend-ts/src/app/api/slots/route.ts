@@ -72,7 +72,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.Branch,
           as: 'Branch',
-          attributes: ['id', 'name', 'address', 'short_code']
+          attributes: ['id', 'name', 'address', 'location', 'short_code']
         },
         {
           model: models.Seat,

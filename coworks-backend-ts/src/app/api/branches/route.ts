@@ -40,7 +40,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Prepare base query
     const query: any = {
       offset,
-      limit
+      limit,
+      attributes: {
+        include: ['id', 'name', 'address', 'location', 'latitude', 'longitude', 
+                 'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 
+                 'images', 'amenities', 'short_code', 'created_at', 'updated_at']
+      }
     };
     
     // Add relationship includes
@@ -205,7 +210,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       cost_multiplier: cost_multiplier || 1.00,
       opening_time: opening_time || '08:00:00',
       closing_time: closing_time || '22:00:00',
-      images: images || undefined,
+      images: images || null,
       amenities: amenities || null,
       short_code: shortCode
     });
