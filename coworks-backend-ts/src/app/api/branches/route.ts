@@ -27,10 +27,42 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         { status: 401 }
       );
     }
+
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const seatingTypeId = searchParams.get('seating_type_id');
     
-    // Fetch all branches
-    const branches = await models.Branch.findAll({
-      include: [
+    // Get pagination parameters with defaults
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50'); // Default limit of 50, can be increased
+    const offset = (page - 1) * limit;
+    
+    // Prepare base query
+    const query: any = {
+      offset,
+      limit
+    };
+    
+    // Add relationship includes
+    if (seatingTypeId) {
+      // If seating_type_id is provided, get only branches that have seats of that type
+      query.include = [
+        {
+          model: models.Seat,
+          as: 'Seats',
+          where: { seating_type_id: seatingTypeId },
+          required: true,
+          include: [
+            {
+              model: models.SeatingType,
+              as: 'SeatingType'
+            }
+          ]
+        }
+      ];
+    } else {
+      // If no seating_type_id, get all branches
+      query.include = [
         {
           model: models.Seat,
           as: 'Seats',
@@ -41,13 +73,47 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             }
           ]
         }
-      ]
+      ];
+    }
+    
+    // Get total count for pagination
+    const count = await models.Branch.count({
+      ...(seatingTypeId ? {
+        include: [
+          {
+            model: models.Seat,
+            as: 'Seats',
+            where: { seating_type_id: seatingTypeId },
+            required: true
+          }
+        ]
+      } : {})
     });
     
-    // No need to add short codes manually as they are now in the database
+    // Execute query with pagination
+    const branches = await models.Branch.findAll(query);
+    
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+    const hasMore = page < totalPages;
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+    
+    // Return paginated response
     const response: ApiResponse = {
       success: true,
-      data: branches
+      data: branches,
+      meta: {
+        pagination: {
+          total: count,
+          page,
+          limit,
+          pages: totalPages,
+          hasMore,
+          hasNext,
+          hasPrev
+        }
+      }
     };
     
     return NextResponse.json(response);
@@ -99,8 +165,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       opening_time, 
       closing_time,
       images,
-      amenities,
-      short_code
+      amenities
     } = body;
     
     // Basic validation
@@ -118,6 +183,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         message: 'Name cannot be empty or contain only whitespace'
       }, { status: 400 });
     }
+
+    // Generate a unique short code from the branch name
+    // Format: First 3 letters of name + 3 random chars
+    const namePrefix = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 3)
+      .toUpperCase();
+    
+    const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase();
+    const shortCode = `${namePrefix}${randomChars}`;
     
     // Create a new branch
     const branch = await models.Branch.create({
@@ -131,7 +207,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       closing_time: closing_time || '22:00:00',
       images: images || undefined,
       amenities: amenities || null,
-      short_code: short_code || undefined
+      short_code: shortCode
     });
     
     const response: ApiResponse = {

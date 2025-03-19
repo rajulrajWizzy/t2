@@ -465,10 +465,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const url = new URL(req.url);
     const branchCode = url.searchParams.get('branch');
     const seatingTypeCode = url.searchParams.get('type');
+    const customerFilter = decoded.id; // Only fetch bookings for the authenticated user
+
+    // Handle "hot" seating type filtering
+    let seatingTypeWhere: any = undefined;
+    if (seatingTypeCode) {
+      if (seatingTypeCode === 'hot') {
+        // For "hot" seats specifically query by name instead of code
+        seatingTypeWhere = { name: SeatingTypeEnum.HOT_DESK };
+      } else {
+        seatingTypeWhere = { short_code: seatingTypeCode };
+      }
+    }
 
     // Prepare filter conditions
     const whereConditions: any = {
-      customer_id: decoded.id // Only fetch bookings for the authenticated user
+      customer_id: customerFilter
     };
 
     // Fetch seat bookings
@@ -492,7 +504,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             { 
               model: models.SeatingType, 
               as: 'SeatingType',
-              where: seatingTypeCode ? { short_code: seatingTypeCode } : undefined,
+              where: seatingTypeWhere,
               attributes: [
                 'id', 'name', 'description', 'hourly_rate', 'is_hourly',
                 'min_booking_duration', 'min_seats', 'short_code'
@@ -529,7 +541,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             { 
               model: models.SeatingType, 
               as: 'SeatingType',
-              where: seatingTypeCode ? { short_code: seatingTypeCode } : undefined,
+              where: seatingTypeWhere,
               attributes: [
                 'id', 'name', 'description', 'hourly_rate', 'is_hourly',
                 'min_booking_duration', 'min_seats', 'short_code'

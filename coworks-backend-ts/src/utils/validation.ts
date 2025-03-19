@@ -51,10 +51,23 @@ export const getPasswordRequirements = (): string => {
   return 'Password must be at least 8 characters long, include at least one uppercase letter, one lowercase letter, one number, one special character, and no spaces.';
 };
 
+// Validate seat number (alphanumeric only, 1-10 characters, no spaces or special characters)
+export const isValidSeatNumber = (seatNumber: string): boolean => {
+  const seatNumberRegex = /^[a-zA-Z0-9]{1,10}$/;
+  return seatNumberRegex.test(seatNumber);
+};
+
+// Get seat number validation requirements as a string for error messages
+export const getSeatNumberRequirements = (): string => {
+  return 'Seat number must contain only alphanumeric characters (no spaces or special characters) and be at most 10 characters long.';
+};
+
 export default {
   isValidEmail,
   isValidPhone,
   isValidName,
   isValidPassword,
-  getPasswordRequirements
+  isValidSeatNumber,
+  getPasswordRequirements,
+  getSeatNumberRequirements
 };

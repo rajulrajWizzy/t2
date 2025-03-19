@@ -6,9 +6,27 @@ import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 
 // GET all seating types
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const seatingTypes = await models.SeatingType.findAll();
+    // Get branch_id from query parameters if provided
+    const { searchParams } = new URL(request.url);
+    const branchId = searchParams.get('branch_id');
+
+    let seatingTypes;
+    if (branchId) {
+      // If branch_id is provided, get only seating types used in that branch
+      seatingTypes = await models.SeatingType.findAll({
+        include: [{
+          model: models.Seat,
+          as: 'Seats',
+          where: { branch_id: branchId },
+          required: true
+        }]
+      });
+    } else {
+      // If no branch_id, get all seating types
+      seatingTypes = await models.SeatingType.findAll();
+    }
     
     // No need to add short codes manually as they are now in the database
     const response: ApiResponse = {
@@ -59,7 +77,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Parse the request body
     const body = await request.json() as SeatingTypeInput;
-    const { name, description, hourly_rate, is_hourly, min_booking_duration, min_seats, short_code } = body;
+    const { name, description, hourly_rate, is_hourly, min_booking_duration, min_seats } = body;
     
     // Validate input
     if (!name) {
@@ -91,6 +109,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       
       return NextResponse.json(response, { status: 409 });
     }
+
+    // Generate a unique short code from the seating type name
+    // Format: First 3 letters of name + 3 random chars
+    const namePrefix = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 3)
+      .toUpperCase();
+    
+    const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase();
+    const shortCode = `${namePrefix}${randomChars}`;
     
     // Create a new seating type
     const seatingType = await models.SeatingType.create({
@@ -100,7 +129,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       is_hourly: is_hourly !== undefined ? is_hourly : true,
       min_booking_duration: min_booking_duration || 2,
       min_seats: min_seats || 1,
-      short_code: short_code || undefined
+      short_code: shortCode
     });
     
     const response: ApiResponse = {

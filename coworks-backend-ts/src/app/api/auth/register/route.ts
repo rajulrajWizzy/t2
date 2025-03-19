@@ -20,6 +20,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     
+    // Company name validation - it cannot be null or empty
+    if (!company_name) {
+      return NextResponse.json(
+        { message: 'Company name is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Company name format validation
+    if (!validation.isValidName(company_name)) {
+      return NextResponse.json(
+        { message: 'Company name cannot be empty or contain only whitespace' },
+        { status: 400 }
+      );
+    }
+    
     // Name validation
     if (!validation.isValidName(name)) {
       return NextResponse.json(

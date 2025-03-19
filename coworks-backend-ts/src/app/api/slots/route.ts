@@ -12,6 +12,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const url = new URL(request.url);
     const branch_id = url.searchParams.get('branch_id');
     const seat_id = url.searchParams.get('seat_id');
+    const seating_type_id = url.searchParams.get('seating_type_id');
+    const seating_type_code = url.searchParams.get('seating_type_code');
     const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
     
     // Validate required filters
@@ -27,8 +29,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Prepare filter conditions
     const whereConditions: any = {
       branch_id: parseInt(branch_id),
-      date,
-      is_available: true,
+      date
     };
     
     // Add seat_id filter if provided
@@ -36,25 +37,80 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       whereConditions.seat_id = parseInt(seat_id);
     }
     
-    // Find available time slots
+    // Prepare include for seating type filtering
+    let seatingTypeWhere = {};
+    if (seating_type_id) {
+      seatingTypeWhere = { id: parseInt(seating_type_id) };
+    } else if (seating_type_code) {
+      seatingTypeWhere = { short_code: seating_type_code };
+    }
+    
+    // Find all time slots matching the filters, including those that are not available
     const timeSlots = await models.TimeSlot.findAll({
       where: whereConditions,
       order: [['start_time', 'ASC']],
       include: [
         {
           model: models.Branch,
-          attributes: ['name', 'address']
+          as: 'Branch',
+          attributes: ['id', 'name', 'address', 'short_code']
         },
         {
           model: models.Seat,
-          attributes: ['seat_number', 'price', 'seating_type_id']
+          as: 'Seat',
+          attributes: ['id', 'seat_number', 'price', 'availability_status'],
+          include: [
+            {
+              model: models.SeatingType,
+              as: 'SeatingType',
+              where: Object.keys(seatingTypeWhere).length ? seatingTypeWhere : undefined,
+              attributes: ['id', 'name', 'short_code', 'hourly_rate', 'is_hourly']
+            }
+          ]
         }
       ]
-    });
+    }) as any[];
+    
+    // Categorize slots by status
+    const availableSlots = [];
+    const bookedSlots = [];
+    const maintenanceSlots = [];
+    
+    for (const slot of timeSlots) {
+      // Skip slots where the seat doesn't match our seating type filter
+      if ((seating_type_id || seating_type_code) && !slot.Seat?.SeatingType) {
+        continue;
+      }
+      
+      // Categorize based on slot and seat status
+      if (slot.is_available && slot.Seat?.availability_status === 'AVAILABLE') {
+        availableSlots.push(slot);
+      } else if (!slot.is_available && slot.booking_id) {
+        bookedSlots.push(slot);
+      } else if (slot.Seat?.availability_status === 'MAINTENANCE') {
+        maintenanceSlots.push(slot);
+      }
+    }
     
     const response: ApiResponse = {
       success: true,
-      data: timeSlots
+      data: {
+        date,
+        branch_id: parseInt(branch_id),
+        total_slots: timeSlots.length,
+        available: {
+          count: availableSlots.length,
+          slots: availableSlots
+        },
+        booked: {
+          count: bookedSlots.length,
+          slots: bookedSlots
+        },
+        maintenance: {
+          count: maintenanceSlots.length,
+          slots: maintenanceSlots
+        }
+      }
     };
     
     return NextResponse.json(response);

@@ -4,6 +4,21 @@ export interface ApiResponse<T = any> {
   message?: string;
   data?: T;
   error?: string;
+  meta?: {
+    pagination?: PaginationMeta;
+    [key: string]: any;
+  };
+}
+
+// Pagination metadata
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+  hasMore: boolean;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 // JWT token payload type

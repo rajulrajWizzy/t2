@@ -3,6 +3,7 @@ import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { SeatInput } from '@/types/seating';
 import { AvailabilityStatusEnum } from '@/types/seating';
+import validation from '@/utils/validation';
 
 // GET all seats or filter by branch_id
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -91,6 +92,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         success: false,
         message: 'Branch ID, seating type ID, seat number, and price are required'
+      }, { status: 400 });
+    }
+    
+    // Validate seat number format
+    if (!validation.isValidSeatNumber(seat_number)) {
+      return NextResponse.json({
+        success: false,
+        message: validation.getSeatNumberRequirements()
       }, { status: 400 });
     }
     
