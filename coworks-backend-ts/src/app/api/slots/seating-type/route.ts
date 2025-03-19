@@ -74,6 +74,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               attributes: ['id', 'name', 'short_code', 'hourly_rate', 'is_hourly']
             }
           ]
+        },
+        {
+          model: models.SeatBooking,
+          as: 'Booking',
+          required: false
         }
       ]
     }) as any[];
@@ -86,7 +91,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     for (const slot of timeSlots) {
       if (slot.is_available && slot.Seat?.availability_status === 'AVAILABLE') {
         availableSlots.push(slot);
-      } else if (!slot.is_available && slot.booking_id) {
+      } else if (!slot.is_available && slot.booking_id && slot.Booking) {
         bookedSlots.push(slot);
       } else if (slot.Seat?.availability_status === 'MAINTENANCE') {
         maintenanceSlots.push(slot);

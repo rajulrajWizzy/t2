@@ -1,0 +1,766 @@
+{
+  "info": {
+    "name": "Coworks API Collection",
+    "description": "Complete collection of API endpoints for the Coworks Backend System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL for the API"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_TOKEN_HERE",
+      "type": "string",
+      "description": "JWT token for authentication"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Authentication-related endpoints",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"1234567890\",\n  \"password\": \"Password123!\",\n  \"company_name\": \"Example Company\",\n  \"profile_picture\": \"https://example.com/profile.jpg\"\n}"
+            },
+            "description": "Register a new user account"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "description": "Login to get authentication token"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout the current user"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\"\n}"
+            },
+            "description": "Request a password reset link"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "reset-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset_token_here\",\n  \"password\": \"NewPassword123!\",\n  \"confirm_password\": \"NewPassword123!\"\n}"
+            },
+            "description": "Reset password using token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Branches",
+      "description": "Branch management endpoints",
+      "item": [
+        {
+          "name": "Get All Branches",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches?page=1&limit=50&seating_type_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number for pagination (optional)"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of results per page (optional)"
+                },
+                {
+                  "key": "seating_type_id",
+                  "value": "1",
+                  "description": "Filter by seating type ID (optional)"
+                }
+              ]
+            },
+            "description": "Get a list of all branches with pagination"
+          }
+        },
+        {
+          "name": "Create Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Downtown Branch\",\n  \"address\": \"123 Main St, City\",\n  \"location\": \"Downtown\",\n  \"latitude\": 40.7128,\n  \"longitude\": -74.006,\n  \"cost_multiplier\": 1.2,\n  \"opening_time\": \"08:00:00\",\n  \"closing_time\": \"22:00:00\",\n  \"images\": [\"https://example.com/image1.jpg\"],\n  \"amenities\": [\"wifi\", \"parking\", \"coffee\"]\n}"
+            },
+            "description": "Create a new branch"
+          }
+        },
+        {
+          "name": "Bulk Create Branches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "bulk"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branches\": [\n    {\n      \"name\": \"Downtown Branch\",\n      \"address\": \"123 Main St, City\",\n      \"location\": \"Downtown\",\n      \"latitude\": 40.7128,\n      \"longitude\": -74.006,\n      \"cost_multiplier\": 1.2,\n      \"opening_time\": \"08:00:00\",\n      \"closing_time\": \"22:00:00\",\n      \"images\": [\"https://example.com/image1.jpg\"],\n      \"amenities\": [\"wifi\", \"parking\", \"coffee\"]\n    },\n    {\n      \"name\": \"Uptown Branch\",\n      \"address\": \"456 High St, City\",\n      \"location\": \"Uptown\",\n      \"latitude\": 40.8128,\n      \"longitude\": -74.106,\n      \"cost_multiplier\": 1.5,\n      \"opening_time\": \"07:00:00\",\n      \"closing_time\": \"23:00:00\",\n      \"images\": [\"https://example.com/image2.jpg\"],\n      \"amenities\": [\"wifi\", \"parking\", \"gym\"]\n    }\n  ]\n}"
+            },
+            "description": "Create multiple branches in a single request"
+          }
+        },
+        {
+          "name": "Get Branch by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "1"]
+            },
+            "description": "Get details of a specific branch"
+          }
+        },
+        {
+          "name": "Update Branch",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Branch Name\",\n  \"address\": \"Updated Address\",\n  \"location\": \"Updated Location\",\n  \"cost_multiplier\": 1.3,\n  \"opening_time\": \"07:00:00\",\n  \"closing_time\": \"23:00:00\",\n  \"images\": [\"https://example.com/updated-image.jpg\"],\n  \"amenities\": [\"wifi\", \"parking\", \"coffee\", \"printer\"]\n}"
+            },
+            "description": "Update a branch's information"
+          }
+        },
+        {
+          "name": "Delete Branch",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "1"]
+            },
+            "description": "Delete a branch (only if it has no active seats)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seating Types",
+      "description": "Seating type management endpoints",
+      "item": [
+        {
+          "name": "Get All Seating Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/seating-types?branch_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seating-types"],
+              "query": [
+                {
+                  "key": "branch_id",
+                  "value": "1",
+                  "description": "Filter by branch ID (optional)"
+                }
+              ]
+            },
+            "description": "Get a list of all seating types"
+          }
+        },
+        {
+          "name": "Create Seating Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/seating-types",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seating-types"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hot Desk\",\n  \"description\": \"Flexible workspace for daily use\",\n  \"hourly_rate\": 15.00,\n  \"is_hourly\": true,\n  \"min_booking_duration\": 2,\n  \"min_seats\": 1\n}"
+            },
+            "description": "Create a new seating type"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seats",
+      "description": "Seat management endpoints",
+      "item": [
+        {
+          "name": "Get All Seats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/seat?branch_id=1&seating_type_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seat"],
+              "query": [
+                {
+                  "key": "branch_id",
+                  "value": "1",
+                  "description": "Filter by branch ID (optional)"
+                },
+                {
+                  "key": "seating_type_id",
+                  "value": "1",
+                  "description": "Filter by seating type ID (optional)"
+                }
+              ]
+            },
+            "description": "Get a list of all seats"
+          }
+        },
+        {
+          "name": "Create Seat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/seat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_id\": 1,\n  \"seating_type_id\": 1,\n  \"seat_number\": \"A-101\",\n  \"price\": 25.00,\n  \"availability_status\": \"AVAILABLE\",\n  \"description\": \"Window seat with great view\",\n  \"amenities\": [\"power_outlet\", \"monitor\"]\n}"
+            },
+            "description": "Create a new seat"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Slots",
+      "description": "Time slot management endpoints",
+      "item": [
+        {
+          "name": "Get Slots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/slots?branch_id=1&date=2023-05-01&seating_type_id=1&seat_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "slots"],
+              "query": [
+                {
+                  "key": "branch_id",
+                  "value": "1",
+                  "description": "Branch ID (required)"
+                },
+                {
+                  "key": "date",
+                  "value": "2023-05-01",
+                  "description": "Date for slots (optional, defaults to current date)"
+                },
+                {
+                  "key": "seating_type_id",
+                  "value": "1",
+                  "description": "Filter by seating type ID (optional)"
+                },
+                {
+                  "key": "seating_type_code",
+                  "value": "hot",
+                  "description": "Filter by seating type code (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "seat_id",
+                  "value": "1",
+                  "description": "Filter by seat ID (optional)"
+                }
+              ]
+            },
+            "description": "Get available time slots"
+          }
+        },
+        {
+          "name": "Generate Slots",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/slots",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "slots"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_id\": 1,\n  \"date\": \"2023-05-01\",\n  \"regenerate\": false\n}"
+            },
+            "description": "Generate time slots for a specific date and branch"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "description": "Booking management endpoints",
+      "item": [
+        {
+          "name": "Get Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings?branch=NYC&type=hot",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"],
+              "query": [
+                {
+                  "key": "branch",
+                  "value": "NYC",
+                  "description": "Filter by branch short code (optional)"
+                },
+                {
+                  "key": "type",
+                  "value": "hot",
+                  "description": "Filter by seating type code (optional)"
+                }
+              ]
+            },
+            "description": "Get bookings for the authenticated user"
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"seat\",\n  \"seat_id\": 1,\n  \"start_time\": \"2023-05-01T10:00:00Z\",\n  \"end_time\": \"2023-05-01T16:00:00Z\",\n  \"total_price\": 150.00,\n  \"quantity\": 1,\n  \"seating_type\": \"hot\"\n}"
+            },
+            "description": "Create a new seat booking"
+          }
+        },
+        {
+          "name": "Create Meeting Room Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"meeting\",\n  \"seat_id\": 2,\n  \"start_time\": \"2023-05-01T10:00:00Z\",\n  \"end_time\": \"2023-05-01T12:00:00Z\",\n  \"total_price\": 100.00,\n  \"num_participants\": 5,\n  \"amenities\": [\"projector\", \"whiteboard\"],\n  \"seating_type\": \"meet\"\n}"
+            },
+            "description": "Create a new meeting room booking"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "description": "User profile management endpoints",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile"]
+            },
+            "description": "Get the authenticated user's profile"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"9876543210\",\n  \"company_name\": \"Updated Company\",\n  \"profile_picture\": \"https://example.com/updated-profile.jpg\"\n}"
+            },
+            "description": "Update the authenticated user's profile"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"CurrentPassword123!\",\n  \"new_password\": \"NewPassword123!\",\n  \"confirm_password\": \"NewPassword123!\"\n}"
+            },
+            "description": "Change the authenticated user's password"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "description": "Payment management endpoints",
+      "item": [
+        {
+          "name": "Get Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            },
+            "description": "Get the authenticated user's payment methods"
+          }
+        },
+        {
+          "name": "Add Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"credit_card\",\n  \"card_number\": \"4111111111111111\",\n  \"expiry_month\": 12,\n  \"expiry_year\": 2025,\n  \"cvv\": \"123\",\n  \"name_on_card\": \"John Doe\",\n  \"is_default\": true\n}"
+            },
+            "description": "Add a new payment method"
+          }
+        },
+        {
+          "name": "Process Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/process",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "process"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking_id\": 1,\n  \"payment_method_id\": 1,\n  \"amount\": 150.00,\n  \"currency\": \"USD\"\n}"
+            },
+            "description": "Process a payment for a booking"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload",
+      "description": "File upload endpoints",
+      "item": [
+        {
+          "name": "Upload Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/upload/image",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload", "image"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/path/to/your/image.jpg"
+                },
+                {
+                  "key": "type",
+                  "value": "profile",
+                  "type": "text"
+                }
+              ]
+            },
+            "description": "Upload an image file (profile, branch, etc.)"
+          }
+        }
+      ]
+    }
+  ]
+} 

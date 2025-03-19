@@ -60,6 +60,9 @@ TimeSlotModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 SeatModel.hasMany(TimeSlotModel, { foreignKey: 'seat_id', as: 'TimeSlots' });
 TimeSlotModel.belongsTo(SeatModel, { foreignKey: 'seat_id', as: 'Seat' });
 
+SeatBookingModel.hasMany(TimeSlotModel, { foreignKey: 'booking_id', as: 'TimeSlots' });
+TimeSlotModel.belongsTo(SeatBookingModel, { foreignKey: 'booking_id', as: 'Booking' });
+
 // Export models
 const models = {
   sequelize,
@@ -72,6 +75,6 @@ const models = {
   Payment: PaymentModel,
   TimeSlot: TimeSlotModel,
   BlacklistedToken: BlacklistedTokenModel,
-  PasswordReset: PasswordResetModel  // Add this line
+  PasswordReset: PasswordResetModel
 };
 export default models;
