@@ -480,6 +480,83 @@
             },
             "description": "Generate time slots for a specific date and branch"
           }
+        },
+        {
+          "name": "Get Categorized Slots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/slots/categorized?branch_id=1&date=2023-05-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "slots", "categorized"],
+              "query": [
+                {
+                  "key": "branch_id",
+                  "value": "1",
+                  "description": "Filter by branch ID (optional - if not provided, returns data for all branches)"
+                },
+                {
+                  "key": "date",
+                  "value": "2023-05-01",
+                  "description": "Date for slots (optional, defaults to current date)"
+                }
+              ]
+            },
+            "description": "Get slots categorized by seating type and branch with available, booked, and maintenance slots"
+          }
+        },
+        {
+          "name": "Get Slots by Branch and Seating Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/slots/branch-seating?branch_id=1&seating_type_code=hot&date=2023-05-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "slots", "branch-seating"],
+              "query": [
+                {
+                  "key": "branch_id",
+                  "value": "1",
+                  "description": "Branch ID (can use this or branch_code)"
+                },
+                {
+                  "key": "branch_code",
+                  "value": "NYC",
+                  "description": "Branch short code (can use this or branch_id)",
+                  "disabled": true
+                },
+                {
+                  "key": "seating_type_id",
+                  "value": "1",
+                  "description": "Seating type ID (can use this or seating_type_code)",
+                  "disabled": true
+                },
+                {
+                  "key": "seating_type_code",
+                  "value": "hot",
+                  "description": "Seating type short code (can use this or seating_type_id)"
+                },
+                {
+                  "key": "date",
+                  "value": "2023-05-01",
+                  "description": "Date for slots (optional, defaults to current date)"
+                }
+              ]
+            },
+            "description": "Get slots for a specific branch and seating type with available, booked, and maintenance categories"
+          }
         }
       ]
     },
