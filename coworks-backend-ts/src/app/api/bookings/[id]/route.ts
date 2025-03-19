@@ -3,7 +3,6 @@ import models from '../../../../models';
 import { verifyToken } from '../../../../config/jwt';
 import { BookingStatusEnum } from '../../../../types/booking';
 import { AvailabilityStatusEnum } from '../../../../types/seating';
-import { BRANCH_SAFE_ATTRIBUTES, BRANCH_MINIMAL_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES, CUSTOMER_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // GET a single booking by ID
 export async function GET(
@@ -40,24 +39,23 @@ export async function GET(
         {
           model: models.Seat,
           as: 'Seat',
-          attributes: SEAT_ATTRIBUTES,
           include: [
             {
               model: models.Branch,
               as: 'Branch',
-              attributes: BRANCH_MINIMAL_ATTRIBUTES
+              attributes: ['name', 'address', 'location']
             },
             {
               model: models.SeatingType,
               as: 'SeatingType',
-              attributes: SEATING_TYPE_ATTRIBUTES
+              attributes: ['name', 'description']
             }
           ]
         },
         {
           model: models.Customer,
           as: 'Customer',
-          attributes: CUSTOMER_ATTRIBUTES
+          attributes: ['name', 'email', 'phone']
         }
       ]
     });
@@ -72,24 +70,23 @@ export async function GET(
           {
             model: models.Seat,
             as: 'MeetingRoom',
-            attributes: SEAT_ATTRIBUTES,
             include: [
               {
                 model: models.Branch,
                 as: 'Branch',
-                attributes: BRANCH_MINIMAL_ATTRIBUTES
+                attributes: ['name', 'address', 'location']
               },
               {
                 model: models.SeatingType,
                 as: 'SeatingType',
-                attributes: SEATING_TYPE_ATTRIBUTES
+                attributes: ['name', 'description']
               }
             ]
           },
           {
             model: models.Customer,
             as: 'Customer',
-            attributes: CUSTOMER_ATTRIBUTES
+            attributes: ['name', 'email', 'phone']
           }
         ]
       });

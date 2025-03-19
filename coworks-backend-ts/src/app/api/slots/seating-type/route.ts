@@ -1,32 +1,7 @@
-export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
 import { Op } from 'sequelize';
-import { BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
-
-// Define interfaces for the response structure
-interface SlotCategory {
-  count: number;
-  slots: any[];
-}
-
-interface SeatingTypeInfo {
-  id: number;
-  name: string;
-  short_code: string | undefined;
-}
-
-interface SlotsBySeatingTypeResponse {
-  seating_type: SeatingTypeInfo;
-  date: string;
-  branch_id: number;
-  total_slots: number;
-  available: SlotCategory;
-  booked: SlotCategory;
-  maintenance: SlotCategory;
-}
 
 // GET slots by seating type
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -84,7 +59,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.Branch,
           as: 'Branch',
-          attributes: BRANCH_MINIMAL_ATTRIBUTES
+          attributes: ['id', 'name', 'address', 'short_code']
         },
         {
           model: models.Seat,
@@ -123,32 +98,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    const responseData: SlotsBySeatingTypeResponse = {
-      seating_type: {
-        id: seatingType.id,
-        name: seatingType.name,
-        short_code: seatingType.short_code
-      },
-      date,
-      branch_id: parseInt(branch_id),
-      total_slots: timeSlots.length,
-      available: {
-        count: availableSlots.length,
-        slots: availableSlots
-      },
-      booked: {
-        count: bookedSlots.length,
-        slots: bookedSlots
-      },
-      maintenance: {
-        count: maintenanceSlots.length,
-        slots: maintenanceSlots
-      }
-    };
-    
     const response: ApiResponse = {
       success: true,
-      data: responseData
+      data: {
+        seating_type: {
+          id: seatingType.id,
+          name: seatingType.name,
+          short_code: seatingType.short_code
+        },
+        date,
+        branch_id: parseInt(branch_id),
+        total_slots: timeSlots.length,
+        available: {
+          count: availableSlots.length,
+          slots: availableSlots
+        },
+        booked: {
+          count: bookedSlots.length,
+          slots: bookedSlots
+        },
+        maintenance: {
+          count: maintenanceSlots.length,
+          slots: maintenanceSlots
+        }
+      }
     };
     
     return NextResponse.json(response);

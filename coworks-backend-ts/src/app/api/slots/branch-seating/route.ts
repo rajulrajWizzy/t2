@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
-import { BRANCH_MINIMAL_ATTRIBUTES } from '@/utils/modelAttributes';
-
-// Add export config to mark this route as dynamic
-export const dynamic = 'force-dynamic';
 
 // Define interfaces for our response structure
 interface SlotCategory {
@@ -15,7 +11,7 @@ interface SlotCategory {
 interface BranchInfo {
   id: number;
   name: string;
-  short_code: string | undefined;
+  short_code?: string;
   location: string;
   address: string;
 }
@@ -23,7 +19,7 @@ interface BranchInfo {
 interface SeatingTypeInfo {
   id: number;
   name: string;
-  short_code: string | undefined;
+  short_code?: string;
 }
 
 interface SlotResponse {
@@ -46,7 +42,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const seating_type_id = url.searchParams.get('seating_type_id');
     const seating_type_code = url.searchParams.get('seating_type_code');
     const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
-    const availability = url.searchParams.get('availability'); // 'available', 'booked', 'maintenance', or 'all'
     
     // Validate required filters - need either branch_id or branch_code
     if (!branch_id && !branch_code) {
@@ -72,9 +67,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       branchWhere = { short_code: branch_code };
     }
     
+    // Get branch attributes to include
+    const branchAttributes = ['id', 'name', 'location', 'address'];
+    
+    // Check if short_code exists before including it
+    try {
+      await models.Branch.findOne({
+        attributes: ['short_code'],
+        limit: 1
+      });
+      // If no error, add short_code to attributes
+      branchAttributes.push('short_code');
+    } catch (error) {
+      console.warn('Branch.short_code column does not exist, continuing without it');
+    }
+    
     const branch = await models.Branch.findOne({
       where: branchWhere,
-      attributes: BRANCH_MINIMAL_ATTRIBUTES
+      attributes: branchAttributes
     });
     
     if (!branch) {
@@ -103,14 +113,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
-    // Prepare seat availability conditions
-    let seatAvailabilityWhere = {};
-    if (availability === 'available') {
-      seatAvailabilityWhere = { availability_status: 'AVAILABLE' };
-    } else if (availability === 'maintenance') {
-      seatAvailabilityWhere = { availability_status: 'MAINTENANCE' };
-    }
-    
     // Find all time slots for this branch, date, and seating type
     const timeSlots = await models.TimeSlot.findAll({
       where: {
@@ -122,16 +124,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.Branch,
           as: 'Branch',
-          attributes: ['id', 'name', 'short_code', 'location', 'address']
+          attributes: branchAttributes
         },
         {
           model: models.Seat,
           as: 'Seat',
           required: true,
-          where: { 
-            seating_type_id: seatingType.id,
-            ...seatAvailabilityWhere
-          },
+          where: { seating_type_id: seatingType.id },
           attributes: ['id', 'seat_number', 'price', 'availability_status'],
           include: [
             {
@@ -144,7 +143,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           model: models.SeatBooking,
           as: 'Booking',
-          required: availability === 'booked', // Only require bookings if filtering for booked slots
+          required: false,
           attributes: ['id', 'customer_id', 'status', 'total_price', 'start_time', 'end_time'],
           include: [
             {
@@ -172,8 +171,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    // Calculate which slots to include in response based on availability filter
-    let slotsToReturn = {
+    const branchInfo: BranchInfo = {
+      id: branch.id,
+      name: branch.name,
+      location: branch.location,
+      address: branch.address
+    };
+    
+    // Only add short_code if it exists
+    if (branch.short_code) {
+      branchInfo.short_code = branch.short_code;
+    }
+    
+    const seatingTypeInfo: SeatingTypeInfo = {
+      id: seatingType.id,
+      name: seatingType.name
+    };
+    
+    // Only add short_code if it exists
+    if (seatingType.short_code) {
+      seatingTypeInfo.short_code = seatingType.short_code;
+    }
+    
+    const responseData: SlotResponse = {
+      date,
+      branch: branchInfo,
+      seating_type: seatingTypeInfo,
+      total_slots: timeSlots.length,
       available: {
         count: availableSlots.length,
         slots: availableSlots
@@ -186,36 +210,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         count: maintenanceSlots.length,
         slots: maintenanceSlots
       }
-    };
-    
-    // Filter response based on availability parameter if present
-    if (availability === 'available') {
-      slotsToReturn.booked.slots = [];
-      slotsToReturn.maintenance.slots = [];
-    } else if (availability === 'booked') {
-      slotsToReturn.available.slots = [];
-      slotsToReturn.maintenance.slots = [];
-    } else if (availability === 'maintenance') {
-      slotsToReturn.available.slots = [];
-      slotsToReturn.booked.slots = [];
-    }
-    
-    const responseData: SlotResponse = {
-      date,
-      branch: {
-        id: branch.id,
-        name: branch.name,
-        short_code: branch.short_code,
-        location: branch.location,
-        address: branch.address
-      },
-      seating_type: {
-        id: seatingType.id,
-        name: seatingType.name,
-        short_code: seatingType.short_code
-      },
-      total_slots: timeSlots.length,
-      ...slotsToReturn
     };
     
     const response: ApiResponse = {

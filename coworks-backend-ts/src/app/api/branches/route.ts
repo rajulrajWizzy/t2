@@ -1,13 +1,10 @@
 // src/app/api/branches/route.ts
-export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 import { Op } from 'sequelize';
-import { BRANCH_FULL_ATTRIBUTES, BRANCH_SAFE_ATTRIBUTES, SEAT_ATTRIBUTES, SEATING_TYPE_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -35,173 +32,170 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const seatingTypeId = searchParams.get('seating_type_id');
-    const seatingTypeCode = searchParams.get('seating_type_code');
-    const branchShortCode = searchParams.get('branch_code');
     
     // Get pagination parameters with defaults
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50'); // Default limit of 50, can be increased
     const offset = (page - 1) * limit;
     
-    // Find seating type ID from code if code is provided
-    let seatingTypeIdToUse = seatingTypeId;
-    if (seatingTypeCode && !seatingTypeId) {
-      const seatingType = await models.SeatingType.findOne({
-        where: { short_code: seatingTypeCode }
-      });
-      
-      if (seatingType) {
-        seatingTypeIdToUse = seatingType.id.toString();
-      }
-    }
+    // Prepare base query
+    const query: any = {
+      offset,
+      limit
+    };
     
-    // Prepare query options
-    let whereCondition = {};
-    
-    // Add branch filter if short code is provided
-    if (branchShortCode) {
-      whereCondition = {
-        short_code: branchShortCode
-      };
-    }
-    
-    // Different approach for filtered vs unfiltered query
-    if (seatingTypeIdToUse) {
-      // When filtering by seating type, we'll use a two-step approach
-      // First, find branches that have the specific seating type
-      const branchesWithSeatingType = await models.Branch.findAll({
-        where: whereCondition,
-        attributes: BRANCH_SAFE_ATTRIBUTES,
-        include: [{
+    // Add relationship includes
+    if (seatingTypeId) {
+      // If seating_type_id is provided, get only branches that have seats of that type
+      query.include = [
+        {
           model: models.Seat,
           as: 'Seats',
-          attributes: ['id'],
-          where: { seating_type_id: seatingTypeIdToUse },
+          where: { seating_type_id: seatingTypeId },
           required: true,
-        }],
-      });
-      
-      if (branchesWithSeatingType.length === 0) {
-        // No branches have this seating type
-        return NextResponse.json({
-          success: true,
-          data: [],
-          meta: {
-            pagination: {
-              total: 0,
-              page,
-              limit,
-              pages: 0,
-              hasMore: false,
-              hasNext: false,
-              hasPrev: page > 1
+          include: [
+            {
+              model: models.SeatingType,
+              as: 'SeatingType'
             }
-          }
-        });
-      }
-      
-      // Get branch IDs
-      const branchIds = branchesWithSeatingType.map(branch => branch.id);
-      
-      // Now fetch complete branch data including all required fields
-      const branches = await models.Branch.findAll({
-        where: {
-          id: { [Op.in]: branchIds },
-          ...whereCondition
-        },
-        attributes: BRANCH_FULL_ATTRIBUTES,
-        include: [{
+          ]
+        }
+      ];
+    } else {
+      // If no seating_type_id, get all branches
+      query.include = [
+        {
           model: models.Seat,
           as: 'Seats',
-          attributes: SEAT_ATTRIBUTES,
-          where: { seating_type_id: seatingTypeIdToUse },
-          include: [{
-            model: models.SeatingType,
-            as: 'SeatingType',
-            attributes: SEATING_TYPE_ATTRIBUTES
-          }]
-        }],
-        offset,
-        limit
-      });
-      
-      // Calculate pagination metadata
-      const count = branchIds.length;
-      const totalPages = Math.ceil(count / limit);
-      const hasMore = page < totalPages;
-      const hasNext = page < totalPages;
-      const hasPrev = page > 1;
-      
-      // Return paginated response
-      return NextResponse.json({
-        success: true,
-        data: branches,
-        meta: {
-          pagination: {
-            total: count,
-            page,
-            limit,
-            pages: totalPages,
-            hasMore,
-            hasNext,
-            hasPrev
-          }
+          include: [
+            {
+              model: models.SeatingType,
+              as: 'SeatingType'
+            }
+          ]
         }
-      });
-    } else {
-      // No seating type filter, use direct query
-      const count = await models.Branch.count({
-        where: whereCondition
-      });
-      
-      const branches = await models.Branch.findAll({
-        where: whereCondition,
-        attributes: BRANCH_FULL_ATTRIBUTES,
+      ];
+    }
+    
+    // Get total count for pagination
+    const count = await models.Branch.count({
+      ...(seatingTypeId ? {
         include: [
           {
             model: models.Seat,
             as: 'Seats',
-            attributes: SEAT_ATTRIBUTES,
-            include: [
-              {
-                model: models.SeatingType,
-                as: 'SeatingType',
-                attributes: SEATING_TYPE_ATTRIBUTES
-              }
-            ]
+            where: { seating_type_id: seatingTypeId },
+            required: true
           }
-        ],
-        offset,
-        limit
-      });
-      
-      // Calculate pagination metadata
-      const totalPages = Math.ceil(count / limit);
-      const hasMore = page < totalPages;
-      const hasNext = page < totalPages;
-      const hasPrev = page > 1;
-      
-      // Return paginated response
-      const response: ApiResponse = {
-        success: true,
-        data: branches,
-        meta: {
-          pagination: {
-            total: count,
-            page,
-            limit,
-            pages: totalPages,
-            hasMore,
-            hasNext,
-            hasPrev
-          }
+        ]
+      } : {})
+    });
+    
+    // Execute query with pagination
+    const branches = await models.Branch.findAll(query);
+    
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+    const hasMore = page < totalPages;
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+    
+    // Return paginated response
+    const response: ApiResponse = {
+      success: true,
+      data: branches,
+      meta: {
+        pagination: {
+          total: count,
+          page,
+          limit,
+          pages: totalPages,
+          hasMore,
+          hasNext,
+          hasPrev
         }
-      };
-      
-      return NextResponse.json(response);
-    }
+      }
+    };
+    
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching branches:', error);
+    
+    // Check if the error is related to a missing column
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('column p.images does not exist') || 
+        errorMessage.includes('column') || 
+        errorMessage.includes('does not exist')) {
+      
+      // Try again with a more basic query that avoids the problematic column
+      try {
+        // Get query parameters
+        const { searchParams } = new URL(request.url);
+        const seatingTypeId = searchParams.get('seating_type_id');
+        
+        // Get pagination parameters with defaults
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '50');
+        const offset = (page - 1) * limit;
+        
+        // Use a simpler query that doesn't rely on potentially missing columns
+        const basicQuery: any = {
+          attributes: ['id', 'name', 'address', 'location', 'is_active', 'created_at', 'updated_at'],
+          offset,
+          limit
+        };
+        
+        if (seatingTypeId) {
+          basicQuery.include = [
+            {
+              model: models.Seat,
+              as: 'Seats',
+              attributes: ['id'],
+              where: { seating_type_id: seatingTypeId },
+              required: true
+            }
+          ];
+        }
+        
+        const count = await models.Branch.count({
+          ...(seatingTypeId ? {
+            include: [
+              {
+                model: models.Seat,
+                as: 'Seats',
+                attributes: ['id'],
+                where: { seating_type_id: seatingTypeId },
+                required: true
+              }
+            ]
+          } : {})
+        });
+        
+        const branches = await models.Branch.findAll(basicQuery);
+        
+        const totalPages = Math.ceil(count / limit);
+        
+        const fallbackResponse: ApiResponse = {
+          success: true,
+          data: branches,
+          meta: {
+            pagination: {
+              total: count,
+              page,
+              limit,
+              pages: totalPages,
+              hasMore: page < totalPages,
+              hasNext: page < totalPages,
+              hasPrev: page > 1
+            }
+          }
+        };
+        
+        return NextResponse.json(fallbackResponse);
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+      }
+    }
     
     const response: ApiResponse = {
       success: false,
@@ -278,8 +272,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase();
     const shortCode = `${namePrefix}${randomChars}`;
     
-    // Create a new branch
-    const branch = await models.Branch.create({
+    // Create a branch object with all fields
+    const branchData: any = {
       name,
       address,
       location,
@@ -287,11 +281,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       longitude: longitude || null,
       cost_multiplier: cost_multiplier || 1.00,
       opening_time: opening_time || '08:00:00',
-      closing_time: closing_time || '22:00:00',
-      images: images || null,
-      amenities: amenities || null,
-      short_code: shortCode
-    });
+      closing_time: closing_time || '22:00:00'
+    };
+    
+    // Only add fields that might not exist in the schema if they are provided
+    if (images !== undefined) {
+      branchData.images = images;
+    }
+    
+    if (amenities !== undefined) {
+      branchData.amenities = amenities;
+    }
+    
+    try {
+      branchData.short_code = shortCode;
+    } catch (err) {
+      console.warn('Could not set short_code, column might not exist in database');
+    }
+    
+    // Create a new branch
+    const branch = await models.Branch.create(branchData);
     
     const response: ApiResponse = {
       success: true,

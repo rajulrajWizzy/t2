@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
-import { BRANCH_FULL_ATTRIBUTES, SEAT_ATTRIBUTES } from '@/utils/modelAttributes';
 
 // GET a single branch by ID
 export async function GET(
@@ -12,14 +11,12 @@ export async function GET(
   try {
     const { id } = params;
     
-    // Find the branch with its seats, using explicit attributes to avoid alias issues
+    // Find the branch with its seats
     const branch = await models.Branch.findByPk(parseInt(id), {
-      attributes: BRANCH_FULL_ATTRIBUTES,
       include: [
         { 
           model: models.Seat,
           as: 'Seats',
-          attributes: SEAT_ATTRIBUTES,
           include: [
             {
               model: models.SeatingType,
@@ -72,10 +69,8 @@ export async function PUT(
       amenities
     } = body;
     
-    // Find the branch with explicit attributes
-    const branch = await models.Branch.findByPk(parseInt(id), {
-      attributes: BRANCH_FULL_ATTRIBUTES
-    });
+    // Find the branch
+    const branch = await models.Branch.findByPk(parseInt(id));
     
     if (!branch) {
       return NextResponse.json(
@@ -122,10 +117,8 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    // Find the branch with explicit attributes
-    const branch = await models.Branch.findByPk(parseInt(id), {
-      attributes: BRANCH_FULL_ATTRIBUTES
-    });
+    // Find the branch
+    const branch = await models.Branch.findByPk(parseInt(id));
     
     if (!branch) {
       return NextResponse.json(
