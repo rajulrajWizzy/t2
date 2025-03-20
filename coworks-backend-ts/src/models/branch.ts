@@ -20,11 +20,23 @@ class BranchModel extends Model<Branch, BranchCreationAttributes> implements Bra
   public is_active!: boolean;
   public images!: object | null;
   public amenities!: object | null;
-  public short_code?: string;
+  public short_code!: string;
   public created_at!: Date;
   public updated_at!: Date;
 
-  // Add any instance methods here
+  // Generate a unique short code based on branch name
+  public static generateShortCode(name: string): string {
+    // Extract first 3 characters of name and convert to uppercase
+    const prefix = name
+      .replace(/[^a-zA-Z0-9]/g, '') // Remove non-alphanumeric
+      .substring(0, 3)
+      .toUpperCase();
+    
+    // Generate random suffix (3 characters)
+    const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase();
+    
+    return `${prefix}${randomChars}`;
+  }
 }
 
 BranchModel.init(
@@ -84,7 +96,7 @@ BranchModel.init(
     },
     short_code: {
       type: DataTypes.STRING(10),
-      allowNull: true,
+      allowNull: false,
       unique: true,
     },
     created_at: {
@@ -104,6 +116,14 @@ BranchModel.init(
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+    hooks: {
+      beforeValidate: (branch: BranchModel) => {
+        // Generate short_code if not provided
+        if (!branch.short_code) {
+          branch.short_code = BranchModel.generateShortCode(branch.name);
+        }
+      }
+    }
   }
 );
 

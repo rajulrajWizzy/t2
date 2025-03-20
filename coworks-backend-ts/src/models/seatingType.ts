@@ -15,11 +15,22 @@ class SeatingTypeModel extends Model<SeatingType, SeatingTypeCreationAttributes>
   public is_hourly!: boolean;
   public min_booking_duration!: number;
   public min_seats!: number; // Added new field for minimum seats
-  public short_code?: string; // Short code for API calls
+  public short_code!: string; // Short code for API calls
   public created_at!: Date;
   public updated_at!: Date;
 
-  // Add any instance methods here
+  // Generate standard short code for seating type
+  public static generateShortCode(name: SeatingTypeEnum): string {
+    const shortCodes: Record<SeatingTypeEnum, string> = {
+      [SeatingTypeEnum.HOT_DESK]: 'HD',
+      [SeatingTypeEnum.DEDICATED_DESK]: 'DD',
+      [SeatingTypeEnum.CUBICLE]: 'CU',
+      [SeatingTypeEnum.MEETING_ROOM]: 'MR',
+      [SeatingTypeEnum.DAILY_PASS]: 'DP',
+    };
+    
+    return shortCodes[name] || name.substring(0, 2).toUpperCase();
+  }
 }
 
 SeatingTypeModel.init(
@@ -59,7 +70,7 @@ SeatingTypeModel.init(
     },
     short_code: {
       type: DataTypes.STRING(10),
-      allowNull: true,
+      allowNull: false,
       unique: true,
     },
     created_at: {
@@ -79,6 +90,14 @@ SeatingTypeModel.init(
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+    hooks: {
+      beforeValidate: (seatingType: SeatingTypeModel) => {
+        // Generate short_code if not provided
+        if (!seatingType.short_code) {
+          seatingType.short_code = SeatingTypeModel.generateShortCode(seatingType.name);
+        }
+      }
+    }
   }
 );
 

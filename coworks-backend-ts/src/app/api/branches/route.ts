@@ -32,6 +32,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const seatingTypeId = searchParams.get('seating_type_id');
+    const seatingTypeCode = searchParams.get('seating_type_code');
     
     // Get pagination parameters with defaults
     const page = parseInt(searchParams.get('page') || '1');
@@ -41,28 +42,41 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Prepare base query
     const query: any = {
       offset,
-      limit
+      limit,
+      attributes: [
+        'id', 'name', 'address', 'location', 'latitude', 'longitude',
+        'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 
+        'created_at', 'updated_at', 'short_code'
+      ]
     };
     
-    // Add relationship includes
+    // Determine seating type filter condition
+    let seatingTypeCondition = {};
     if (seatingTypeId) {
-      // If seating_type_id is provided, get only branches that have seats of that type
+      seatingTypeCondition = { id: seatingTypeId };
+    } else if (seatingTypeCode) {
+      seatingTypeCondition = { short_code: seatingTypeCode };
+    }
+    
+    // Add relationship includes
+    if (Object.keys(seatingTypeCondition).length > 0) {
+      // If seating type filter is provided, get only branches that have seats of that type
       query.include = [
         {
           model: models.Seat,
           as: 'Seats',
-          where: { seating_type_id: seatingTypeId },
-          required: true,
           include: [
             {
               model: models.SeatingType,
-              as: 'SeatingType'
+              as: 'SeatingType',
+              where: seatingTypeCondition
             }
-          ]
+          ],
+          required: true
         }
       ];
     } else {
-      // If no seating_type_id, get all branches
+      // If no seating type filter, get all branches
       query.include = [
         {
           model: models.Seat,
@@ -79,12 +93,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Get total count for pagination
     const count = await models.Branch.count({
-      ...(seatingTypeId ? {
+      ...(Object.keys(seatingTypeCondition).length > 0 ? {
         include: [
           {
             model: models.Seat,
             as: 'Seats',
-            where: { seating_type_id: seatingTypeId },
+            include: [
+              {
+                model: models.SeatingType,
+                as: 'SeatingType',
+                where: seatingTypeCondition
+              }
+            ],
             required: true
           }
         ]
@@ -93,6 +113,37 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Execute query with pagination
     const branches = await models.Branch.findAll(query);
+    
+    // Process branches to organize seats by seating type
+    const processedBranches = branches.map(branch => {
+      const branchData = branch.toJSON();
+      const seatingTypeMap = new Map();
+      
+      // Group seats by seating type
+      if (branchData.Seats && branchData.Seats.length > 0) {
+        branchData.Seats.forEach(seat => {
+          if (seat.SeatingType) {
+            const seatingTypeId = seat.SeatingType.id;
+            if (!seatingTypeMap.has(seatingTypeId)) {
+              seatingTypeMap.set(seatingTypeId, {
+                ...seat.SeatingType,
+                seats: [],
+                seat_count: 0
+              });
+            }
+            seatingTypeMap.get(seatingTypeId).seats.push(seat);
+            seatingTypeMap.get(seatingTypeId).seat_count++;
+          }
+        });
+      }
+      
+      // Replace seats array with seating types array
+      branchData.seating_types = Array.from(seatingTypeMap.values());
+      branchData.total_seats = branchData.Seats ? branchData.Seats.length : 0;
+      delete branchData.Seats;
+      
+      return branchData;
+    });
     
     // Calculate pagination metadata
     const totalPages = Math.ceil(count / limit);
@@ -103,7 +154,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Return paginated response
     const response: ApiResponse = {
       success: true,
-      data: branches,
+      data: processedBranches,
       meta: {
         pagination: {
           total: count,
@@ -132,39 +183,60 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Get query parameters
         const { searchParams } = new URL(request.url);
         const seatingTypeId = searchParams.get('seating_type_id');
+        const seatingTypeCode = searchParams.get('seating_type_code');
         
         // Get pagination parameters with defaults
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '50');
         const offset = (page - 1) * limit;
         
+        // Determine seating type filter condition
+        let seatingTypeCondition = {};
+        if (seatingTypeId) {
+          seatingTypeCondition = { id: seatingTypeId };
+        } else if (seatingTypeCode) {
+          seatingTypeCondition = { short_code: seatingTypeCode };
+        }
+        
         // Use a simpler query that doesn't rely on potentially missing columns
         const basicQuery: any = {
-          attributes: ['id', 'name', 'address', 'location', 'is_active', 'created_at', 'updated_at'],
+          attributes: ['id', 'name', 'address', 'location', 'is_active', 'created_at', 'updated_at', 'short_code'],
           offset,
           limit
         };
         
-        if (seatingTypeId) {
+        if (Object.keys(seatingTypeCondition).length > 0) {
           basicQuery.include = [
             {
               model: models.Seat,
               as: 'Seats',
-              attributes: ['id'],
-              where: { seating_type_id: seatingTypeId },
+              attributes: ['id', 'seat_number', 'seat_code'],
+              include: [
+                {
+                  model: models.SeatingType,
+                  as: 'SeatingType',
+                  where: seatingTypeCondition,
+                  attributes: ['id', 'name', 'short_code']
+                }
+              ],
               required: true
             }
           ];
         }
         
         const count = await models.Branch.count({
-          ...(seatingTypeId ? {
+          ...(Object.keys(seatingTypeCondition).length > 0 ? {
             include: [
               {
                 model: models.Seat,
                 as: 'Seats',
-                attributes: ['id'],
-                where: { seating_type_id: seatingTypeId },
+                include: [
+                  {
+                    model: models.SeatingType,
+                    as: 'SeatingType',
+                    where: seatingTypeCondition
+                  }
+                ],
                 required: true
               }
             ]
@@ -173,11 +245,42 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         
         const branches = await models.Branch.findAll(basicQuery);
         
+        // Process branches to organize seats by seating type (simplified version)
+        const processedBranches = branches.map(branch => {
+          const branchData = branch.toJSON();
+          const seatingTypeMap = new Map();
+          
+          // Group seats by seating type (if seats are present)
+          if (branchData.Seats && branchData.Seats.length > 0) {
+            branchData.Seats.forEach(seat => {
+              if (seat.SeatingType) {
+                const seatingTypeId = seat.SeatingType.id;
+                if (!seatingTypeMap.has(seatingTypeId)) {
+                  seatingTypeMap.set(seatingTypeId, {
+                    ...seat.SeatingType,
+                    seats: [],
+                    seat_count: 0
+                  });
+                }
+                seatingTypeMap.get(seatingTypeId).seats.push(seat);
+                seatingTypeMap.get(seatingTypeId).seat_count++;
+              }
+            });
+          }
+          
+          // Replace seats array with seating types array
+          branchData.seating_types = Array.from(seatingTypeMap.values());
+          branchData.total_seats = branchData.Seats ? branchData.Seats.length : 0;
+          delete branchData.Seats;
+          
+          return branchData;
+        });
+        
         const totalPages = Math.ceil(count / limit);
         
         const fallbackResponse: ApiResponse = {
           success: true,
-          data: branches,
+          data: processedBranches,
           meta: {
             pagination: {
               total: count,

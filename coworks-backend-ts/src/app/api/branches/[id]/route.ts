@@ -2,8 +2,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
+import { Op } from 'sequelize';
 
-// GET a single branch by ID
+// Helper function to find branch by ID or code
+async function findBranch(idOrCode: string) {
+  // Check if the parameter is a numeric ID or a branch code
+  const isNumeric = /^\d+$/.test(idOrCode);
+  
+  // Define safe attributes that are known to exist
+  const safeAttributes = ['id', 'name', 'address', 'location', 'latitude', 'longitude', 
+    'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 'created_at', 'updated_at', 'short_code'];
+  
+  let whereClause = {};
+  if (isNumeric) {
+    whereClause = { id: parseInt(idOrCode) };
+  } else {
+    whereClause = { short_code: idOrCode };
+  }
+  
+  // Try to find the branch
+  const branch = await models.Branch.findOne({
+    where: whereClause,
+    attributes: safeAttributes,
+    include: [
+      { 
+        model: models.Seat,
+        as: 'Seats',
+        include: [
+          {
+            model: models.SeatingType,
+            as: 'SeatingType'
+          }
+        ]
+      }
+    ]
+  });
+  
+  return branch;
+}
+
+// GET a single branch by ID or code
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -11,26 +49,8 @@ export async function GET(
   try {
     const { id } = params;
     
-    // Define safe attributes to fetch that are known to exist
-    const safeAttributes = ['id', 'name', 'address', 'location', 'latitude', 'longitude', 
-      'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 'created_at', 'updated_at'];
-    
-    // Find the branch with its seats
-    const branch = await models.Branch.findByPk(parseInt(id), {
-      attributes: safeAttributes,
-      include: [
-        { 
-          model: models.Seat,
-          as: 'Seats',
-          include: [
-            {
-              model: models.SeatingType,
-              as: 'SeatingType'
-            }
-          ]
-        }
-      ]
-    });
+    // Find branch using the helper function
+    const branch = await findBranch(id);
     
     if (!branch) {
       return NextResponse.json(
@@ -42,8 +62,9 @@ export async function GET(
     // Now try to fetch optional attributes that might not exist in the schema
     try {
       // Try to fetch images and amenities columns if they exist
-      const extendedAttributes = await models.Branch.findByPk(parseInt(id), {
-        attributes: ['images', 'amenities', 'short_code'],
+      const extendedAttributes = await models.Branch.findOne({
+        where: { id: branch.id },
+        attributes: ['images', 'amenities'],
         raw: true
       });
       
@@ -56,16 +77,20 @@ export async function GET(
         if (extendedAttributes.amenities !== undefined) {
           branch.dataValues.amenities = extendedAttributes.amenities;
         }
-        
-        if (extendedAttributes.short_code !== undefined) {
-          branch.dataValues.short_code = extendedAttributes.short_code;
-        }
       }
     } catch (err) {
       // If the columns don't exist, just continue without them
       const error = err as Error;
       console.warn('Some extended attributes might not exist in the schema:', error.message);
     }
+    
+    // Count total seats for this branch
+    const totalSeats = await models.Seat.count({
+      where: { branch_id: branch.id }
+    });
+    
+    // Add total seats to the response
+    branch.dataValues.total_seats = totalSeats;
     
     return NextResponse.json({
       success: true,
@@ -82,17 +107,24 @@ export async function GET(
         error.message.includes('does not exist')
     )) {
       try {
-        // Get the id from params again
-        const branchId = parseInt(params.id);
-        
         // Fallback to simpler query with minimal attributes
-        const simpleBranch = await models.Branch.findByPk(branchId, {
+        const isNumeric = /^\d+$/.test(params.id);
+        let whereClause = {};
+        
+        if (isNumeric) {
+          whereClause = { id: parseInt(params.id) };
+        } else {
+          whereClause = { short_code: params.id };
+        }
+        
+        const simpleBranch = await models.Branch.findOne({
+          where: whereClause,
           attributes: ['id', 'name', 'address', 'location', 'is_active'],
           include: [
             { 
               model: models.Seat,
               as: 'Seats',
-              attributes: ['id', 'seat_number']
+              attributes: ['id', 'seat_number', 'seat_code']
             }
           ]
         });
@@ -121,7 +153,7 @@ export async function GET(
   }
 }
 
-// PUT update a branch
+// PUT update a branch by ID or code
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -142,8 +174,8 @@ export async function PUT(
       amenities
     } = body;
     
-    // Find the branch
-    const branch = await models.Branch.findByPk(parseInt(id));
+    // Find branch using the helper function
+    const branch = await findBranch(id);
     
     if (!branch) {
       return NextResponse.json(
@@ -204,7 +236,7 @@ export async function PUT(
   }
 }
 
-// DELETE a branch
+// DELETE a branch by ID or code
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -212,8 +244,8 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    // Find the branch
-    const branch = await models.Branch.findByPk(parseInt(id));
+    // Find branch using the helper function
+    const branch = await findBranch(id);
     
     if (!branch) {
       return NextResponse.json(
@@ -223,7 +255,7 @@ export async function DELETE(
     }
     
     // Check if branch has seats
-    const seatCount = await models.Seat.count({ where: { branch_id: parseInt(id) } });
+    const seatCount = await models.Seat.count({ where: { branch_id: branch.id } });
     
     if (seatCount > 0) {
       return NextResponse.json(
