@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Op } from 'sequelize';
-import { verifyAdminAuth, verifyBranchAccess, verifySuperAdmin } from '@/utils/adminAuth';
+import { verifyAdmin, verifyBranchAccess, verifySuperAdmin } from '@/utils/adminAuth';
 import models from '@/models';
 import { ApiResponse } from '@/types/api';
 
@@ -12,9 +12,9 @@ import { ApiResponse } from '@/types/api';
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication
-    const adminAuth = await verifyAdminAuth(request);
+    const adminAuth = await verifyAdmin(request);
     
-    // If verifyAdminAuth returned an error response
+    // If verifyAdmin returned an error response
     if ('status' in adminAuth) {
       return adminAuth as NextResponse;
     }
@@ -140,11 +140,9 @@ export async function POST(request: NextRequest) {
     const branch = await models.Branch.create({
       name,
       location,
-      description,
-      contact_email,
-      contact_phone,
-      is_active,
-      short_code
+      address: location,
+      short_code,
+      is_active
     });
     
     return NextResponse.json<ApiResponse<typeof branch>>({
