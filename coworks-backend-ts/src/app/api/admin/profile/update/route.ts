@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAuth } from '@/utils/adminAuth';
+import { verifyAdmin } from '@/utils/adminAuth';
 import AdminModel from '@/models/admin';
 import { ApiResponse } from '@/types/api';
 import { hashPassword } from '@/utils/password';
@@ -10,9 +10,9 @@ import { hashPassword } from '@/utils/password';
 export async function PUT(request: NextRequest) {
   try {
     // Verify admin authentication
-    const adminAuth = await verifyAdminAuth(request);
+    const adminAuth = await verifyAdmin(request);
     
-    // If verifyAdminAuth returned an error response
+    // If verifyAdmin returned an error response
     if ('status' in adminAuth) {
       return adminAuth as NextResponse;
     }
