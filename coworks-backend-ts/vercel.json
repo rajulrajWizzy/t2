@@ -1,8 +1,26 @@
 {
     "version": 2,
-    "buildCommand": "npm run build",
-    "devCommand": "npm run dev",
-    "installCommand": "npm install",
-    "framework": "nextjs",
-    "regions": ["sin1"]
+    "builds": [
+      {
+        "src": "package.json",
+        "use": "@vercel/next"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "/api/$1"
+      }
+    ],
+    "env": {
+      "NODE_ENV": "production",
+      "NODE_OPTIONS": "--max_old_space_size=512"
+    },
+    "build": {
+      "env": {
+        "NODE_ENV": "production",
+        "NODE_OPTIONS": "--max_old_space_size=512"
+      }
+    },
+    "buildCommand": "npm run vercel-build"
   }

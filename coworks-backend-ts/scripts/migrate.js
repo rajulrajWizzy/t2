@@ -7,39 +7,50 @@ const dbSchema = process.env.DB_SCHEMA || 'public';
 // Create Sequelize instance
 let sequelize;
 
-// Check if DATABASE_URL exists (Vercel/Production)
-if (process.env.DATABASE_URL) {
-  console.log('Using DATABASE_URL for connection');
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
-    logging: console.log,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
+// Better error handling for connection
+function createConnection() {
+  try {
+    // Check if DATABASE_URL exists (Vercel/Production)
+    if (process.env.DATABASE_URL) {
+      console.log('Using DATABASE_URL for connection');
+      return new Sequelize(process.env.DATABASE_URL, {
+        dialect: 'postgres',
+        logging: false, // Reduce noise in logs
+        dialectOptions: {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false
+          }
+        }
+      });
+    } else {
+      // Fallback to individual credentials (local development)
+      console.log('Using individual credentials for connection');
+      return new Sequelize(
+        process.env.DB_NAME,
+        process.env.DB_USER,
+        process.env.DB_PASS,
+        {
+          host: process.env.DB_HOST || 'localhost',
+          dialect: 'postgres',
+          logging: false, // Reduce noise in logs
+          dialectOptions: {
+            ssl: process.env.DB_SSL === 'true' ? {
+              require: true,
+              rejectUnauthorized: false
+            } : undefined
+          }
+        }
+      );
     }
-  });
-} else {
-  // Fallback to individual credentials (local development)
-  console.log('Using individual credentials for connection');
-  sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASS,
-    {
-      host: process.env.DB_HOST || 'localhost',
-      dialect: 'postgres',
-      logging: console.log,
-      dialectOptions: {
-        ssl: process.env.DB_SSL === 'true' ? {
-          require: true,
-          rejectUnauthorized: false
-        } : undefined
-      }
-    }
-  );
+  } catch (error) {
+    console.error('Error creating database connection:', error);
+    process.exit(1);
+  }
 }
+
+// Initialize connection
+sequelize = createConnection();
 
 // Function to check if a table exists
 async function tableExists(tableName) {
@@ -366,32 +377,60 @@ async function up() {
       console.log('time_slots table already exists');
     }
 
-    // Record the migration
-    await recordMigration('initial_schema');
-
+    // Record the base migration
+    await recordMigration('base_migration');
+    
+    console.log('All migrations completed successfully');
     await transaction.commit();
-    console.log('Migrations completed successfully');
+    
   } catch (error) {
     await transaction.rollback();
-    console.error('Error in migration:', error);
+    console.error('Migration error:', error);
+    
+    // More detailed error reporting
+    if (error.parent) {
+      console.error('Database error details:', {
+        code: error.parent.code,
+        message: error.parent.message,
+        detail: error.parent.detail
+      });
+    }
+    
     throw error;
   }
 }
 
-// Runner Function
+// Main function to run migrations with better error handling
 async function runMigrations() {
   try {
-    // Test connection first
+    // Test database connection before proceeding
     console.log('Testing database connection...');
     await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
+    console.log('Database connection established successfully.');
     
-    console.log('Running migrations in smart mode...');
-    await up();
-    console.log('Smart migration process completed');
-    process.exit(0);
+    // Check if we're running down migrations
+    const isDown = process.argv[2] === 'down';
+    
+    if (isDown) {
+      console.log('Running down migrations...');
+      await down();
+    } else {
+      console.log('Running up migrations...');
+      await up();
+    }
+    
+    console.log('Migration process completed successfully.');
+    await sequelize.close();
+    
   } catch (error) {
-    console.error('Migration failed:', error);
+    console.error('Migration process failed:', error);
+    
+    try {
+      await sequelize.close();
+    } catch (closeError) {
+      console.error('Error closing database connection:', closeError);
+    }
+    
     process.exit(1);
   }
 }

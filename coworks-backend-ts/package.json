@@ -5,6 +5,7 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
+        "vercel-build": "node scripts/vercel-migrate.js && next build",
         "start": "next start",
         "lint": "next lint",
         "migrate": "node scripts/migrate.js",
@@ -19,9 +20,10 @@
         "migrate:branch-amenities": "node scripts/migrate-branch-amenities.js",
         "migrate:seat-code": "node scripts/add-seat-code.js",
         "migrate:user-profiles": "node scripts/migrate-user-profile-pictures.js",
+        "migrate:all": "npm run migrate && npm run migrate:seat-code && npm run migrate:short-codes && npm run migrate:branch-images && npm run migrate:branch-amenities && npm run migrate:user-profiles",
         "seed:branches": "node scripts/seed-branches.js",
         "seed:seating-types": "node scripts/seed-seating-types.js",
-        "postinstall": "npm run migrate && npm run migrate:seat-code && npm run migrate:short-codes && npm run migrate:branch-images && npm run migrate:branch-amenities && npm run migrate:user-profiles",
+        "postinstall": "",
         "update:branches": "node scripts/update-branches.js",
         "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js"
     },

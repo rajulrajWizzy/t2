@@ -55,16 +55,15 @@ function generateShortCode(name, existingCodes = []) {
 }
 
 async function run() {
+  let connection = null;
+  
   try {
-    // Connect to the database
-    await sequelize.authenticate();
-    console.log('Connected to database');
+    console.log('Establishing database connection...');
+    connection = await sequelize.authenticate();
+    console.log('Connected to database successfully');
 
-    // Set search path to the specified schema
-    await sequelize.query(`SET search_path TO ${SCHEMA}`);
-
-    // Check if migration has already been applied
-    const [migrations] = await sequelize.query(
+    // Check if this migration has already been run
+    const migrationExists = await sequelize.query(
       `SELECT * FROM migrations WHERE name = :name`,
       {
         replacements: { name: MIGRATION_NAME },
@@ -72,11 +71,17 @@ async function run() {
       }
     );
 
-    if (migrations && migrations.length > 0) {
-      console.log(`Migration ${MIGRATION_NAME} has already been applied.`);
+    if (migrationExists && migrationExists.length > 0) {
+      console.log('Migration already applied. Skipping...');
       await sequelize.close();
       return;
     }
+
+    // Create migration record to prevent running this twice
+    await sequelize.query(
+      `INSERT INTO ${SCHEMA}.migrations (name, applied_at) VALUES (:name, NOW())`,
+      { replacements: { name: MIGRATION_NAME } }
+    );
 
     // Fix branch short codes
     // Check if short_code column exists in branches table
@@ -224,20 +229,32 @@ async function run() {
       console.log('short_code column does not exist in seating_types table, skipping seating type short codes');
     }
 
-    // Record the migration
-    await sequelize.query(
-      `INSERT INTO ${SCHEMA}.migrations (name, applied_at) VALUES (:name, NOW())`,
-      { replacements: { name: MIGRATION_NAME } }
-    );
-
-    console.log(`Migration ${MIGRATION_NAME} has been successfully applied.`);
+    console.log('Short codes migration completed successfully');
     await sequelize.close();
-
   } catch (error) {
-    console.error('Error applying migration:', error);
-    await sequelize.close();
+    console.error('Migration failed:', error);
+    
+    // Log more details about the database error
+    if (error.code) {
+      console.error('Database error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
+    // Close connection if it was established
+    if (sequelize) {
+      try {
+        await sequelize.close();
+      } catch (closeError) {
+        console.error('Error closing database connection:', closeError);
+      }
+    }
+    
     process.exit(1);
   }
 }
 
+// Call the run function
 run(); 
