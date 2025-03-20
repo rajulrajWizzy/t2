@@ -32,11 +32,11 @@ export default function Home() {
             <p className="mt-6 max-w-2xl mx-auto text-xl text-gray-500">
               A comprehensive solution for managing coworking spaces, bookings, and operations.
             </p>
-            <div className="mt-10 flex justify-center">
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
               <Link href="/admin/login" className="px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:text-lg md:px-8">
                 Admin Portal
               </Link>
-              <Link href="/admin/login" className="ml-4 px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:text-lg md:px-8">
+              <Link href="/admin/login" className="px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:text-lg md:px-8">
                 Super Admin
               </Link>
             </div>
@@ -108,13 +108,13 @@ export default function Home() {
               <span className="block">Ready to get started?</span>
               <span className="block text-blue-200">Access the admin portal now.</span>
             </h2>
-            <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
+            <div className="mt-8 flex flex-wrap gap-4 lg:mt-0 lg:flex-shrink-0">
               <div className="inline-flex rounded-md shadow">
                 <Link href="/admin/login" className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50">
                   Login to Admin Portal
                 </Link>
               </div>
-              <div className="ml-3 inline-flex rounded-md shadow">
+              <div className="inline-flex rounded-md shadow">
                 <Link href="/admin/login" className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-800 hover:bg-blue-900">
                   Super Admin Access
                 </Link>

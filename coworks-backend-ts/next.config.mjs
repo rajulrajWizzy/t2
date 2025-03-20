@@ -20,6 +20,12 @@ const nextConfig = {
     config.externals.push('pg-native');
     return config;
   },
+  // Ensure CSS modules work correctly
+  cssModules: true,
+  // Add Tailwind PostCSS configuration
+  postcss: {
+    config: './postcss.config.js',
+  },
 };
 
 export default nextConfig;
