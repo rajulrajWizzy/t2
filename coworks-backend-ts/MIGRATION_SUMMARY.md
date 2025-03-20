@@ -679,4 +679,147 @@ Response:
     "seating_type": "HOT_DESK"
   }
 }
-``` 
+```
+
+## Support Ticket System
+
+We've implemented a robust support ticket system to allow customers to report issues and communicate with branch admins for resolution.
+
+### Ticket Creation and Management
+
+Users can create support tickets with the following details:
+- Title and description of the issue
+- Category (Internet Issue, Power Outage, Seat Issue, Booking Problem, Meeting Room Issue, Cleanliness, Payment Issue, Other)
+- Branch and seating type information
+- Optional related booking details
+
+Tickets follow a status workflow:
+- `new`: Newly created ticket
+- `assigned`: Assigned to a branch admin but not yet responded to
+- `in_progress`: Admin has responded and is working on the issue
+- `closed`: Issue has been resolved
+- `reopened`: Customer has reopened a previously closed ticket
+
+### API Endpoints
+
+#### Customer Endpoints
+
+**GET `/api/support/tickets`**
+Get all tickets for the authenticated customer with optional filtering by status and date.
+
+Example response:
+```json
+{
+  "success": true,
+  "message": "Support tickets retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "ticket_number": "T-20250320-AB12",
+      "title": "Internet not working",
+      "category": "internet_issue",
+      "description": "Unable to connect to WiFi in the meeting room",
+      "status": "in_progress",
+      "created_at": "2025-03-20T12:00:00.000Z",
+      "Branch": {
+        "name": "Downtown Branch",
+        "short_code": "DT01"
+      },
+      "SeatingType": {
+        "name": "Meeting Room",
+        "short_code": "MR"
+      },
+      "AssignedAdmin": {
+        "name": "John Admin",
+        "username": "john_admin"
+      }
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "total_pages": 2,
+    "per_page": 10,
+    "total_items": 15
+  }
+}
+```
+
+**POST `/api/support/tickets`**
+Create a new support ticket.
+
+Request body:
+```json
+{
+  "title": "Internet not working",
+  "category": "internet_issue",
+  "description": "Unable to connect to WiFi in the meeting room",
+  "branch_id": 1,
+  "branch_code": "DT01",
+  "seating_type_id": 2,
+  "seating_type_code": "MR",
+  "booking_id": 123,
+  "booking_type": "meeting"
+}
+```
+
+**GET `/api/support/tickets/:ticket_id`**
+Get detailed information about a specific ticket including all messages.
+
+**PUT `/api/support/tickets/:ticket_id`**
+Reopen a closed ticket.
+
+Request body:
+```json
+{
+  "action": "reopen",
+  "message": "The issue has occurred again, please help"
+}
+```
+
+**POST `/api/support/tickets/messages`**
+Add a new message to an existing ticket.
+
+Request body:
+```json
+{
+  "ticket_id": 1,
+  "message": "Any update on when this will be fixed?"
+}
+```
+
+#### Admin Endpoints
+
+**GET `/api/admin/support/tickets`**
+Get all tickets for branches that the admin has access to, with pagination and filtering options.
+
+**GET `/api/admin/support/tickets/:ticket_id`**
+Get detailed information about a specific ticket including all messages.
+
+**PUT `/api/admin/support/tickets/:ticket_id`**
+Update ticket status or assignment.
+
+Request body:
+```json
+{
+  "status": "closed",
+  "message": "The issue has been resolved"
+}
+```
+
+**POST `/api/admin/support/tickets/:ticket_id/messages`**
+Add a new message to a ticket.
+
+Request body:
+```json
+{
+  "message": "We're working on fixing the internet issue"
+}
+```
+
+### Admin Branch Management
+
+We've implemented a many-to-many relationship between admins and branches, allowing admins to manage multiple branches and branches to have multiple admins:
+
+- Super admins have access to all branches
+- Branch admins can manage one or more specific branches
+- Each admin-branch relationship can be marked as primary for default assignment 

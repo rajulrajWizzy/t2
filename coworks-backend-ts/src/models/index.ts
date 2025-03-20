@@ -12,6 +12,9 @@ import PasswordResetModel from './passwordReset';
 import BranchImageModel from './branchImage';
 import PaymentLogModel from './paymentLog';
 import AdminModel from './admin';
+import AdminBranchModel from './adminBranch';
+import SupportTicketModel from './supportTicket';
+import TicketMessageModel from './ticketMessage';
 
 // Define associations with explicit aliases
 BranchModel.hasMany(SeatModel, { foreignKey: 'branch_id', as: 'Seats' });
@@ -20,9 +23,34 @@ SeatModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 BranchModel.hasMany(BranchImageModel, { foreignKey: 'branch_id', as: 'Images' });
 BranchImageModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 
+// Admin-Branch associations
+AdminModel.hasMany(AdminBranchModel, { foreignKey: 'admin_id', as: 'AdminBranches' });
+AdminBranchModel.belongsTo(AdminModel, { foreignKey: 'admin_id', as: 'Admin' });
+
+BranchModel.hasMany(AdminBranchModel, { foreignKey: 'branch_id', as: 'AdminBranches' });
+AdminBranchModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
+
+// Legacy direct branch association (will be deprecated)
 BranchModel.hasMany(AdminModel, { foreignKey: 'branch_id', as: 'Admins' });
 AdminModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 
+// Support ticket associations
+BranchModel.hasMany(SupportTicketModel, { foreignKey: 'branch_id', as: 'SupportTickets' });
+SupportTicketModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
+
+CustomerModel.hasMany(SupportTicketModel, { foreignKey: 'customer_id', as: 'SupportTickets' });
+SupportTicketModel.belongsTo(CustomerModel, { foreignKey: 'customer_id', as: 'Customer' });
+
+SeatingTypeModel.hasMany(SupportTicketModel, { foreignKey: 'seating_type_id', as: 'SupportTickets' });
+SupportTicketModel.belongsTo(SeatingTypeModel, { foreignKey: 'seating_type_id', as: 'SeatingType' });
+
+AdminModel.hasMany(SupportTicketModel, { foreignKey: 'assigned_to', as: 'AssignedTickets' });
+SupportTicketModel.belongsTo(AdminModel, { foreignKey: 'assigned_to', as: 'AssignedAdmin' });
+
+SupportTicketModel.hasMany(TicketMessageModel, { foreignKey: 'ticket_id', as: 'Messages' });
+TicketMessageModel.belongsTo(SupportTicketModel, { foreignKey: 'ticket_id', as: 'Ticket' });
+
+// Existing associations
 SeatingTypeModel.hasMany(SeatModel, { foreignKey: 'seating_type_id', as: 'Seats' });
 SeatModel.belongsTo(SeatingTypeModel, { foreignKey: 'seating_type_id', as: 'SeatingType' });
 
@@ -113,6 +141,9 @@ const models = {
   BranchImage: BranchImageModel,
   PaymentLog: PaymentLogModel,
   Admin: AdminModel,
+  AdminBranch: AdminBranchModel,
+  SupportTicket: SupportTicketModel,
+  TicketMessage: TicketMessageModel,
   Sequelize: sequelize.Sequelize
 };
 export default models;

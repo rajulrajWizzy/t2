@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './jwt';
+import { verifyToken, JWTPayload } from './jwt';
 import { AdminRole } from '@/models/admin';
+import models from '@/models';
+
+// Extended interface for admin token payload
+export interface AdminJWTPayload extends JWTPayload {
+  role: string;
+}
 
 /**
- * Verify admin authentication from request
+ * Verify an admin request's Authorization token
  * @param request Next.js request object
- * @returns Decoded admin info or error response
+ * @returns Decoded token payload or error response
  */
-export async function verifyAdminAuth(request: NextRequest): Promise<any | NextResponse> {
+export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | NextResponse> {
   // Extract token from Authorization header
   const token = request.headers.get('Authorization')?.replace('Bearer ', '');
   
@@ -22,15 +28,32 @@ export async function verifyAdminAuth(request: NextRequest): Promise<any | NextR
     // Verify the token
     const decoded = await verifyToken(token);
     
-    // Validate required fields and admin flag
-    if (!decoded.id || !decoded.email || !decoded.is_admin) {
+    // Validate required fields
+    if (!decoded.id || !decoded.email || !decoded.role) {
       return NextResponse.json(
-        { success: false, message: 'Invalid admin token' },
+        { success: false, message: 'Invalid token format' },
         { status: 401 }
       );
     }
     
-    return decoded;
+    // Verify user is an admin
+    if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Check if admin exists in the database
+    const admin = await models.Admin.findByPk(decoded.id);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: 'Admin not found' },
+        { status: 404 }
+      );
+    }
+    
+    return decoded as AdminJWTPayload;
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'Invalid or expired token' },
@@ -45,7 +68,7 @@ export async function verifyAdminAuth(request: NextRequest): Promise<any | NextR
  * @returns Decoded admin info or error response
  */
 export async function verifySuperAdmin(request: NextRequest): Promise<any | NextResponse> {
-  const adminAuth = await verifyAdminAuth(request);
+  const adminAuth = await verifyAdmin(request);
   
   // If verifyAdminAuth returned an error response
   if ('status' in adminAuth) {
@@ -73,7 +96,7 @@ export async function verifyBranchAccess(
   request: NextRequest, 
   branchId?: number | string
 ): Promise<any | NextResponse> {
-  const adminAuth = await verifyAdminAuth(request);
+  const adminAuth = await verifyAdmin(request);
   
   // If verifyAdminAuth returned an error response
   if ('status' in adminAuth) {
