@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { ApiResponse } from '@/types/common';
+import { Op } from 'sequelize';
+import { Seat, SeatingType } from '@/types/seating';
+
+// Define interface for Seat with SeatingType association
+interface SeatWithAssociations extends Seat {
+  SeatingType?: SeatingType;
+}
 
 // Helper function to find branch by ID or code
 async function findBranch(idOrCode: string) {
@@ -75,7 +82,8 @@ export async function GET(
     // Group seats by seating type
     const seatingTypeMap = new Map();
     seats.forEach(seat => {
-      const seatingTypeData = seat.SeatingType;
+      const typedSeat = seat as unknown as SeatWithAssociations;
+      const seatingTypeData = typedSeat.SeatingType;
       if (seatingTypeData) {
         const seatingTypeId = seatingTypeData.id;
         if (!seatingTypeMap.has(seatingTypeId)) {
