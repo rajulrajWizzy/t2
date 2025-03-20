@@ -9,10 +9,19 @@ import PaymentModel from './payment';
 import TimeSlotModel from './timeSlot';
 import BlacklistedTokenModel from './blacklistedToken';
 import PasswordResetModel from './passwordReset';
+import BranchImageModel from './branchImage';
+import PaymentLogModel from './paymentLog';
+import AdminModel from './admin';
 
 // Define associations with explicit aliases
 BranchModel.hasMany(SeatModel, { foreignKey: 'branch_id', as: 'Seats' });
 SeatModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
+
+BranchModel.hasMany(BranchImageModel, { foreignKey: 'branch_id', as: 'Images' });
+BranchImageModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
+
+BranchModel.hasMany(AdminModel, { foreignKey: 'branch_id', as: 'Admins' });
+AdminModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 
 SeatingTypeModel.hasMany(SeatModel, { foreignKey: 'seating_type_id', as: 'Seats' });
 SeatModel.belongsTo(SeatingTypeModel, { foreignKey: 'seating_type_id', as: 'SeatingType' });
@@ -54,6 +63,31 @@ PaymentModel.belongsTo(MeetingBookingModel, {
   as: 'MeetingBooking'
 });
 
+// Payment log associations
+SeatBookingModel.hasMany(PaymentLogModel, {
+  foreignKey: 'booking_id',
+  constraints: false,
+  scope: { booking_type: 'seat' },
+  as: 'PaymentLogs'
+});
+PaymentLogModel.belongsTo(SeatBookingModel, {
+  foreignKey: 'booking_id',
+  constraints: false,
+  as: 'SeatBooking'
+});
+
+MeetingBookingModel.hasMany(PaymentLogModel, {
+  foreignKey: 'booking_id',
+  constraints: false,
+  scope: { booking_type: 'meeting' },
+  as: 'PaymentLogs'
+});
+PaymentLogModel.belongsTo(MeetingBookingModel, {
+  foreignKey: 'booking_id',
+  constraints: false,
+  as: 'MeetingBooking'
+});
+
 BranchModel.hasMany(TimeSlotModel, { foreignKey: 'branch_id', as: 'TimeSlots' });
 TimeSlotModel.belongsTo(BranchModel, { foreignKey: 'branch_id', as: 'Branch' });
 
@@ -75,6 +109,10 @@ const models = {
   Payment: PaymentModel,
   TimeSlot: TimeSlotModel,
   BlacklistedToken: BlacklistedTokenModel,
-  PasswordReset: PasswordResetModel
+  PasswordReset: PasswordResetModel,
+  BranchImage: BranchImageModel,
+  PaymentLog: PaymentLogModel,
+  Admin: AdminModel,
+  Sequelize: sequelize.Sequelize
 };
 export default models;

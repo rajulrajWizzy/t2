@@ -589,4 +589,94 @@ If you encounter any issues:
 3. Ensure branch and seating type records have valid short codes
 4. For any records missing codes, you can run the migration scripts again
 
-For additional assistance, refer to the codebase documentation or contact the development team. 
+For additional assistance, refer to the codebase documentation or contact the development team.
+
+## API Endpoints Update
+
+### New Endpoints
+
+- `GET /api/branches/stats`: Get detailed statistics about branches and seating types, including total, booked, and available seats. Supports filtering by branch_code, date, and time range.
+- `GET /api/slots/available`: Get available slots for different seating types in a branch. Supports filtering by branch_code, seating_type_code, and date range.
+- `POST /api/profile/upload`: Upload a profile picture for a user. Requires authentication and supports image validation.
+- `POST /api/branches/images/upload`: Upload branch images categorized by seating type. Supports primary image designation for each seating type.
+- `PATCH /api/branches/images/upload`: Update branch image settings, such as marking an image as primary.
+- `DELETE /api/branches/images/upload`: Delete a branch image by ID.
+
+### Updated Endpoints
+
+- `POST /api/bookings`: Updated to support different seating types with specific requirements for each type:
+  - Hot Desks require a minimum booking duration of 1 month
+  - Dedicated Desks require a minimum booking duration of 1 month with at least 1 seat
+  - Cubicles now have specific types (3-seater, 4-seater, 6-seater, 10-seater) with different pricing
+
+## Branch Images and Profiles
+
+We've enhanced visual representation of branches and users with image support:
+
+### Branch Images
+- Images are stored and managed using Cloudinary for optimized delivery
+- Each branch can have multiple images for each seating type (HOT_DESK, DEDICATED_DESK, etc.)
+- One image per seating type can be designated as primary for display purposes
+- Images are organized in Cloudinary by folders based on seating type for better management
+- Support for cubicle seating types split by capacity (3-seater, 4-seater, 6-seater, 10-seater)
+- Branch images can be added, updated, and deleted through dedicated API endpoints
+- Primary images are used in branch listings and details pages
+
+### User Profile Pictures
+- User profiles now support profile pictures stored in Cloudinary
+- Images are stored in a dedicated "profiles" folder in Cloudinary
+- Support for image validation (file type, size)
+- Profile pictures can be updated through a dedicated API endpoint
+- Profile pictures are displayed in user profiles and booking information
+
+### Image Upload APIs
+
+#### Upload Profile Picture
+```
+POST /api/profile/upload
+```
+
+Request (multipart/form-data):
+```
+image: File (jpeg, png, max 5MB)
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Profile picture uploaded successfully",
+  "data": {
+    "profile_picture": "https://res.cloudinary.com/example/image/upload/v1234/profiles/user_123.jpg"
+  }
+}
+```
+
+#### Upload Branch Image
+```
+POST /api/branches/images/upload
+```
+
+Request (multipart/form-data):
+```
+image: File (jpeg, png, max 10MB)
+branch_id: "1"
+seating_type: "HOT_DESK"
+is_primary: "true" | "false"
+index: "1" (optional, for organizing multiple images)
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Branch image uploaded successfully",
+  "data": {
+    "id": 1,
+    "branch_id": "1",
+    "image_url": "https://res.cloudinary.com/example/image/upload/v1234/branches/hot_desk/branch_1_1.jpg",
+    "is_primary": true,
+    "seating_type": "HOT_DESK"
+  }
+}
+``` 
