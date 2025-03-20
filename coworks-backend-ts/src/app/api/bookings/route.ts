@@ -41,11 +41,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { 
       type = 'seat',
       seat_id, 
+      seat_code,
       start_time, 
       end_time, 
       total_price,
       quantity = 1,
-      seating_type
+      seating_type_code
     } = body;
     
     // Validate booking type
@@ -56,23 +57,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 400 });
     }
     
-    // Validate seat_id
-    if (!seat_id || typeof seat_id !== 'number' || seat_id <= 0) {
+    // Need either seat_id or seat_code
+    if ((!seat_id || typeof seat_id !== 'number' || seat_id <= 0) && !seat_code) {
       return NextResponse.json({
         success: false,
-        message: 'Valid seat ID is required'
+        message: 'Valid seat ID or seat code is required'
       }, { status: 400 });
-    }
-    
-    // Validate seating type if provided
-    if (seating_type) {
-      const validSeatingTypes = ['hot', 'ded', 'cub', 'meet', 'day'];
-      if (!validSeatingTypes.includes(seating_type)) {
-        return NextResponse.json({
-          success: false,
-          message: 'Invalid seating type. Must be one of: hot (Hot Desk), ded (Dedicated Desk), cub (Cubicle), meet (Meeting Room), day (Daily Pass)'
-        }, { status: 400 });
-      }
     }
     
     // Validate dates
@@ -129,13 +119,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
+    // Look up seat by ID or code
+    let seatWhere = {};
+    if (seat_id) {
+      seatWhere = { id: seat_id };
+    } else if (seat_code) {
+      seatWhere = { seat_code: seat_code };
+    }
+    
     // Check if the seat exists
-    const seat = await models.Seat.findByPk(seat_id, {
+    const seat = await models.Seat.findOne({
+      where: seatWhere,
       include: [
         {
           model: models.SeatingType,
           as: 'SeatingType',
-          attributes: ['id', 'name', 'short_code', 'description']
+          attributes: ['id', 'name', 'short_code', 'description', 'hourly_rate', 'is_hourly', 'min_booking_duration', 'min_seats']
+        },
+        {
+          model: models.Branch,
+          as: 'Branch',
+          attributes: ['id', 'name', 'short_code', 'location', 'address']
         }
       ]
     }) as any;
@@ -143,7 +147,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!seat) {
       return NextResponse.json({
         success: false,
-        message: 'Seat not found'
+        message: `Seat ${seat_id ? `#${seat_id}` : `with code ${seat_code}`} not found`
       }, { status: 404 });
     }
     
@@ -157,13 +161,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     // Validate seating type matches the request if provided
-    if (seating_type && seatingType.short_code !== seating_type) {
+    if (seating_type_code && seatingType.short_code !== seating_type_code) {
       return NextResponse.json({
         success: false,
-        message: `Seat #${seat_id} is not a ${seating_type} seat. It is a ${seatingType.short_code} seat.`,
+        message: `Seat ${seat_id ? `#${seat_id}` : seat_code} is not a ${seating_type_code} seat. It is a ${seatingType.short_code} seat.`,
         data: {
           seat_id: seat.id,
           seat_number: seat.seat_number,
+          seat_code: seat.seat_code,
           actual_seating_type: {
             name: seatingType.name,
             short_code: seatingType.short_code,
@@ -177,14 +182,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const durationMs = endTimeDate.getTime() - startTimeDate.getTime();
     const durationHours = durationMs / (1000 * 60 * 60);
     const durationDays = durationHours / 24;
+    const durationMonths = durationDays / 30; // Approximate
     
     // Validate minimum booking duration based on seating type
     if (seatingType.name === SeatingTypeEnum.HOT_DESK) {
-      // Hot desk: minimum 2 months (60 days) and at least 1 seat
-      if (durationDays < 60) {
+      // Hot desk: minimum 1 month and at least 1 seat
+      if (durationMonths < 1) {
         return NextResponse.json({
           success: false,
-          message: 'Hot desk requires a minimum booking duration of 2 months'
+          message: 'Hot desk requires a minimum booking duration of 1 month'
         }, { status: 400 });
       }
       
@@ -196,36 +202,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     } 
     else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
-      // Dedicated desk: minimum 3 months (90 days) and at least 10 seats
-      if (durationDays < 90) {
+      // Dedicated desk: minimum 1 month and at least 1 seat
+      if (durationMonths < 1) {
         return NextResponse.json({
           success: false,
-          message: 'Dedicated desk requires a minimum booking duration of 3 months'
+          message: 'Dedicated desk requires a minimum booking duration of 1 month'
         }, { status: 400 });
       }
       
-      if (quantity < 10) {
+      if (quantity < 1) {
         return NextResponse.json({
           success: false,
-          message: 'Dedicated desk requires a minimum of 10 seats'
+          message: 'Dedicated desk requires a minimum of 1 seat'
         }, { status: 400 });
       }
     }
     else if (seatingType.name === SeatingTypeEnum.CUBICLE) {
-      // Cubicle: minimum 3 months (90 days)
-      if (durationDays < 90) {
+      // Cubicle: minimum 1 month
+      if (durationMonths < 1) {
         return NextResponse.json({
           success: false,
-          message: 'Cubicle requires a minimum booking duration of 3 months'
+          message: 'Cubicle requires a minimum booking duration of 1 month'
         }, { status: 400 });
       }
     }
     else if (seatingType.name === SeatingTypeEnum.MEETING_ROOM) {
-      // Meeting room: hourly basis with minimum 2 hours
-      if (durationHours < 2) {
+      // Meeting room: hourly basis with minimum 1 hour
+      if (durationHours < 1) {
         return NextResponse.json({
           success: false,
-          message: 'Meeting room requires a minimum booking duration of 2 hours'
+          message: 'Meeting room requires a minimum booking duration of 1 hour'
         }, { status: 400 });
       }
     }
@@ -239,8 +245,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    // For Hot Desk and Daily Pass, check seat availability
+    // For Hot Desk, Dedicated Desk and Daily Pass, check seat availability
     if (seatingType.name === SeatingTypeEnum.HOT_DESK || 
+        seatingType.name === SeatingTypeEnum.DEDICATED_DESK ||
         seatingType.name === SeatingTypeEnum.DAILY_PASS) {
       // Count available seats of this type in the branch
       const branchId = seat.branch_id;
@@ -271,7 +278,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Check if the time slot is available
     const existingBookings = await models.SeatBooking.findAll({
       where: {
-        seat_id,
+        seat_id: seat.id,
         [Op.or]: [
           {
             start_time: {
@@ -291,7 +298,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (existingBookings.length > 0) {
       return NextResponse.json({
         success: false,
-        message: 'The selected time slot is not available'
+        message: 'The selected time slot is not available',
+        conflicts: existingBookings.map(booking => ({
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          status: booking.status
+        }))
       }, { status: 400 });
     }
     
@@ -306,10 +318,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         // Single seat booking
         const booking = await models.SeatBooking.create({
           customer_id,
-          seat_id,
+          seat_id: seat.id,
           start_time: startTimeDate,
           end_time: endTimeDate,
-          total_price
+          total_price,
+          status: BookingStatusEnum.CONFIRMED
         });
         
         bookings.push(booking);
@@ -322,7 +335,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           { is_available: false, booking_id: booking.id },
           { 
             where: { 
-              seat_id, 
+              seat_id: seat.id, 
               date: startTimeDate.toISOString().split('T')[0],
               start_time: startTimeDate.toTimeString().split(' ')[0],
               end_time: endTimeDate.toTimeString().split(' ')[0]
@@ -355,7 +368,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             seat_id: seatToBook.id,
             start_time: startTimeDate,
             end_time: endTimeDate,
-            total_price: total_price / seatsToBook // Divide total price among seats
+            total_price: total_price / seatsToBook, // Divide total price among seats
+            status: BookingStatusEnum.CONFIRMED
           });
           
           bookings.push(booking);
@@ -390,12 +404,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       
       const booking = await models.MeetingBooking.create({
         customer_id,
-        meeting_room_id: seat_id,
+        meeting_room_id: seat.id,
         start_time: startTimeDate,
         end_time: endTimeDate,
         num_participants,
         amenities: amenities || null,
-        total_price
+        total_price,
+        status: BookingStatusEnum.CONFIRMED
       });
       
       bookings.push(booking);
@@ -407,23 +422,59 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Return seating type information in the response
     const response = {
       success: true,
-      message: 'Seat found',
+      message: `${seatingType.name} booking created successfully`,
       data: {
-        seat_id: seat.id,
-        seat_number: seat.seat_number,
+        bookings: bookings.map(booking => {
+          const bookingData: any = {
+            id: booking.id,
+            start_time: booking.start_time,
+            end_time: booking.end_time,
+            total_price: booking.total_price,
+            status: booking.status
+          };
+          
+          if (type === 'seat') {
+            bookingData.seat_id = booking.seat_id;
+          } else if (type === 'meeting') {
+            bookingData.meeting_room_id = booking.meeting_room_id;
+            bookingData.num_participants = booking.num_participants;
+            bookingData.amenities = booking.amenities;
+          }
+          
+          return bookingData;
+        }),
+        seat: {
+          id: seat.id,
+          seat_number: seat.seat_number,
+          seat_code: seat.seat_code
+        },
         seating_type: {
           id: seatingType.id,
           name: seatingType.name,
           short_code: seatingType.short_code,
           description: seatingType.description
+        },
+        branch: seat.Branch ? {
+          id: seat.Branch.id,
+          name: seat.Branch.name,
+          short_code: seat.Branch.short_code,
+          location: seat.Branch.location,
+          address: seat.Branch.address
+        } : null,
+        booking_details: {
+          type,
+          quantity: seatsToBook,
+          start_time: startTimeDate,
+          end_time: endTimeDate,
+          duration: {
+            hours: durationHours,
+            days: durationDays,
+            months: durationMonths
+          },
+          total_price
         }
       }
     };
-    
-    // If this is a cubicle seat, add a note
-    if (seatingType.short_code === 'cub') {
-      response.message = 'Cubicle seat found';
-    }
     
     return NextResponse.json(response);
   } catch (error) {
