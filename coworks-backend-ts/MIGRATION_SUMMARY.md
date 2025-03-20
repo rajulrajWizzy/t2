@@ -17,6 +17,7 @@ This document outlines the changes made to implement branch and seat codes in th
    - Enhanced response formats to include seat counts and organize by seating type
    - Updated bookings endpoint to filter by booking status and validate branch/seating type existence
    - Added new slots API to support different seating types with date ranges
+   - Added branch stats API to show detailed seat counts and availability by branch and seating type
 
 3. **Database Migrations**:
    - Added migration scripts for adding all necessary columns
@@ -38,6 +39,7 @@ To apply these changes to your environment, follow these steps:
    - Test the `/api/branches/[code]` endpoint to confirm branches can be looked up by code
    - Test the `/api/branches/[code]/seats` endpoint to confirm seats are organized by seating type
    - Test the `/api/slots/available` endpoint to confirm available slots are returned for different seating types
+   - Test the `/api/branches/stats` endpoint to verify accurate seat counts and availability
 
 ## Key API Changes
 
@@ -57,6 +59,15 @@ To apply these changes to your environment, follow these steps:
   - Access seats for a branch using either ID or branch code
   - Filter by `seating_type_id` or `seating_type_code`
   - Seats are organized by seating type
+
+- **GET /api/branches/stats**
+  - New endpoint to get detailed statistics about branches and seating types
+  - Returns counts of total seats, booked seats, and available seats
+  - Supports optional filtering by `branch_code`
+  - Supports date-based availability with `date` parameter
+  - For hourly bookings, supports time range filtering with `start_time` and `end_time` parameters
+  - Shows all individual seats with their current availability status
+  - Distinguishes between permanently booked seats and temporarily booked seats (via bookings)
 
 ### Seat Endpoints
 
@@ -172,6 +183,81 @@ To apply these changes to your environment, follow these steps:
     },
     "bookings": []
   }
+}
+```
+
+### Branch Stats Response Example:
+
+```json
+{
+  "success": true,
+  "message": "Branch stats retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "Downtown Branch",
+      "short_code": "DOW123",
+      "address": "123 Main St",
+      "location": "Downtown",
+      "opening_time": "08:00:00",
+      "closing_time": "18:00:00",
+      "total_seats": 20,
+      "available_seats": 15,
+      "booked_seats": 5,
+      "seating_types": [
+        {
+          "id": 1,
+          "name": "HOT_DESK",
+          "short_code": "HD",
+          "description": "Flexible workspace",
+          "total_seats": 10,
+          "available_seats": 8,
+          "booked_seats": 2,
+          "is_hourly": false,
+          "hourly_rate": 10,
+          "seats": [
+            {
+              "id": 1,
+              "seat_code": "HD001",
+              "seat_number": "A1",
+              "price": 10,
+              "status": "available",
+              "has_booking": false
+            },
+            {
+              "id": 2,
+              "seat_code": "HD002",
+              "seat_number": "A2",
+              "price": 10,
+              "status": "booked",
+              "has_booking": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "name": "DEDICATED_DESK",
+          "short_code": "DD",
+          "description": "Dedicated workspace",
+          "total_seats": 10,
+          "available_seats": 7,
+          "booked_seats": 3,
+          "is_hourly": false,
+          "hourly_rate": 15,
+          "seats": [
+            {
+              "id": 11,
+              "seat_code": "DD001",
+              "seat_number": "B1",
+              "price": 15,
+              "status": "booked",
+              "has_booking": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -343,6 +429,27 @@ To apply these changes to your environment, follow these steps:
   }
 }
 ```
+
+## Branch Stats API Usage Guide
+
+The branch stats API provides comprehensive information about seat availability across branches:
+
+- **Basic usage**: `/api/branches/stats` - Returns stats for all branches and their seats
+- **Filter by branch**: `/api/branches/stats?branch_code=DOW123` - Stats for a specific branch
+- **Filter by date**: `/api/branches/stats?date=2023-06-15` - Check availability on specific date
+- **Filter by time slot**: `/api/branches/stats?date=2023-06-15&start_time=09:00&end_time=12:00` - For hourly bookings
+
+The API returns important information:
+- **Total seats** - The total number of seats in each branch and by seating type
+- **Booked seats** - Both permanently booked seats and seats with bookings for the specified time
+- **Available seats** - Seats that can be booked for the specified time period
+- **Individual seat status** - Each seat with its status and booking information
+
+This API is useful for:
+1. Displaying branch seat availability statistics on dashboards
+2. Visualizing seat availability by seating type
+3. Checking real-time availability for specific dates and times
+4. Generating branch occupancy reports
 
 ## Filtering Bookings by Status
 
