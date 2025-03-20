@@ -103,7 +103,7 @@ async function getBranchStats(branchId: string | number) {
       [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'total']
     ],
     raw: true
-  });
+  }) as unknown as { total: string }[];
   
   const totalRevenue = parseFloat(payments[0]?.total || '0');
 
@@ -182,7 +182,7 @@ async function getGlobalStats() {
       [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'total']
     ],
     raw: true
-  });
+  }) as unknown as { total: string }[];
   
   const totalRevenue = parseFloat(payments[0]?.total || '0');
 

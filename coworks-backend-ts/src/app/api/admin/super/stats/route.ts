@@ -49,7 +49,7 @@ async function getSuperAdminStats() {
       [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'total']
     ],
     raw: true
-  });
+  }) as unknown as { total: string }[];
   
   const totalRevenue = parseFloat(revenueData[0]?.total || '0');
   
@@ -133,7 +133,7 @@ async function getSuperAdminStats() {
       [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'total']
     ],
     raw: true
-  });
+  }) as unknown as { total: string }[];
   
   const currentMonthRevenue = parseFloat(currentMonthRevenueData[0]?.total || '0');
   
