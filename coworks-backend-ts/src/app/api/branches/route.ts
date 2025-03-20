@@ -5,6 +5,15 @@ import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 import { Op } from 'sequelize';
+import { Branch } from '@/types/branch';
+import { Seat } from '@/types/seating';
+
+// Interface for Branch with associations
+interface BranchWithAssociations extends Branch {
+  Seats?: Seat[];
+  seating_types?: any[];
+  total_seats?: number;
+}
 
 // GET all branches
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -116,17 +125,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Process branches to organize seats by seating type
     const processedBranches = branches.map(branch => {
-      const branchData = branch.toJSON();
+      const branchData = branch.toJSON() as BranchWithAssociations;
       const seatingTypeMap = new Map();
       
       // Group seats by seating type
       if (branchData.Seats && branchData.Seats.length > 0) {
         branchData.Seats.forEach(seat => {
-          if (seat.SeatingType) {
-            const seatingTypeId = seat.SeatingType.id;
+          if ((seat as any).SeatingType) {
+            const seatingTypeId = (seat as any).SeatingType.id;
             if (!seatingTypeMap.has(seatingTypeId)) {
               seatingTypeMap.set(seatingTypeId, {
-                ...seat.SeatingType,
+                ...(seat as any).SeatingType,
                 seats: [],
                 seat_count: 0
               });
@@ -247,17 +256,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         
         // Process branches to organize seats by seating type (simplified version)
         const processedBranches = branches.map(branch => {
-          const branchData = branch.toJSON();
+          const branchData = branch.toJSON() as BranchWithAssociations;
           const seatingTypeMap = new Map();
           
           // Group seats by seating type (if seats are present)
           if (branchData.Seats && branchData.Seats.length > 0) {
             branchData.Seats.forEach(seat => {
-              if (seat.SeatingType) {
-                const seatingTypeId = seat.SeatingType.id;
+              if ((seat as any).SeatingType) {
+                const seatingTypeId = (seat as any).SeatingType.id;
                 if (!seatingTypeMap.has(seatingTypeId)) {
                   seatingTypeMap.set(seatingTypeId, {
-                    ...seat.SeatingType,
+                    ...(seat as any).SeatingType,
                     seats: [],
                     seat_count: 0
                   });

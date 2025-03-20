@@ -1,5 +1,12 @@
 import Razorpay from 'razorpay';
 
+// Define types for Razorpay since they're missing
+interface RazorpayTypes {
+  Order: any;
+  Payment: any;
+  Refund: any;
+}
+
 // Initialize Razorpay with API credentials
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || '',
@@ -26,14 +33,14 @@ export async function createOrder(
   amount: number,
   receipt: string,
   notes: Record<string, string> = {}
-): Promise<Razorpay.Order> {
+): Promise<RazorpayTypes['Order']> {
   try {
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100), // Convert to paise/cents
       currency: 'INR',
       receipt,
       notes,
-      payment_capture: 1, // Auto capture payment
+      payment_capture: true, // Auto capture payment
     });
     
     return order;
@@ -76,7 +83,7 @@ export function verifyPayment(
  * @param paymentId Razorpay Payment ID
  * @returns Payment details
  */
-export async function fetchPayment(paymentId: string): Promise<Razorpay.Payment> {
+export async function fetchPayment(paymentId: string): Promise<RazorpayTypes['Payment']> {
   try {
     return await razorpay.payments.fetch(paymentId);
   } catch (error) {
@@ -91,7 +98,7 @@ export async function fetchPayment(paymentId: string): Promise<Razorpay.Payment>
  * @param amount Amount to capture (in smallest currency unit)
  * @returns Captured payment details
  */
-export async function capturePayment(paymentId: string, amount: number): Promise<Razorpay.Payment> {
+export async function capturePayment(paymentId: string, amount: number): Promise<RazorpayTypes['Payment']> {
   try {
     return await razorpay.payments.capture(paymentId, Math.round(amount * 100), 'INR');
   } catch (error) {
@@ -110,7 +117,7 @@ export async function refundPayment(
   paymentId: string, 
   amount: number,
   notes: Record<string, string> = {}
-): Promise<Razorpay.Refund> {
+): Promise<RazorpayTypes['Refund']> {
   try {
     return await razorpay.payments.refund(paymentId, {
       amount: Math.round(amount * 100),

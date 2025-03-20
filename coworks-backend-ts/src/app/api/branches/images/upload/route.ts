@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { uploadBranchImage } from '@/utils/cloudinary';
 import { verifyAuth } from '@/utils/jwt';
 import models from '@/models';
+import { Op } from 'sequelize';
 
 /**
  * Upload a branch image via Cloudinary
@@ -169,7 +170,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
             branch_id: branchImage.branch_id,
             seating_type: branchImage.seating_type,
             is_primary: true,
-            id: { [models.Sequelize.Op.ne]: image_id }
+            id: { [Op.ne]: image_id }
           }
         }
       );
