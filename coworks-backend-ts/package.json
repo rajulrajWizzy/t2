@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "vercel-build": "npm install --no-save @typescript-eslint/eslint-plugin && node scripts/vercel-migrate.js && next build",
+        "vercel-build": "npm install --no-save @typescript-eslint/eslint-plugin @types/bcrypt && node scripts/vercel-migrate.js && next build",
         "start": "next start",
         "lint": "next lint",
         "migrate": "node scripts/migrate.js",
@@ -58,7 +58,7 @@
         "@types/google-cloud__storage": "^2.3.1",
         "@types/nodemailer": "6.4.17",
         "@types/uuid": "^9.0.8",
-        "@typescript-eslint/eslint-plugin": "^6.21.0", 
+        "@typescript-eslint/eslint-plugin": "^6.21.0",
         "@typescript-eslint/parser": "^6.21.0",
         "cross-env": "^7.0.3",
         "eslint": "^8.40.0",
