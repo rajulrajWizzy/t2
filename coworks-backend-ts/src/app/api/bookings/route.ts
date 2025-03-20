@@ -433,9 +433,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             status: booking.status
           };
           
-          if (type === 'seat') {
+          if (type === 'seat' && 'seat_id' in booking) {
             bookingData.seat_id = booking.seat_id;
-          } else if (type === 'meeting') {
+          } else if (type === 'meeting' && 'meeting_room_id' in booking) {
             bookingData.meeting_room_id = booking.meeting_room_id;
             bookingData.num_participants = booking.num_participants;
             bookingData.amenities = booking.amenities;
