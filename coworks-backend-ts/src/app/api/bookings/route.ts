@@ -11,6 +11,7 @@ import {
   formatApiEndpoint
 } from '@/utils/shortCodes';
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
+import { BookingStatusEnum } from '@/types/booking';
 
 // POST create a new booking
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -465,16 +466,61 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const url = new URL(req.url);
     const branchCode = url.searchParams.get('branch');
     const seatingTypeCode = url.searchParams.get('type');
+    const statusFilter = url.searchParams.get('status');
     const customerFilter = decoded.id; // Only fetch bookings for the authenticated user
+    
+    // Validate branch exists if branch code is provided
+    if (branchCode) {
+      const branch = await models.Branch.findOne({
+        where: { short_code: branchCode },
+        attributes: ['id']
+      });
 
-    // Handle "hot" seating type filtering
+      if (!branch) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: `Branch with code ${branchCode} does not exist`,
+          data: null
+        }, { status: 404 });
+      }
+    }
+
+    // Validate seating type exists if seating type code is provided
     let seatingTypeWhere: any = undefined;
     if (seatingTypeCode) {
       if (seatingTypeCode === 'hot') {
         // For "hot" seats specifically query by name instead of code
         seatingTypeWhere = { name: SeatingTypeEnum.HOT_DESK };
+        
+        // Verify that this seating type exists
+        const hotDeskExists = await models.SeatingType.findOne({
+          where: { name: SeatingTypeEnum.HOT_DESK },
+          attributes: ['id']
+        });
+        
+        if (!hotDeskExists) {
+          return NextResponse.json<ApiResponse<null>>({
+            success: false,
+            message: `Seating type HOT_DESK does not exist`,
+            data: null
+          }, { status: 404 });
+        }
       } else {
         seatingTypeWhere = { short_code: seatingTypeCode };
+        
+        // Verify that this seating type exists
+        const seatingType = await models.SeatingType.findOne({
+          where: { short_code: seatingTypeCode },
+          attributes: ['id']
+        });
+        
+        if (!seatingType) {
+          return NextResponse.json<ApiResponse<null>>({
+            success: false,
+            message: `Seating type with code ${seatingTypeCode} does not exist`,
+            data: null
+          }, { status: 404 });
+        }
       }
     }
 
@@ -482,6 +528,45 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const whereConditions: any = {
       customer_id: customerFilter
     };
+    
+    // Add status filter
+    if (statusFilter) {
+      const now = new Date();
+      
+      switch (statusFilter.toLowerCase()) {
+        case 'active':
+          // Currently ongoing bookings
+          whereConditions.status = BookingStatusEnum.CONFIRMED;
+          whereConditions.start_time = { [Op.lte]: now };
+          whereConditions.end_time = { [Op.gt]: now };
+          break;
+          
+        case 'upcoming':
+          // Future bookings that are confirmed
+          whereConditions.status = BookingStatusEnum.CONFIRMED;
+          whereConditions.start_time = { [Op.gt]: now };
+          break;
+          
+        case 'cancelled':
+          whereConditions.status = BookingStatusEnum.CANCELLED;
+          break;
+          
+        case 'completed':
+          // Either explicitly marked as COMPLETED or confirmed bookings with end time in the past
+          whereConditions[Op.or] = [
+            { status: BookingStatusEnum.COMPLETED },
+            {
+              status: BookingStatusEnum.CONFIRMED,
+              end_time: { [Op.lt]: now }
+            }
+          ];
+          break;
+          
+        default:
+          // If invalid status is provided, don't apply any status filter
+          break;
+      }
+    }
 
     // Fetch seat bookings
     const seatBookings = await models.SeatBooking.findAll({
@@ -517,10 +602,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           as: 'Customer',
           attributes: ['id', 'name', 'email', 'phone', 'company_name']
         }
-      ]
+      ],
+      order: [['start_time', 'DESC']]
     }) as any[];
 
-    // Fetch meeting bookings
+    // Fetch meeting bookings with the same filters
     const meetingBookings = await models.MeetingBooking.findAll({
       where: whereConditions,
       include: [
@@ -554,22 +640,34 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           as: 'Customer',
           attributes: ['id', 'name', 'email', 'phone', 'company_name']
         }
-      ]
+      ],
+      order: [['start_time', 'DESC']]
     }) as any[];
 
-    // Filter out bookings where Seat/MeetingRoom is null (when filtering by seating type)
-    const filteredSeatBookings = seatingTypeCode 
-      ? seatBookings.filter(booking => booking.Seat !== null)
-      : seatBookings;
-
-    const filteredMeetingBookings = seatingTypeCode
-      ? meetingBookings.filter(booking => booking.MeetingRoom !== null)
-      : meetingBookings;
+    // Filter out bookings where Seat/MeetingRoom is null (when filtering by seating type or branch)
+    const filteredSeatBookings = seatBookings.filter(booking => booking.Seat !== null);
+    const filteredMeetingBookings = meetingBookings.filter(booking => booking.MeetingRoom !== null);
 
     // Combine both types of bookings and format the response
     const bookings = [...filteredSeatBookings, ...filteredMeetingBookings].map(booking => {
       const isSeatBooking = 'seat_id' in booking;
       const seatOrRoom = isSeatBooking ? booking.Seat : booking.MeetingRoom;
+      
+      // Determine booking status based on time if not explicitly completed or cancelled
+      let calculatedStatus = booking.status;
+      
+      if (booking.status === BookingStatusEnum.CONFIRMED) {
+        const now = new Date();
+        const startTime = new Date(booking.start_time);
+        const endTime = new Date(booking.end_time);
+        
+        if (endTime < now) {
+          calculatedStatus = BookingStatusEnum.COMPLETED;
+        } else if (startTime <= now && endTime >= now) {
+          // Active booking
+          calculatedStatus = BookingStatusEnum.CONFIRMED; // No change but we'll label as "active" in UI
+        }
+      }
       
       return {
         id: booking.id,
@@ -579,9 +677,31 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         start_time: booking.start_time,
         end_time: booking.end_time,
         total_price: booking.total_price,
-        status: booking.status,
+        status: calculatedStatus,
+        booking_status: booking.status, // Original status from database
+        is_active: calculatedStatus === BookingStatusEnum.CONFIRMED && 
+                   new Date(booking.start_time) <= new Date() && 
+                   new Date(booking.end_time) > new Date(),
+        is_upcoming: calculatedStatus === BookingStatusEnum.CONFIRMED && 
+                     new Date(booking.start_time) > new Date(),
+        is_completed: calculatedStatus === BookingStatusEnum.COMPLETED || 
+                      (calculatedStatus === BookingStatusEnum.CONFIRMED && 
+                       new Date(booking.end_time) < new Date()),
+        is_cancelled: calculatedStatus === BookingStatusEnum.CANCELLED,
         created_at: booking.created_at,
         updated_at: booking.updated_at,
+        seat: isSeatBooking ? {
+          id: booking.seat_id,
+          seat_number: seatOrRoom?.seat_number,
+          seat_code: seatOrRoom?.seat_code
+        } : null,
+        meeting_room: !isSeatBooking ? {
+          id: booking.meeting_room_id,
+          seat_number: seatOrRoom?.seat_number,
+          seat_code: seatOrRoom?.seat_code,
+          num_participants: booking.num_participants,
+          amenities: booking.amenities
+        } : null,
         seating_type: seatOrRoom?.SeatingType ? {
           id: seatOrRoom.SeatingType.id,
           name: seatOrRoom.SeatingType.name,
@@ -623,6 +743,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to fetch bookings',
+      error: (error as Error).message,
       data: null
     }, { status: 500 });
   }

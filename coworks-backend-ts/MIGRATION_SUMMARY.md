@@ -15,6 +15,7 @@ This document outlines the changes made to implement branch and seat codes in th
    - Updated seat endpoints to support lookup by seat code
    - Added new endpoints to get seats by branch code
    - Enhanced response formats to include seat counts and organize by seating type
+   - Updated bookings endpoint to filter by booking status and validate branch/seating type existence
 
 3. **Database Migrations**:
    - Added migration scripts for adding all necessary columns
@@ -60,6 +61,21 @@ To apply these changes to your environment, follow these steps:
 - **GET /api/seat/[id]**
   - Now accepts either seat ID or seat code
   - Returns seat with branch and seating type information
+
+### Booking Endpoints
+
+- **GET /api/bookings**
+  - Supports filtering by `branch` (branch code)
+  - Supports filtering by `type` (seating type code)
+  - Supports filtering by `status` (active, upcoming, cancelled, completed)
+  - Validates that branches and seating types exist before querying
+  - Returns additional booking status fields:
+    - `is_active` - Currently ongoing booking
+    - `is_upcoming` - Future confirmed booking
+    - `is_completed` - Past booking
+    - `is_cancelled` - Cancelled booking
+  - Automatically calculates booking status based on date/time
+  - Returns seat codes and seating type codes in response
 
 ## Response Format Examples
 
@@ -130,6 +146,73 @@ To apply these changes to your environment, follow these steps:
   }
 }
 ```
+
+### Booking Response Example:
+
+```json
+{
+  "success": true,
+  "message": "Bookings fetched successfully",
+  "data": [
+    {
+      "id": 1,
+      "type": "seat",
+      "customer_id": 101,
+      "seat_id": 201,
+      "start_time": "2023-06-15T09:00:00Z",
+      "end_time": "2023-06-15T17:00:00Z",
+      "total_price": 80.00,
+      "status": "COMPLETED",
+      "booking_status": "CONFIRMED",
+      "is_active": false,
+      "is_upcoming": false,
+      "is_completed": true,
+      "is_cancelled": false,
+      "seat": {
+        "id": 201,
+        "seat_number": "A1",
+        "seat_code": "HD001"
+      },
+      "meeting_room": null,
+      "seating_type": {
+        "id": 1,
+        "name": "HOT_DESK",
+        "short_code": "HD",
+        "description": "Flexible workspace",
+        "hourly_rate": 10.00,
+        "is_hourly": true,
+        "min_booking_duration": 1,
+        "min_seats": 1
+      },
+      "branch": {
+        "id": 5,
+        "name": "Downtown Branch",
+        "short_code": "DOW123",
+        "address": "123 Main St",
+        "location": "Downtown"
+      },
+      "customer": {
+        "id": 101,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phone": "555-123-4567",
+        "company_name": "ACME Inc"
+      }
+    }
+  ]
+}
+```
+
+## Filtering Bookings by Status
+
+You can filter bookings by status using the `status` query parameter:
+
+- **active**: Currently ongoing bookings
+- **upcoming**: Future confirmed bookings
+- **cancelled**: All cancelled bookings
+- **completed**: Past bookings (either explicitly marked as completed or past their end time)
+
+Example: `/api/bookings?status=active&branch=DOW123&type=HD`
 
 ## Troubleshooting
 
