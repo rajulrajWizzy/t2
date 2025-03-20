@@ -4,6 +4,7 @@ import models from '@/models';
 import { ApiResponse } from '@/types/api';
 import { TicketStatus } from '@/models/supportTicket';
 import { MessageSender } from '@/models/ticketMessage';
+import { Op } from 'sequelize';
 
 /**
  * GET /api/admin/support/tickets/[ticket_id] - Get ticket details for admin
@@ -75,23 +76,32 @@ export async function GET(
         }, { status: 403 });
       }
       
-      query.where.branch_id = { [models.sequelize.Sequelize.Op.in]: branchIds };
+      query.where.branch_id = { [Op.in]: branchIds };
     }
     
     // Fetch ticket
-    const ticket = await models.SupportTicket.findOne(query);
+    const ticket = await models.SupportTicket.findOne({
+      ...query,
+      include: [
+        {
+          model: models.TicketMessage,
+          as: 'Messages'
+        }
+      ]
+    });
     
     if (!ticket) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
-        message: 'Ticket not found or you do not have access to this ticket',
+        message: 'Ticket not found',
         data: null
       }, { status: 404 });
     }
     
     // Mark unread messages from customer as read
-    if (ticket.Messages && ticket.Messages.length > 0) {
-      const messagesToUpdate = ticket.Messages.filter(
+    const ticketWithMessages = ticket as any;
+    if (ticketWithMessages.Messages && ticketWithMessages.Messages.length > 0) {
+      const messagesToUpdate = ticketWithMessages.Messages.filter(
         (message: any) => message.sender_type === 'customer' && !message.read_at
       );
       
@@ -196,7 +206,7 @@ export async function PUT(
         }, { status: 403 });
       }
       
-      query.where.branch_id = { [models.sequelize.Sequelize.Op.in]: branchIds };
+      query.where.branch_id = { [Op.in]: branchIds };
     }
     
     // Fetch ticket
