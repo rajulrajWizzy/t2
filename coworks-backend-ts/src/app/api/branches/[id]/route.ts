@@ -89,12 +89,15 @@ export async function GET(
       where: { branch_id: branch.id }
     });
     
-    // Add total seats to the response
-    branch.dataValues.total_seats = totalSeats;
+    // Create response object with branch data and additional fields
+    const branchData = branch.toJSON();
     
     return NextResponse.json({
       success: true,
-      data: branch
+      data: {
+        ...branchData,
+        total_seats: totalSeats
+      }
     });
   } catch (err) {
     const error = err as Error;
