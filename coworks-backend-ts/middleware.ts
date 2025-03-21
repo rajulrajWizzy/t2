@@ -10,6 +10,7 @@ const PUBLIC_PATHS: string[] = [
   '/',
   '/api/test',
   '/api/health',
+  '/api/status',
   '/admin/login',
   '/admin/dashboard',
 ];
