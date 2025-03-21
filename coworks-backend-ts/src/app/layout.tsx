@@ -1,3 +1,5 @@
+'use client';
+
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
@@ -11,8 +13,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Coworks App',
-  description: 'Coworks - Coworking Space Management',
+  title: 'Coworks Backend API',
+  description: 'Coworking space management system API',
 }
 
 export default function RootLayout({
@@ -29,6 +31,19 @@ export default function RootLayout({
           href="/css/tailwind.css" 
           precedence="default"
         />
+        <Script id="fb-error-fix" strategy="beforeInteractive">
+          {`
+            // Fix for Facebook getUserFbFullName error
+            window.addEventListener('error', function(e) {
+              if (e.message && e.message.includes("Cannot read properties of null (reading 'getAttribute')") && 
+                  (e.filename && e.filename.includes('ma_payload.js'))) {
+                console.log('Prevented Facebook script error');
+                e.stopPropagation();
+                e.preventDefault();
+              }
+            }, true);
+          `}
+        </Script>
       </head>
       <body className={`${inter.className} min-h-full`}>
         {children}

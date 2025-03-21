@@ -28,6 +28,7 @@
         "update:branches": "node scripts/update-branches.js",
         "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js",
         "seed:superadmin": "node scripts/seed-superadmin.js",
+        "seed:direct-admin": "node scripts/direct-seed-admin.js",
         "admin": "node scripts/admin-manager.js"
     },
     "dependencies": {

@@ -1,29 +1,36 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [apiUrl, setApiUrl] = useState('');
-  const [dbStatus, setDbStatus] = useState<any>(null);
+  const [apiUrl, setApiUrl] = useState('/api/admin/auth/login');
+  const [loginRole, setLoginRole] = useState('branch_admin');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
+  // Check if already logged in on mount and handle role parameter
   useEffect(() => {
-    // Initialize API URL based on current location
-    const origin = window.location.origin;
-    setApiUrl(`${origin}/api/admin/auth/login`);
-    console.log(`Set API URL to: ${origin}/api/admin/auth/login`);
-    
-    // Check if already logged in
     const token = localStorage.getItem('admin_token');
-    if (token) {
-      const role = localStorage.getItem('admin_role');
-      console.log('User already has a token, redirecting to dashboard');
+    const role = localStorage.getItem('admin_role');
+    
+    // Set role from URL query parameter
+    const roleParam = searchParams.get('role');
+    if (roleParam && (roleParam === 'super_admin' || roleParam === 'branch_admin')) {
+      setLoginRole(roleParam);
       
+      // Prefill username for super admin
+      if (roleParam === 'super_admin') {
+        setUsername('superadmin');
+      }
+    }
+    
+    if (token) {
+      console.log('User already has a token, redirecting to dashboard');
       if (role === 'super_admin') {
         router.push('/admin/super');
       } else {
@@ -31,34 +38,28 @@ export default function AdminLogin() {
       }
     }
     
-    // Check database status
-    checkDatabaseStatus();
-  }, [router]);
-  
-  // Function to check database status
-  const checkDatabaseStatus = async () => {
-    try {
-      const response = await fetch(`${window.location.origin}/api/database-status`);
-      if (response.ok) {
-        const data = await response.json();
-        setDbStatus(data);
-        console.log('Database status:', data);
-      }
-    } catch (err) {
-      console.error('Error checking database status:', err);
+    // Initialize API URL based on hostname
+    const isLocalhost = 
+      typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
+    // Use absolute URL in production to avoid CORS issues
+    if (!isLocalhost) {
+      const baseUrl = window.location.origin;
+      setApiUrl(`${baseUrl}/api/admin/auth/login`);
+      console.log(`Using absolute API URL: ${baseUrl}/api/admin/auth/login`);
     }
-  };
+  }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     
-    console.log(`Attempting login with username: ${username}`);
+    console.log(`Attempting login with username: ${username}, role: ${loginRole}`);
     console.log(`Using API URL: ${apiUrl}`);
 
     try {
-      // Using full URL from origin to avoid relative path issues
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -66,21 +67,30 @@ export default function AdminLogin() {
         },
         body: JSON.stringify({ username, password }),
         cache: 'no-store',
+        mode: 'cors',
+        credentials: 'include',
       });
 
       console.log('Login response status:', response.status);
       
+      // Log response headers for debugging
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+      console.log('Response headers:', responseHeaders);
+      
       let data;
       try {
         data = await response.json();
-        console.log('Login response data keys:', Object.keys(data));
+        console.log('Login response data structure:', Object.keys(data));
       } catch (jsonError) {
         console.error('Failed to parse response as JSON:', jsonError);
         throw new Error('Server returned an invalid response format');
       }
       
       if (!response.ok) {
-        throw new Error(data.message || `Login failed with status: ${response.status}`);
+        throw new Error(data.message || 'Login failed');
       }
 
       console.log('Login successful, processing response data');
@@ -118,6 +128,23 @@ export default function AdminLogin() {
     }
   };
 
+  const getLoginText = () => {
+    if (loading) return 'Logging in...';
+    return loginRole === 'super_admin' ? 'Login as Super Admin' : 'Login as Branch Admin';
+  };
+
+  const getPageTitle = () => {
+    return loginRole === 'super_admin' ? 'Super Admin Login' : 'Branch Admin Login';
+  };
+
+  const getButtonColor = () => {
+    return loginRole === 'super_admin' 
+      ? { backgroundColor: '#8b5cf6', hoverOpacity: '0.9' } // Purple for super admin
+      : { backgroundColor: '#3b82f6', hoverOpacity: '0.9' }; // Blue for branch admin
+  };
+
+  const buttonStyle = getButtonColor();
+
   return (
     <div style={{
       display: 'flex',
@@ -143,7 +170,7 @@ export default function AdminLogin() {
           marginBottom: '1.5rem',
           color: '#1f2937'
         }}>
-          Admin Login
+          {getPageTitle()}
         </h1>
 
         {error && (
@@ -156,19 +183,6 @@ export default function AdminLogin() {
             fontSize: '0.875rem'
           }}>
             {error}
-          </div>
-        )}
-        
-        {dbStatus && !dbStatus.database_connection && (
-          <div style={{
-            padding: '0.75rem',
-            marginBottom: '1rem',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem'
-          }}>
-            Database connection error: {dbStatus.database_error}
           </div>
         )}
 
@@ -184,7 +198,7 @@ export default function AdminLogin() {
                 color: '#374151'
               }}
             >
-              Username
+              Username or Email
             </label>
             <input
               id="username"
@@ -199,7 +213,7 @@ export default function AdminLogin() {
                 border: '1px solid #d1d5db',
                 fontSize: '1rem'
               }}
-              placeholder="superadmin"
+              placeholder="username or email@example.com"
             />
           </div>
 
@@ -238,7 +252,7 @@ export default function AdminLogin() {
             disabled={loading}
             style={{
               width: '100%',
-              backgroundColor: '#3b82f6',
+              backgroundColor: buttonStyle.backgroundColor,
               color: 'white',
               padding: '0.625rem',
               borderRadius: '0.375rem',
@@ -249,13 +263,15 @@ export default function AdminLogin() {
               border: 'none'
             }}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {getLoginText()}
           </button>
         </form>
         
-        <div style={{marginTop: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280'}}>
-          Default credentials: <span style={{fontWeight: 'bold'}}>superadmin / CoWorks@SuperAdmin2023</span>
-        </div>
+        {loginRole === 'super_admin' && (
+          <div style={{marginTop: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280'}}>
+            Default credentials: superadmin / CoWorks@SuperAdmin2023
+          </div>
+        )}
         
         <div style={{marginTop: '0.5rem', textAlign: 'center', fontSize: '0.75rem'}}>
           <a 
@@ -268,20 +284,18 @@ export default function AdminLogin() {
           </a>
         </div>
         
-        {dbStatus && (
-          <div style={{
-            marginTop: '1rem',
-            padding: '0.75rem',
-            fontSize: '0.75rem',
-            backgroundColor: dbStatus.super_admin_exists ? '#dcfce7' : '#fee2e2',
-            borderRadius: '0.375rem',
-            color: dbStatus.super_admin_exists ? '#166534' : '#b91c1c'
-          }}>
-            <p>Database: {dbStatus.database_connection ? '✅ Connected' : '❌ Not connected'}</p>
-            <p>Admin table: {dbStatus.admins_table ? '✅ Exists' : '❌ Not found'}</p>
-            <p>Super admin: {dbStatus.super_admin_exists ? '✅ Created' : '❌ Not found'}</p>
-          </div>
-        )}
+        <div style={{marginTop: '1rem', textAlign: 'center'}}>
+          <a 
+            href="/"
+            style={{
+              fontSize: '0.75rem',
+              color: '#6b7280',
+              textDecoration: 'none'
+            }}
+          >
+            ← Back to Home
+          </a>
+        </div>
       </div>
     </div>
   );

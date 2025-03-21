@@ -13,37 +13,47 @@
         "use": "@vercel/node"
       }
     ],
-    "headers": [
-      {
-        "source": "/api/(.*)",
-        "headers": [
-          { "key": "Access-Control-Allow-Credentials", "value": "true" },
-          { "key": "Access-Control-Allow-Origin", "value": "*" },
-          { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-          { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
-        ]
-      }
-    ],
     "routes": [
       {
         "src": "/api/admin/auth/login",
         "dest": "/api/admin/auth/login",
-        "methods": ["GET", "POST", "OPTIONS"]
-      },
-      {
-        "src": "/api/database-status",
-        "dest": "/api/database-status",
-        "methods": ["GET", "OPTIONS"]
+        "headers": {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
       },
       {
         "src": "/api/test",
         "dest": "/api/test",
-        "methods": ["GET", "OPTIONS"]
+        "headers": {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
       },
       {
         "src": "/api/status",
         "dest": "/api/status",
-        "methods": ["GET", "OPTIONS"]
+        "headers": {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
+      },
+      {
+        "src": "/api/database-status",
+        "dest": "/api/database-status",
+        "headers": {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/$1",
+        "continue": true
       }
     ],
     "functions": {
