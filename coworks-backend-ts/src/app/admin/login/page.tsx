@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLogin() {
@@ -8,34 +8,90 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [apiUrl, setApiUrl] = useState('/api/admin/auth/login');
   const router = useRouter();
+
+  // Check if already logged in on mount
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    const role = localStorage.getItem('admin_role');
+    
+    if (token) {
+      console.log('User already has a token, redirecting to dashboard');
+      if (role === 'super_admin') {
+        router.push('/admin/super');
+      } else {
+        router.push('/admin/dashboard');
+      }
+    }
+    
+    // Initialize API URL based on hostname
+    const isLocalhost = 
+      typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
+    // Use absolute URL in production to avoid CORS issues
+    if (!isLocalhost) {
+      const baseUrl = window.location.origin;
+      setApiUrl(`${baseUrl}/api/admin/auth/login`);
+      console.log(`Using absolute API URL: ${baseUrl}/api/admin/auth/login`);
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    
+    console.log(`Attempting login with username: ${username}`);
+    console.log(`Using API URL: ${apiUrl}`);
 
     try {
-      const response = await fetch('/api/admin/auth/login', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
+        cache: 'no-store',
+        mode: 'cors',
+        credentials: 'include',
       });
 
-      const data = await response.json();
-
+      console.log('Login response status:', response.status);
+      
+      // Log response headers for debugging
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+      console.log('Response headers:', responseHeaders);
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log('Login response data structure:', Object.keys(data));
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError);
+        throw new Error('Server returned an invalid response format');
+      }
+      
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
 
+      console.log('Login successful, processing response data');
+      
       // Store token and admin data
       if (data.data && data.data.token) {
         localStorage.setItem('admin_token', data.data.token);
         
         if (data.data.admin && data.data.admin.role) {
           localStorage.setItem('admin_role', data.data.admin.role);
+          localStorage.setItem('admin_name', data.data.admin.name || 'Admin User');
+          localStorage.setItem('admin_id', data.data.admin.id.toString());
+          
+          console.log(`Logged in as ${data.data.admin.role}, redirecting...`);
           
           // Redirect based on role
           if (data.data.admin.role === 'super_admin') {
@@ -45,14 +101,15 @@ export default function AdminLogin() {
           }
         } else {
           // Default redirect if role isn't found
+          console.log('Role not found in response, using default redirect');
           router.push('/admin/dashboard');
         }
       } else {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format - token missing');
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
       console.error('Login error:', err);
+      setError(err.message || 'An error occurred during login');
     } finally {
       setLoading(false);
     }
@@ -181,6 +238,16 @@ export default function AdminLogin() {
         </form>
         <div style={{marginTop: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280'}}>
           Use superadmin/CoWorks@SuperAdmin2023 for super admin access
+        </div>
+        <div style={{marginTop: '0.5rem', textAlign: 'center', fontSize: '0.75rem'}}>
+          <a 
+            href="/api/database-status" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{color: '#3b82f6'}}
+          >
+            Check Database Status
+          </a>
         </div>
       </div>
     </div>

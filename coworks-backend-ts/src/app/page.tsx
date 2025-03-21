@@ -26,6 +26,10 @@ export default function Home() {
             API Status
           </Link>
           
+          <Link href="/api/database-status" className="px-4 py-2 bg-green-200 text-green-800 rounded font-medium no-underline">
+            Database Check
+          </Link>
+          
           <Link href="/api/test" className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium no-underline">
             API Test
           </Link>

@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "vercel-build": "node scripts/vercel-tailwind.js && next build",
+        "vercel-build": "node scripts/vercel-tailwind.js && next build && npm run vercel-seed",
+        "vercel-seed": "node scripts/vercel-seed.js",
         "start": "next start",
         "lint": "next lint",
         "migrate": "node scripts/migrate.js",
