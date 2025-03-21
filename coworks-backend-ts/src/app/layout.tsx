@@ -3,15 +3,12 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
 
-// Safely initialize fonts with fallback
-let inter: { className: string };
-try {
-  inter = Inter({ subsets: ['latin'] });
-} catch (e) {
-  console.error('Failed to load Inter font:', e);
-  // Create a placeholder className
-  inter = { className: 'font-sans' };
-}
+// Define the font at module scope with a fallback
+const inter = Inter({ 
+  subsets: ['latin'],
+  fallback: ['system-ui', 'Arial', 'sans-serif'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Coworks App',
