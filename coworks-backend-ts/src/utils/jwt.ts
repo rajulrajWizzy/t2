@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 
 // Interface for token payload
 export interface JWTPayload {
@@ -11,6 +12,9 @@ export interface JWTPayload {
   iat?: number;
   [key: string]: any;
 }
+
+// Set a secret key for JWT - in production, use environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Secret key for JWT
 const getJwtSecretKey = () => {
@@ -89,5 +93,33 @@ export async function verifyAuth(request: Request): Promise<JWTPayload | NextRes
       { success: false, message: 'Invalid or expired token' },
       { status: 401 }
     );
+  }
+}
+
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat?: number;
+  exp?: number;
+}
+
+/**
+ * Generate a JWT token for an admin user
+ */
+export function generateJWT(payload: { id: string; email: string; role: string }): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+}
+
+/**
+ * Verify a JWT token and return the decoded payload
+ */
+export async function verifyJWT(token: string): Promise<DecodedToken | null> {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
+    return decoded;
+  } catch (error) {
+    console.error('JWT verification error:', error);
+    return null;
   }
 } 

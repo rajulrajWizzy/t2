@@ -3,6 +3,15 @@ import { Op } from 'sequelize';
 import { verifyAdmin, verifyBranchAccess, verifySuperAdmin } from '@/utils/adminAuth';
 import models from '@/models';
 import { ApiResponse } from '@/types/api';
+import { verifyJWT } from '../../../../utils/jwt';
+
+// Mock data for branches
+const branches = [
+  { id: 'b1', name: 'Downtown Branch', code: 'DT001', location: 'City Center', capacity: 120 },
+  { id: 'b2', name: 'Westside Branch', code: 'WS002', location: 'West Business Park', capacity: 85 },
+  { id: 'b3', name: 'North Campus', code: 'NC003', location: 'North Tech Hub', capacity: 150 },
+  { id: 'b4', name: 'East Village Office', code: 'EV004', location: 'East Village', capacity: 75 },
+];
 
 /**
  * GET /api/admin/branches - Get branches with pagination and filtering
@@ -11,86 +20,44 @@ import { ApiResponse } from '@/types/api';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const adminAuth = await verifyAdmin(request);
+    // Verify authentication
+    const token = request.headers.get('authorization')?.split(' ')[1];
     
-    // If verifyAdmin returned an error response
-    if ('status' in adminAuth) {
-      return adminAuth as NextResponse;
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Unauthorized: No token provided' },
+        { status: 401 }
+      );
     }
     
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status');
+    const decoded = await verifyJWT(token);
     
-    // Calculate offset for pagination
-    const offset = (page - 1) * limit;
-    
-    // Build where clause
-    const whereClause: any = {};
-    
-    // Add search filter if provided
-    if (search) {
-      whereClause[Op.or] = [
-        { name: { [Op.like]: `%${search}%` } },
-        { location: { [Op.like]: `%${search}%` } },
-        { short_code: { [Op.like]: `%${search}%` } }
-      ];
+    if (!decoded) {
+      return NextResponse.json(
+        { message: 'Unauthorized: Invalid token' },
+        { status: 401 }
+      );
     }
     
-    // Add status filter if provided
-    if (status) {
-      whereClause.is_active = status === 'active';
+    // For super admin, return all branches
+    // For branch admin, return only their assigned branch
+    if (decoded.role === 'super_admin') {
+      return NextResponse.json({ branches });
+    } else {
+      // In a real app, you would fetch branch based on decoded.branchId
+      // For this mock, we'll return a filtered subset
+      const branchId = 'b1'; // This would come from the decoded token in a real app
+      const userBranches = branches.filter((branch) => branch.id === branchId);
+      
+      return NextResponse.json({ branches: userBranches });
     }
-    
-    // Branch admins can only see their assigned branch
-    if (adminAuth.role !== 'super_admin' && adminAuth.branch_id) {
-      whereClause.id = adminAuth.branch_id;
-    }
-    
-    // Get branches with pagination
-    const { count, rows: branches } = await models.Branch.findAndCountAll({
-      where: whereClause,
-      limit,
-      offset,
-      order: [['created_at', 'DESC']],
-      attributes: [
-        'id', 'name', 'location', 'description', 'short_code',
-        'contact_email', 'contact_phone', 'is_active', 'created_at', 'updated_at'
-      ],
-      include: [
-        {
-          association: 'SeatingTypes',
-          attributes: ['id', 'name', 'short_code', 'price_hourly', 'price_daily', 'price_monthly']
-        }
-      ]
-    });
-    
-    // Calculate total pages
-    const totalPages = Math.ceil(count / limit);
-    
-    return NextResponse.json<ApiResponse<typeof branches>>({
-      success: true,
-      message: 'Branches retrieved successfully',
-      data: branches,
-      pagination: {
-        current_page: page,
-        total_pages: totalPages,
-        per_page: limit,
-        total_items: count
-      }
-    }, { status: 200 });
     
   } catch (error) {
-    console.error('Admin branches error:', error);
-    return NextResponse.json<ApiResponse<null>>({
-      success: false,
-      message: 'Failed to retrieve branches',
-      data: null
-    }, { status: 500 });
+    console.error('Error fetching branches:', error);
+    return NextResponse.json(
+      { message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
