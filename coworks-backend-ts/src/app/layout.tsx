@@ -23,14 +23,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Try to load CSS from multiple possible locations */}
+        {/* Static CSS files */}
         <link href="/css/tailwind.css" rel="stylesheet" />
         <link href="/globals.css" rel="stylesheet" />
-        {/* Fallback inline styles */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
-          .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
-        `}} />
       </head>
       <body className={inter.className}>
         {children}
