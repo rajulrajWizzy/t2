@@ -8,67 +8,21 @@ export default function Home() {
   const router = useRouter();
 
   return (
-    <main style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '2rem',
-      textAlign: 'center',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      background: 'linear-gradient(to bottom, #ffffff, #f3f4f6)'
-    }}>
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        padding: '2rem',
-        borderRadius: '0.5rem',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        background: 'white'
-      }}>
-        <h1 style={{ 
-          fontSize: '2rem', 
-          fontWeight: 'bold',
-          marginBottom: '1rem',
-          color: '#1f2937'
-        }}>
+    <main className="flex flex-col items-center justify-center min-h-screen p-8 text-center bg-gradient-to-b from-white to-gray-100">
+      <div className="max-w-xl mx-auto p-8 rounded-lg shadow-md bg-white">
+        <h1 className="text-3xl font-bold mb-4 text-gray-800">
           Coworks API Backend
         </h1>
-        <p style={{
-          marginBottom: '2rem',
-          color: '#4b5563'
-        }}>
+        <p className="mb-8 text-gray-600">
           Welcome to the Coworks coworking space management system backend API.
         </p>
         
-        <div style={{
-          display: 'flex',
-          gap: '1rem',
-          justifyContent: 'center',
-          marginTop: '2rem'
-        }}>
-          <Link href="/admin/login" style={{
-            display: 'inline-block',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            borderRadius: '0.25rem',
-            textDecoration: 'none',
-            fontWeight: 500
-          }}>
+        <div className="flex gap-4 justify-center mt-8">
+          <Link href="/admin/login" className="btn-primary">
             Admin Login
           </Link>
           
-          <Link href="/api/test" style={{
-            display: 'inline-block',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#e5e7eb',
-            color: '#1f2937',
-            borderRadius: '0.25rem',
-            textDecoration: 'none',
-            fontWeight: 500
-          }}>
+          <Link href="/api/test" className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium no-underline">
             API Test
           </Link>
         </div>

@@ -1,4 +1,8 @@
-/* Basic styling without Tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 255, 255, 255;
@@ -50,34 +54,47 @@ html, body {
 .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
 .border { border: 1px solid #e5e7eb; }
 
-/* Components */
-.btn-primary { 
-  display: inline-block;
-  background-color: var(--primary-color); 
-  color: white; 
-  padding: 0.5rem 1rem; 
-  border-radius: 0.25rem;
-  font-weight: 500;
-  cursor: pointer;
+/* Custom component styles */
+@layer components {
+  .btn-primary { 
+    @apply bg-blue-500 text-white py-2 px-4 rounded font-medium cursor-pointer;
+  }
+  
+  .btn-primary:hover { 
+    @apply bg-blue-600;
+  }
+  
+  .form-input { 
+    @apply w-full p-2 border border-gray-300 rounded;
+  }
+  
+  .table { 
+    @apply w-full border-collapse;
+  }
+  
+  .table th, .table td { 
+    @apply p-3 border-b border-gray-200 text-left;
+  }
+  
+  .table th { 
+    @apply font-medium;
+  }
+  
+  .sidebar-link { 
+    @apply flex items-center p-2 text-gray-700;
+  }
+  
+  .sidebar-link:hover { 
+    @apply bg-gray-100;
+  }
+  
+  .sidebar-link.active { 
+    @apply bg-gray-100 text-blue-600;
+  }
+  
+  .dashboard-card { 
+    @apply bg-white p-4 rounded-lg border border-gray-200 shadow;
+  }
 }
-.btn-primary:hover { background-color: var(--primary-hover); }
-
-.form-input { 
-  width: 100%; 
-  padding: 0.5rem; 
-  border: 1px solid #d1d5db; 
-  border-radius: 0.25rem; 
-}
-
-/* Table styles */
-.table { width: 100%; border-collapse: collapse; }
-.table th, .table td { padding: 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: left; }
-.table th { font-weight: 500; }
-
-/* Admin specific */
-.sidebar-link { display: flex; align-items: center; padding: 0.5rem 1rem; color: #374151; }
-.sidebar-link:hover { background-color: #f3f4f6; }
-.sidebar-link.active { background-color: #f3f4f6; color: #3b82f6; }
-.dashboard-card { background: white; padding: 1rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
 /* Add more utility classes as needed */

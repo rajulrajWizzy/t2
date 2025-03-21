@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from './src/config/jwt';
 
 // Paths that don't require authentication
 const PUBLIC_PATHS: string[] = [
@@ -10,55 +9,34 @@ const PUBLIC_PATHS: string[] = [
   '/api/auth/reset-password',
   '/',
   '/api/test',
-  '/api/health'
+  '/api/health',
+  '/admin/login',
+  '/admin/dashboard',
 ];
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // Check if the path is public
-  if (PUBLIC_PATHS.includes(path)) {
-    return NextResponse.next();
-  }
-  
-  // Check if path starts with /api
-  if (path.startsWith('/api')) {
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new NextResponse(
-        JSON.stringify({ message: 'Authentication required' }),
-        { status: 401, headers: { 'content-type': 'application/json' } }
-      );
-    }
-    
-    // Extract token
-    const token = authHeader.split(' ')[1];
-    
-    // Verify token - now async
-    const { valid, expired, blacklisted } = await verifyToken(token);
-    
-    if (!valid) {
-      let message = 'Invalid token';
-      if (expired) message = 'Token expired';
-      if (blacklisted) message = 'Token revoked';
-      
-      return new NextResponse(
-        JSON.stringify({ message }),
-        { status: 401, headers: { 'content-type': 'application/json' } }
-      );
-    }
-    
-    // Continue with the request
+  if (PUBLIC_PATHS.includes(path) || path.startsWith('/api/admin') || path.startsWith('/css') || path.startsWith('/_next')) {
     return NextResponse.next();
   }
   
   // For non-API routes, allow the request to proceed
+  // API route auth will be handled by route handlers
   return NextResponse.next();
 }
 
-// Configure the middleware to run on all /api routes
+// Configure the middleware to run on specific paths
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    /*
+     * Match all request paths except for:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+  ],
 };

@@ -21,19 +21,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
-        <style dangerouslySetInnerHTML={{ __html: `
-          html, body {
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-          }
-        `}} />
+        {/* Fallback CSS link for production builds */}
+        <link 
+          rel="stylesheet" 
+          href="/css/tailwind.css" 
+          precedence="default"
+        />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-full`}>
         {children}
-        <Script id="tailwind-config" strategy="afterInteractive">
+        <Script id="theme-script" strategy="afterInteractive">
           {`
             try {
               if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

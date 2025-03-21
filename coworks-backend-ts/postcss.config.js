@@ -1,4 +1,7 @@
 // Empty config to prevent postcss errors
 module.exports = {
-  plugins: {}
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 }

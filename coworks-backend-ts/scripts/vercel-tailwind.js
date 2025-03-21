@@ -1,16 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
-
-// Helper function to check if a module is installed
-function isModuleInstalled(moduleName) {
-  try {
-    require.resolve(moduleName);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
+const { execSync, exec } = require('child_process');
 
 console.log('[Vercel Build] Starting Tailwind CSS process');
 console.log('[Vercel Build] Current directory:', process.cwd());
@@ -116,34 +106,81 @@ const publicCss = path.join(__dirname, '../public/globals.css');
 fs.writeFileSync(publicCss, basicCss);
 console.log(`[Vercel Build] Created backup globals.css at ${publicCss}`);
 
-// Try the normal Tailwind build with safer options
+// Verify if tailwindcss module and binary exist by direct path check
+const tailwindBinaryPath = path.join(__dirname, '../node_modules/.bin/tailwindcss');
+const hasTailwindBinary = fs.existsSync(tailwindBinaryPath);
+
+// Also check if module exists in node_modules
+const tailwindModulePath = path.join(__dirname, '../node_modules/tailwindcss');
+const hasTailwindModule = fs.existsSync(tailwindModulePath);
+
+console.log(`[Vercel Build] TailwindCSS binary exists: ${hasTailwindBinary}`);
+console.log(`[Vercel Build] TailwindCSS module exists: ${hasTailwindModule}`);
+
+// Define paths
+const inputCss = path.join(__dirname, '../src/app/globals.css');
+const configPath = path.join(__dirname, '../tailwind.config.js');
+
+// Ensure tailwind config exists
+if (!fs.existsSync(configPath)) {
+  console.log('[Vercel Build] Tailwind config not found, creating minimal config...');
+  
+  const minimalConfig = `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/app/**/*.{js,ts,jsx,tsx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx}",
+    "./src/components/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`;
+  
+  fs.writeFileSync(configPath, minimalConfig);
+  console.log(`[Vercel Build] Created minimal Tailwind config at ${configPath}`);
+}
+
+// Try to run Tailwind compilation
 try {
-  if (isModuleInstalled('tailwindcss')) {
+  if (hasTailwindModule) {
     console.log('[Vercel Build] Found tailwindcss module, attempting compilation');
     
-    // Create a simplified tailwind.config.js for this build if needed
-    const configPath = path.join(__dirname, '../tailwind.config.js');
+    let command;
     
-    // Define paths
-    const inputCss = path.join(__dirname, '../src/app/globals.css');
+    // Try multiple approaches to find a working command
+    if (hasTailwindBinary) {
+      // Use direct path to binary (most reliable)
+      command = `"${tailwindBinaryPath}" -i "${inputCss}" -o "${outputCss}" --minify`;
+    } else {
+      // Try to find tailwind CLI in the node_modules
+      try {
+        const tailwindCliPath = path.join(tailwindModulePath, 'lib/cli.js');
+        if (fs.existsSync(tailwindCliPath)) {
+          command = `node "${tailwindCliPath}" -i "${inputCss}" -o "${outputCss}" --minify`;
+        } else {
+          throw new Error('Tailwind CLI not found in expected location');
+        }
+      } catch (err) {
+        console.error('[Vercel Build] Error locating Tailwind CLI:', err.message);
+        console.log('[Vercel Build] Will try npx as a last resort');
+        command = `npx tailwindcss -i "${inputCss}" -o "${outputCss}" --minify`;
+      }
+    }
+    
+    console.log(`[Vercel Build] Running command: ${command}`);
     
     try {
-      // Use require.resolve to find the exact path to the tailwindcss CLI
-      const tailwindPath = require.resolve('tailwindcss/lib/cli.js');
-      console.log(`[Vercel Build] Using tailwindcss from: ${tailwindPath}`);
-      
-      // Run tailwind with node directly for more control
-      const command = `node "${tailwindPath}" -i "${inputCss}" -o "${outputCss}" --minify`;
-      console.log(`[Vercel Build] Running command: ${command}`);
-      
       execSync(command, { stdio: 'inherit' });
       console.log(`[Vercel Build] Tailwind CSS compiled successfully to ${outputCss}`);
-    } catch (err) {
-      console.error('[Vercel Build] Error running tailwindcss CLI:', err.message);
-      console.log('[Vercel Build] Will continue with basic CSS fallback');
+    } catch (execError) {
+      console.error('[Vercel Build] Error executing Tailwind command:', execError.message);
+      console.log('[Vercel Build] Continuing with basic CSS fallback');
     }
   } else {
     console.log('[Vercel Build] Tailwindcss module not found, using basic CSS fallback');
+    console.log('[Vercel Build] You may need to install tailwindcss, postcss, and autoprefixer as dependencies (not devDependencies)');
   }
 } catch (error) {
   console.error('[Vercel Build] Error during Tailwind processing:', error.message);
