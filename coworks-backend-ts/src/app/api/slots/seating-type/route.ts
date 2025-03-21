@@ -22,6 +22,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(response, { status: 400 });
     }
     
+    // Validate branch_id is a valid number
+    const branchIdNum = parseInt(branch_id);
+    if (isNaN(branchIdNum)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Branch ID must be a valid number'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
+    }
+    
     if (!seating_type_code) {
       const response: ApiResponse = {
         success: false,
@@ -29,6 +40,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       };
       
       return NextResponse.json(response, { status: 400 });
+    }
+    
+    // Find the branch first
+    const branch = await models.Branch.findByPk(branchIdNum);
+    if (!branch) {
+      const response: ApiResponse = {
+        success: false,
+        message: `Branch with ID ${branch_id} not found`
+      };
+      
+      return NextResponse.json(response, { status: 404 });
     }
     
     // Find the seating type by short code
@@ -47,7 +69,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Prepare filter conditions for time slots
     const whereConditions: any = {
-      branch_id: parseInt(branch_id),
+      branch_id: branchIdNum,
       date
     };
     
@@ -107,7 +129,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           short_code: seatingType.short_code
         },
         date,
-        branch_id: parseInt(branch_id),
+        branch_id: branchIdNum,
         total_slots: timeSlots.length,
         available: {
           count: availableSlots.length,

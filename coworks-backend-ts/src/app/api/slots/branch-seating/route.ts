@@ -43,20 +43,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const seating_type_code = url.searchParams.get('seating_type_code');
     const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
     
-    // Validate required filters - need either branch_id or branch_code
-    if (!branch_id && !branch_code) {
-      return NextResponse.json({
-        success: false,
-        message: 'Branch ID or branch code is required'
-      }, { status: 400 });
-    }
-    
     // Validate required filters - need either seating_type_id or seating_type_code
     if (!seating_type_id && !seating_type_code) {
-      return NextResponse.json({
+      const response: ApiResponse = {
         success: false,
-        message: 'Seating type ID or seating type code is required'
-      }, { status: 400 });
+        message: 'Either seating_type_id or seating_type_code is required'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
+    }
+    
+    // Validate branch_id parameter
+    if (!branch_id) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Branch ID is required'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
+    }
+    
+    // Ensure branch_id is a valid number
+    const branchIdNum = parseInt(branch_id);
+    if (isNaN(branchIdNum)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Branch ID must be a valid number'
+      };
+      
+      return NextResponse.json(response, { status: 400 });
     }
     
     // Find the branch
@@ -95,9 +110,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // Find the seating type
-    let seatingTypeWhere = {};
+    let seatingTypeWhere: any = {};
     if (seating_type_id) {
-      seatingTypeWhere = { id: parseInt(seating_type_id) };
+      const seatingTypeIdNum = parseInt(seating_type_id);
+      if (isNaN(seatingTypeIdNum)) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Seating type ID must be a valid number'
+        };
+        
+        return NextResponse.json(response, { status: 400 });
+      }
+      seatingTypeWhere = { id: seatingTypeIdNum };
     } else if (seating_type_code) {
       seatingTypeWhere = { short_code: seating_type_code };
     }

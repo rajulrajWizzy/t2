@@ -10,6 +10,7 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [apiUrl, setApiUrl] = useState('/api/admin/auth/login');
   const [loginRole, setLoginRole] = useState('branch_admin');
+  const [showDefaultCreds, setShowDefaultCreds] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -128,6 +129,14 @@ export default function AdminLogin() {
     }
   };
 
+  const toggleRole = () => {
+    const newRole = loginRole === 'super_admin' ? 'branch_admin' : 'super_admin';
+    setLoginRole(newRole);
+    setUsername(newRole === 'super_admin' ? 'superadmin' : '');
+    setPassword('');
+    setError('');
+  };
+
   const getLoginText = () => {
     if (loading) return 'Logging in...';
     return loginRole === 'super_admin' ? 'Login as Super Admin' : 'Login as Branch Admin';
@@ -198,7 +207,7 @@ export default function AdminLogin() {
                 color: '#374151'
               }}
             >
-              Username or Email
+              Username
             </label>
             <input
               id="username"
@@ -213,7 +222,7 @@ export default function AdminLogin() {
                 border: '1px solid #d1d5db',
                 fontSize: '1rem'
               }}
-              placeholder="username or email@example.com"
+              placeholder="Enter your username"
             />
           </div>
 
@@ -260,16 +269,57 @@ export default function AdminLogin() {
               fontSize: '0.875rem',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? '0.7' : '1',
-              border: 'none'
+              border: 'none',
+              marginBottom: '1rem'
             }}
           >
             {getLoginText()}
           </button>
         </form>
         
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '1rem'
+        }}>
+          <button
+            onClick={toggleRole}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#6b7280',
+              border: '1px solid #d1d5db',
+              padding: '0.5rem 1rem',
+              borderRadius: '0.375rem',
+              fontSize: '0.75rem',
+              cursor: 'pointer'
+            }}
+          >
+            {loginRole === 'super_admin' 
+              ? 'Switch to Branch Admin Login' 
+              : 'Switch to Super Admin Login'}
+          </button>
+        </div>
+        
         {loginRole === 'super_admin' && (
-          <div style={{marginTop: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280'}}>
-            Default credentials: superadmin / CoWorks@SuperAdmin2023
+          <div style={{marginTop: '0.5rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280'}}>
+            <button 
+              onClick={() => setShowDefaultCreds(!showDefaultCreds)}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#3b82f6',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              {showDefaultCreds ? 'Hide default credentials' : 'Show default credentials'}
+            </button>
+            {showDefaultCreds && (
+              <div style={{marginTop: '0.5rem'}}>
+                Default: superadmin / CoWorks@SuperAdmin2023
+              </div>
+            )}
           </div>
         )}
         

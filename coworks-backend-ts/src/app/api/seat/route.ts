@@ -18,12 +18,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Filter by branch_id if provided
     if (branch_id) {
-      whereConditions.branch_id = parseInt(branch_id);
+      const branchIdNum = parseInt(branch_id);
+      if (isNaN(branchIdNum)) {
+        return NextResponse.json({
+          success: false,
+          message: 'Branch ID must be a valid number'
+        }, { status: 400 });
+      }
+      whereConditions.branch_id = branchIdNum;
     }
     
     // Filter by seating_type_id if provided
     if (seating_type_id) {
-      whereConditions.seating_type_id = parseInt(seating_type_id);
+      const seatingTypeIdNum = parseInt(seating_type_id);
+      if (isNaN(seatingTypeIdNum)) {
+        return NextResponse.json({
+          success: false,
+          message: 'Seating type ID must be a valid number'
+        }, { status: 400 });
+      }
+      whereConditions.seating_type_id = seatingTypeIdNum;
     }
     
     // Find seats with associated branch and seating type
@@ -92,6 +106,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         success: false,
         message: 'Branch ID, seating type ID, seat number, and price are required'
+      }, { status: 400 });
+    }
+    
+    // Validate parameter types
+    if (typeof branch_id !== 'number' || isNaN(branch_id)) {
+      return NextResponse.json({
+        success: false,
+        message: 'Branch ID must be a valid number'
+      }, { status: 400 });
+    }
+    
+    if (typeof seating_type_id !== 'number' || isNaN(seating_type_id)) {
+      return NextResponse.json({
+        success: false,
+        message: 'Seating type ID must be a valid number'
       }, { status: 400 });
     }
     

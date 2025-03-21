@@ -5,10 +5,10 @@ export const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-// Validate phone number (10 digits)
+// Validate phone number (10 digits, first digit between 6-9)
 export const isValidPhone = (phone: string | null | undefined): boolean => {
   if (!phone) return true; // Phone is optional
-  const phoneRegex = /^\d{10}$/;
+  const phoneRegex = /^[6-9]\d{9}$/;
   return phoneRegex.test(phone);
 };
 

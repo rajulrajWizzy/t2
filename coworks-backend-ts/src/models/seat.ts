@@ -21,15 +21,26 @@ class SeatModel extends Model<Seat, SeatCreationAttributes> implements Seat {
   // Generate a seat code based on seating type and sequence
   public static async generateSeatCode(seatingTypeId: number, branchId: number): Promise<string> {
     try {
+      if (!seatingTypeId || !branchId) {
+        throw new Error('Missing required parameters: seating type ID or branch ID');
+      }
+
       // Get the seating type to get its short code
       const seatingType = await models.SeatingType.findByPk(seatingTypeId);
-      const branch = await models.Branch.findByPk(branchId);
-      
-      if (!seatingType || !branch) {
-        throw new Error('Seating type or branch not found');
+      if (!seatingType) {
+        console.error(`Seating type with ID ${seatingTypeId} not found`);
+        return `SEAT-${Date.now().toString().slice(-6)}`; // Fallback code
       }
       
-      const typeCode = seatingType.short_code;
+      // Get the branch
+      const branch = await models.Branch.findByPk(branchId);
+      if (!branch) {
+        console.error(`Branch with ID ${branchId} not found`);
+        return `${seatingType.short_code || 'SEAT'}-${Date.now().toString().slice(-6)}`; // Use available info
+      }
+      
+      // Use the short_code if available, otherwise use a placeholder
+      const typeCode = seatingType.short_code || 'SEAT';
       
       // Count existing seats of this type in this branch to determine sequence number
       const seatsCount = await models.Seat.count({
@@ -45,7 +56,7 @@ class SeatModel extends Model<Seat, SeatCreationAttributes> implements Seat {
       return `${typeCode}${sequenceNumber}`;
     } catch (error) {
       console.error('Error generating seat code:', error);
-      return `SEAT${Date.now().toString().slice(-6)}`;
+      return `SEAT${Date.now().toString().slice(-6)}`; // Unique fallback
     }
   }
 }
