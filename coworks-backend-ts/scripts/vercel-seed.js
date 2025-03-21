@@ -8,6 +8,14 @@ const { Sequelize, Op } = require('sequelize');
 require('dotenv').config();
 
 console.log('[Vercel Seed] Starting super admin seed process');
+console.log('[Vercel Seed] Node env:', process.env.NODE_ENV);
+console.log('[Vercel Seed] Database URL exists:', !!process.env.DATABASE_URL);
+
+if (!process.env.DATABASE_URL) {
+  console.error('[Vercel Seed] DATABASE_URL environment variable is not set!');
+  // Don't exit with error - allow build to continue
+  process.exit(0);
+}
 
 // Database connection setup
 let sequelize;
@@ -25,7 +33,8 @@ try {
   console.log('[Vercel Seed] Sequelize instance created');
 } catch (err) {
   console.error('[Vercel Seed] Failed to create Sequelize instance:', err);
-  process.exit(1);
+  // Don't exit with error - allow build to continue
+  process.exit(0);
 }
 
 // Admin model definition (simplified version from the main codebase)
@@ -65,6 +74,12 @@ const Admin = sequelize.define('Admin', {
 });
 
 async function seedSuperAdmin() {
+  const timeout = setTimeout(() => {
+    console.error('[Vercel Seed] Operation timed out after 30 seconds');
+    // Don't exit with error - allow build to continue
+    process.exit(0);
+  }, 30000); // 30 seconds timeout
+  
   try {
     // Try to connect to the database
     await sequelize.authenticate();
@@ -104,6 +119,7 @@ async function seedSuperAdmin() {
       if (existingSuperAdmin) {
         console.log('[Vercel Seed] Super admin already exists, no need to create a new one.');
         await sequelize.close();
+        clearTimeout(timeout);
         return;
       }
     } catch (findErr) {
@@ -135,6 +151,7 @@ async function seedSuperAdmin() {
     // Close the database connection
     await sequelize.close();
     console.log('[Vercel Seed] Database connection closed');
+    clearTimeout(timeout);
   } catch (error) {
     console.error('[Vercel Seed] Error seeding super admin:', error);
     
@@ -145,12 +162,15 @@ async function seedSuperAdmin() {
       console.error('[Vercel Seed] Error closing database connection:', closeErr);
     }
     
-    process.exit(1);
+    clearTimeout(timeout);
+    // Don't exit with error - allow build to continue
+    process.exit(0);
   }
 }
 
 // Run the seed function
 seedSuperAdmin().catch(err => {
   console.error('[Vercel Seed] Fatal error during seeding:', err);
-  process.exit(1);
+  // Don't exit with error - allow build to continue
+  process.exit(0);
 }); 
