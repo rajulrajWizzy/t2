@@ -23,9 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Static CSS files */}
-        <link href="/css/tailwind.css" rel="stylesheet" />
-        <link href="/globals.css" rel="stylesheet" />
+        <style dangerouslySetInnerHTML={{ __html: `
+          html, body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+          }
+        `}} />
       </head>
       <body className={inter.className}>
         {children}

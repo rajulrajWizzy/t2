@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 // Icons for the sidebar
@@ -60,165 +60,319 @@ const Icons = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminRole, setAdminRole] = useState<string | null>(null);
-  const pathname = usePathname();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Check if on login page - no auth needed
+    // Check if on login page
     if (pathname === '/admin/login') {
       return;
     }
 
-    // Check if admin is authenticated
-    const token = localStorage.getItem('adminToken');
-    const role = localStorage.getItem('adminRole');
-    
+    // Check for authentication
+    const token = localStorage.getItem('admin_token');
+    const role = localStorage.getItem('admin_role');
+
     if (!token) {
       router.push('/admin/login');
       return;
     }
-    
+
     setIsAuthenticated(true);
     setAdminRole(role);
-    
-    // For super admin pages, check if user is super admin
-    if (pathname.startsWith('/admin/super') && role !== 'super_admin') {
-      router.push('/admin/dashboard');
-    }
   }, [pathname, router]);
 
-  // If on login page, render without layout
-  if (pathname === '/admin/login') {
+  // If on login page or not authenticated, don't show sidebar
+  if (pathname === '/admin/login' || !isAuthenticated) {
     return <>{children}</>;
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminRole');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_role');
     router.push('/admin/login');
   };
 
-  // Common menu items for all admin types
-  const commonMenuItems = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: Icons.Dashboard },
-    { name: 'Bookings', path: '/admin/bookings', icon: Icons.Bookings },
-    { name: 'Support Tickets', path: '/admin/tickets', icon: Icons.Tickets },
-    { name: 'Profile', path: '/admin/profile', icon: Icons.Settings },
+  // Navigation links with inline SVG icons
+  const navLinks = [
+    {
+      title: 'Dashboard',
+      href: '/admin/dashboard',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+      ),
+    },
+    {
+      title: 'Bookings',
+      href: '/admin/bookings',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      ),
+    },
+    {
+      title: 'Support Tickets',
+      href: '/admin/tickets',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      ),
+    },
+    {
+      title: 'Profile',
+      href: '/admin/profile',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      ),
+    },
   ];
 
-  // Super admin exclusive menu items
-  const superAdminMenuItems = [
-    { name: 'All Branches', path: '/admin/super/branches', icon: Icons.Branches },
-    { name: 'Seating Types', path: '/admin/super/seating-types', icon: Icons.SeatingTypes },
-    { name: 'Admin Users', path: '/admin/super/users', icon: Icons.Users },
-    { name: 'Payment Logs', path: '/admin/super/payments', icon: Icons.Payments },
-  ];
+  // Add super admin specific links
+  if (adminRole === 'super_admin') {
+    navLinks.splice(3, 0, {
+      title: 'All Branches',
+      href: '/admin/branch',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      ),
+    });
+    navLinks.splice(4, 0, {
+      title: 'Admin Users',
+      href: '/admin/users',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      ),
+    });
+  }
 
-  // Branch admin exclusive menu items
-  const branchAdminMenuItems = [
-    { name: 'My Branch', path: '/admin/branch', icon: Icons.Branches },
-    { name: 'Seats', path: '/admin/seats', icon: Icons.Seats },
-  ];
-
-  // Determine which menu items to show based on role
-  const menuItems = [
-    ...commonMenuItems,
-    ...(adminRole === 'super_admin' ? superAdminMenuItems : branchAdminMenuItems)
-  ];
+  // For branch admins, add branch-specific menu
+  if (adminRole === 'branch_admin') {
+    navLinks.splice(2, 0, {
+      title: 'My Branch',
+      href: '/admin/my-branch',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      ),
+    });
+  }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
+    <div style={{
+      display: 'flex',
+      minHeight: '100vh',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
       {/* Sidebar */}
-      <div 
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-blue-700 transition duration-300 transform ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 md:static md:inset-0`}
-      >
-        <div className="flex items-center justify-between h-16 px-6 bg-blue-800">
-          <div className="flex items-center">
-            <span className="text-xl font-bold text-white">
-              Excel Coworks
-            </span>
-          </div>
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden text-white focus:outline-none"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
+      <div style={{
+        width: sidebarOpen ? '250px' : '0',
+        backgroundColor: 'white',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+        transition: 'width 0.3s',
+        overflow: 'hidden',
+        borderRight: '1px solid #e5e7eb',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Logo Area */}
+        <div style={{
+          padding: '1.5rem 1rem',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#3b82f6'
+          }}>
+            Coworks Admin
+          </h1>
         </div>
-        <div className="px-2 py-4 overflow-y-auto">
-          <ul className="space-y-1">
-            {menuItems.map((item) => {
-              const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
-              return (
-                <li key={item.name}>
-                  <Link 
-                    href={item.path}
-                    className={`group flex items-center px-4 py-2.5 text-sm font-medium rounded-lg ${
-                      isActive
-                        ? 'bg-blue-800 text-white'
-                        : 'text-blue-100 hover:bg-blue-600'
-                    }`}
-                  >
-                    <span className="mr-3">
-                      <item.icon />
-                    </span>
-                    {item.name}
-                  </Link>
-                </li>
-              );
-            })}
-            
-            <li className="pt-4 mt-4 border-t border-blue-600">
-              <button
-                onClick={handleLogout}
-                className="w-full group flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-blue-100 hover:bg-blue-600"
-              >
-                <span className="mr-3">
-                  <Icons.Logout />
-                </span>
-                Logout
-              </button>
-            </li>
+
+        {/* Navigation Links */}
+        <nav style={{
+          padding: '1rem 0.5rem',
+          flex: 1
+        }}>
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0
+          }}>
+            {navLinks.map((link) => (
+              <li key={link.href} style={{ marginBottom: '0.25rem' }}>
+                <Link
+                  href={link.href}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0.25rem',
+                    color: pathname.includes(link.href) ? '#3b82f6' : '#4b5563',
+                    backgroundColor: pathname.includes(link.href) ? '#eff6ff' : 'transparent',
+                    fontWeight: pathname.includes(link.href) ? '500' : 'normal',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <span style={{ 
+                    display: 'flex', 
+                    marginRight: '0.75rem',
+                    color: pathname.includes(link.href) ? '#3b82f6' : '#6b7280'
+                  }}>
+                    {link.icon}
+                  </span>
+                  {link.title}
+                </Link>
+              </li>
+            ))}
           </ul>
+        </nav>
+
+        {/* Logout Button */}
+        <div style={{
+          padding: '1rem',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              padding: '0.75rem 1rem',
+              backgroundColor: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.25rem',
+              color: '#4b5563',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Top header */}
-        <header className="bg-white shadow-sm z-10">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden text-gray-500 focus:outline-none"
+      <div style={{
+        flex: 1,
+        backgroundColor: '#f9fafb',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        {/* Top Header */}
+        <header style={{
+          backgroundColor: 'white',
+          padding: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          {/* Toggle Button */}
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '2.5rem',
+              height: '2.5rem',
+              border: 'none',
+              backgroundColor: 'transparent',
+              borderRadius: '0.375rem',
+              cursor: 'pointer'
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              </svg>
-            </button>
-            <div className="text-lg font-semibold text-gray-800">
-              {adminRole === 'super_admin' ? 'Super Admin Panel' : 'Branch Admin Panel'}
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          {/* User Info */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <div style={{
+              width: '2.5rem',
+              height: '2.5rem',
+              borderRadius: '9999px',
+              backgroundColor: '#3b82f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 'bold',
+              marginRight: '0.5rem'
+            }}>
+              {adminRole === 'super_admin' ? 'S' : 'A'}
             </div>
-            <div className="flex items-center">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-              </span>
+            <div>
+              <div style={{
+                fontWeight: '500',
+                color: '#1f2937'
+              }}>
+                {adminRole === 'super_admin' ? 'Super Admin' : 'Branch Admin'}
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
-          {isAuthenticated && children}
+        {/* Page Content */}
+        <main style={{
+          flex: 1,
+          padding: '1.5rem',
+          overflow: 'auto'
+        }}>
+          {children}
         </main>
       </div>
     </div>
