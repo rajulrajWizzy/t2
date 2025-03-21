@@ -1,134 +1,120 @@
-# Coworks Backend API
+# Coworks Backend
 
-A TypeScript-based Next.js backend API for a coworking space management system. This project handles user authentication, managing branches, seats, bookings, and payments.
+A TypeScript-based backend service for managing coworking spaces.
 
-## Technologies Used
+## Features
 
-- **Framework**: Next.js 14+ with App Router
-- **Language**: TypeScript
-- **Database**: PostgreSQL with Sequelize ORM
-- **Authentication**: JWT-based auth with bcrypt for password hashing
+- Admin authentication and management system
+- Super admin and branch admin role-based access control
+- API endpoints for user management, bookings, and spaces
+- Secure password handling with bcrypt
+- Database integration with Sequelize
 
-## Getting Started
+## Setup
 
 ### Prerequisites
 
-- Node.js 18+ and npm/yarn/pnpm
-- PostgreSQL database
+- Node.js (v14 or higher)
+- npm or yarn
+- PostgreSQL or MySQL database
 
-### Setup
+### Installation
 
-1. **Clone the repository**
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/coworks-backend-ts.git
+   cd coworks-backend-ts
+   ```
 
-```bash
-git clone https://github.com/your-username/coworks-backend-ts.git
-cd coworks-backend-ts
+2. Install dependencies:
+   ```
+   npm install
+   ```
+
+3. Create a `.env` file in the root directory with the following content:
+   ```
+   # Database Configuration
+   DB_HOST=localhost
+   DB_USER=your_db_username
+   DB_PASS=your_db_password
+   DB_NAME=coworks_db
+   DB_PORT=5432
+   
+   # JWT Secret
+   JWT_SECRET=your_jwt_secret_key
+   
+   # Server Configuration
+   PORT=3000
+   NODE_ENV=development
+   ```
+
+4. Set up the database:
+   ```
+   npm run db:setup
+   ```
+
+5. Seed the initial super admin:
+   ```
+   node scripts/seed-superadmin.js
+   ```
+
+6. Start the development server:
+   ```
+   npm run dev
+   ```
+
+## Admin Management
+
+The system includes a command-line tool for managing admin accounts:
+
+```
+node scripts/admin-manager.js [command] [options]
 ```
 
-2. **Install dependencies**
+Available commands:
+- `create`: Create a new admin user
+- `list`: List all admin users
+- `update`: Update an existing admin user
+- `delete`: Delete an admin user
+- `reset-pwd`: Reset an admin's password
+- `help`: Show help information
 
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
+Example:
+```
+node scripts/admin-manager.js create --username=admin2 --password=SecurePass123 --email=admin2@example.com --name="Admin Two" --role=branch_admin --branch=1
 ```
 
-3. **Set up environment variables**
+## API Testing
 
-Copy the `.env.example` file to `.env.local` and update the values:
+You can test the API endpoints using the provided script:
 
-```bash
-cp .env.example .env.local
+```
+bash admin-api-test.sh
 ```
 
-Update the database connection details and JWT secret in the `.env.local` file.
+Make sure to update the `API_BASE` variable in the script with your actual API domain.
 
-4. **Run database migrations**
+## Default Super Admin
 
-```bash
-npm run migrate
-# or
-yarn migrate
-# or
-pnpm migrate
-```
+The system seeds an initial super admin with the following credentials:
+- Username: `superadmin`
+- Password: `CoWorks@SuperAdmin2023`
 
-5. **Seed the database (optional)**
+**Important:** Change this password after the first login.
 
-```bash
-npm run seed:branches
-npm run seed:seating-types
-# or
-yarn seed:branches
-yarn seed:seating-types
-# or
-pnpm seed:branches
-pnpm seed:seating-types
-```
+## API Documentation
 
-6. **Start the development server**
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## API Routes
-
-### Authentication
-
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login a user
-
-### Branches
-
-- `GET /api/branches` - Get all branches
-- `POST /api/branches` - Create a new branch
-- `GET /api/branches/:id` - Get a branch by ID
-- `PUT /api/branches/:id` - Update a branch
-- `DELETE /api/branches/:id` - Delete a branch
-
-### Seating Types
-
-- `GET /api/seating-types` - Get all seating types
-- `POST /api/seating-types` - Create a new seating type
-
-### Time Slots
-
-- `GET /api/slots` - Get available time slots
-- `POST /api/slots` - Generate time slots for a branch and date
-
-## Database Schema
-
-The database includes the following tables:
-
-- `branches` - Coworking space locations
-- `customers` - User accounts
-- `seating_types` - Types of workspaces (HOT_DESK, DEDICATED_DESK, etc.)
-- `seats` - Individual seats within branches
-- `seat_bookings` - Bookings for regular seats
-- `meeting_bookings` - Bookings for meeting rooms
-- `payments` - Payment records for bookings
-- `time_slots` - Available time slots for booking
-
-## Frontend Integration
-
-This backend is designed to work with a Flutter frontend. The API endpoints return JSON responses that can be easily consumed by any frontend application.
-
-## Testing with Postman
-
-You can test the API endpoints using Postman. Import the Postman collection from the `postman` directory to get started.
+A comprehensive API collection is available in the following formats:
+- Markdown: `coworks-api-collection.md`
+- Curl commands: `coworks-api-collection.curl`
+- Postman collection: `coworks-api-collection.json`
 
 ## Deployment
 
-The application can be deployed to any platform that supports Next.js, such as Vercel or Netlify. Make sure to set up the environment variables in your deployment environment.
+This project is set up for deployment on Vercel with the following features:
+- Tailwind CSS processing
+- Next.js API routes
+- PostgreSQL integration
 
 ## License
 

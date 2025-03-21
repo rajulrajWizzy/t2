@@ -25,7 +25,9 @@
         "seed:seating-types": "node scripts/seed-seating-types.js",
         "postinstall": "",
         "update:branches": "node scripts/update-branches.js",
-        "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js"
+        "migrate:branch-indexes": "node scripts/migrate-branch-indexes.js",
+        "seed:superadmin": "node scripts/seed-superadmin.js",
+        "admin": "node scripts/admin-manager.js"
     },
     "dependencies": {
         "@types/bcryptjs": "^2.4.6",
