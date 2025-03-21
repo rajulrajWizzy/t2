@@ -1,5 +1,5 @@
 import { Model, DataTypes, Optional } from 'sequelize';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import sequelize from '@/config/database';
 
 // Admin roles enum

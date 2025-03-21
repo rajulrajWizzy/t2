@@ -11,7 +11,7 @@ const nextConfig = {
   
   // Set api routes as dynamically rendered to avoid static generation errors
   experimental: {
-    serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore'],
+    serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
   },
   
   // Explicitly configure which routes are dynamic
@@ -39,7 +39,7 @@ const nextConfig = {
   // Handle Node.js modules that cause issues in Next.js
   webpack: (config, { isServer }) => {
     if (isServer) {
-      config.externals = [...config.externals, 'bcrypt', '@mapbox/node-pre-gyp'];
+      config.externals = [...config.externals, 'bcryptjs', '@mapbox/node-pre-gyp'];
     }
     
     // Add fallbacks for node modules

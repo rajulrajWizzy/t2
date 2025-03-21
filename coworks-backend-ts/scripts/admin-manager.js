@@ -22,7 +22,7 @@
  *   node scripts/admin-manager.js reset-pwd --id 1 --password NewPass123!
  */
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { Sequelize, Op } = require('sequelize');
 const readline = require('readline');
 const crypto = require('crypto');

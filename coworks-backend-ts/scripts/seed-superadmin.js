@@ -9,7 +9,7 @@
  * node scripts/seed-superadmin.js
  */
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
