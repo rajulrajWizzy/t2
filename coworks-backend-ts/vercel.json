@@ -1,26 +1,11 @@
 {
     "version": 2,
-    "builds": [
-      {
-        "src": "package.json",
-        "use": "@vercel/next"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/api/(.*)",
-        "dest": "/api/$1"
-      }
-    ],
+    "buildCommand": "npm run vercel-build",
+    "installCommand": "npm install",
+    "framework": "nextjs",
     "env": {
       "NODE_ENV": "production",
-      "NODE_OPTIONS": "--max_old_space_size=512"
-    },
-    "build": {
-      "env": {
-        "NODE_ENV": "production",
-        "NODE_OPTIONS": "--max_old_space_size=512"
-      }
-    },
-    "buildCommand": "npm run vercel-build"
+      "NODE_OPTIONS": "--max_old_space_size=4096",
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
   }
