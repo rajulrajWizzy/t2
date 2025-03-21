@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "vercel-build": "node scripts/vercel-tailwind.js && npm install --no-save @typescript-eslint/eslint-plugin @types/bcrypt && node scripts/vercel-migrate.js && next build",
+        "vercel-build": "node scripts/vercel-tailwind.js && next build",
         "start": "next start",
         "lint": "next lint",
         "migrate": "node scripts/migrate.js",
