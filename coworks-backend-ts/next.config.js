@@ -14,9 +14,7 @@ const nextConfig = {
   // Configure experimental options properly
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
-    esmExternals: 'loose',
-    // Force Node.js runtime for all server code to avoid Edge Runtime errors with Sequelize
-    runtime: 'nodejs',
+    esmExternals: 'loose'
   },
 
   // Add headers for CORS
@@ -38,9 +36,6 @@ const nextConfig = {
   serverRuntimeConfig: {
     PROJECT_ROOT: __dirname,
   },
-  
-  // Remove sequelize from transpilePackages since it's in serverComponentsExternalPackages
-  // Ensure all middleware and API routes use Node.js runtime, not Edge
   
   // Custom webpack config for Node.js modules
   webpack: (config, { isServer }) => {

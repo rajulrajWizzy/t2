@@ -139,13 +139,33 @@ This project is set up for deployment on Vercel. For detailed deployment instruc
 
 ### Troubleshooting
 
-If you encounter deployment issues:
-1. Run `node debug-build.js` to diagnose common problems
-2. Check the Babel configuration with `node fix-babel.js`
-3. Fix font import issues with `node fix-fonts.js`
-4. Resolve runtime errors with `node fix-runtime.js`
-5. Run `node check-edge-imports.js` to identify problematic imports
-6. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for detailed solutions to common errors
+If you're encountering issues when deploying to Vercel, try the following:
+
+### Edge Runtime Issues
+
+If you encounter errors like `Dynamic Code Evaluation (e. g. 'eval', 'new Function') not allowed in Edge Runtime`, run:
+
+```bash
+node fix-runtime.js
+```
+
+This script:
+- Adds `export const runtime = "nodejs"` to all API routes 
+- Fixes JWT utils to safely run in Edge and Node.js environments
+- Updates middleware to avoid direct Sequelize imports
+- Creates a safe version of models for edge functions
+- Configures `next.config.js` properly for Sequelize compatibility
+
+### Other Common Deployment Issues
+
+Run the following helper scripts to fix other common issues:
+
+```bash
+node debug-build.js  # Diagnose common deployment issues
+node fix-babel.js    # Fix Babel dependencies
+node fix-fonts.js    # Fix font imports
+node check-edge-imports.js  # Check for problematic imports in Edge Runtime files
+```
 
 ## License
 

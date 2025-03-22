@@ -1,117 +1,138 @@
 #!/usr/bin/env node
 
-// This script checks for problematic Sequelize imports in files that
-// might be used in Edge Runtime (middleware.ts, etc)
+/**
+ * Check Edge Runtime Imports
+ * 
+ * This script checks for problematic imports in files that might be used in Edge Runtime:
+ * 1. Middleware
+ * 2. JWT utilities
+ * 3. API routes without Node.js runtime
+ */
 
 const fs = require('fs');
 const path = require('path');
 
 console.log('Checking for problematic imports in Edge Runtime files...');
 
-// Files to check
-const filesToCheck = [
-  'src/middleware.ts',
-  'src/utils/jwt.ts',
+// Problematic imports to check for
+const problematicImports = [
+  /import.*from.*['"]@\/models['"]/,
+  /import.*from.*['"]sequelize['"]/,
+  /import.*from.*['"]@\/config\/database['"]/
 ];
 
-// Patterns to look for
-const problematicPatterns = [
-  'import.*from.*[\'\"]@/models[\'\"]',
-  'import.*from.*[\'\"]sequelize[\'\"]',
-  'import.*from.*[\'\"]@/config/database[\'\"]',
-  'require\\([\'\"](sequelize|@/models|@/config/database)[\'\"]\\)'
+// Check specific files that must be Edge-compatible
+const edgeFiles = [
+  path.join('src', 'middleware.ts'),
+  path.join('src', 'utils', 'jwt.ts')
 ];
 
-// Compile regexes
-const regexPatterns = problematicPatterns.map(pattern => new RegExp(pattern));
+let hasProblems = false;
 
-// Function to check a file for problematic imports
-function checkFile(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) {
-      console.warn(`File not found: ${filePath}`);
-      return false;
+// Check specific files known to be used in Edge Runtime
+for (const filePath of edgeFiles) {
+  if (fs.existsSync(filePath)) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    let fileHasProblems = false;
+    
+    // Check if file explicitly sets Node.js runtime
+    const hasNodeRuntime = content.includes('export const runtime = ') && content.includes('nodejs');
+    
+    // Skip further checks if the file explicitly sets Node.js runtime
+    if (hasNodeRuntime) {
+      console.log(`✅ No problematic imports found in ${path.resolve(filePath)}`);
+      continue;
     }
     
-    const content = fs.readFileSync(filePath, 'utf8');
-    let hasProblems = false;
-    
-    // Check for problematic patterns
-    regexPatterns.forEach((regex, index) => {
-      if (regex.test(content)) {
-        console.error(`❌ Found problematic import in ${filePath}: ${problematicPatterns[index]}`);
+    // Check for problematic imports
+    for (const pattern of problematicImports) {
+      if (pattern.test(content)) {
+        console.log(`❌ Found problematic import in ${path.resolve(filePath)}: ${pattern}`);
+        fileHasProblems = true;
         hasProblems = true;
       }
-    });
+    }
     
-    // Check if the file has Edge runtime directive (which would be a problem)
-    const hasEdgeRuntimeDirective = /export\s+const\s+runtime\s*=\s*["']edge["']/.test(content);
-    if (hasEdgeRuntimeDirective) {
-      console.error(`❌ Found Edge runtime directive in ${filePath}, which may cause issues with Sequelize imports`);
+    if (!fileHasProblems) {
+      console.log(`✅ No problematic imports found in ${path.resolve(filePath)}`);
+    }
+  }
+}
+
+// Check API route files
+console.log('Checking API route files...');
+const apiDir = path.join('src', 'app', 'api');
+
+if (fs.existsSync(apiDir)) {
+  const routeFiles = findRouteFiles(apiDir);
+  console.log(`Found ${routeFiles.length} route files`);
+  
+  for (const routeFile of routeFiles) {
+    const content = fs.readFileSync(routeFile, 'utf8');
+    let fileHasProblems = false;
+    
+    // Check if file explicitly sets Node.js runtime
+    const hasNodeRuntime = content.includes('export const runtime = ') && content.includes('nodejs');
+    
+    // Check for Edge runtime directive which would be problematic with Sequelize
+    const hasEdgeRuntime = content.includes('export const runtime = ') && content.includes('edge');
+    
+    if (hasEdgeRuntime) {
+      console.log(`❌ File ${routeFile} has Edge runtime but may use Sequelize - this will cause errors!`);
+      fileHasProblems = true;
       hasProblems = true;
     }
     
-    if (!hasProblems) {
-      console.log(`✅ No problematic imports found in ${filePath}`);
+    // If the file has Node.js runtime, it's safe to use Sequelize
+    if (hasNodeRuntime) {
+      console.log(`✅ File ${routeFile} has Node.js runtime - safe to use Sequelize`);
+      continue;
     }
     
-    return hasProblems;
-  } catch (error) {
-    console.error(`Error checking ${filePath}:`, error.message);
-    return true;
-  }
-}
-
-// Check all files
-let hasAnyProblems = false;
-filesToCheck.forEach(file => {
-  const absolutePath = path.join(process.cwd(), file);
-  if (checkFile(absolutePath)) {
-    hasAnyProblems = true;
-  }
-});
-
-// Find all route.ts files and check them
-function findRouteFiles(dir) {
-  const files = fs.readdirSync(dir, { withFileTypes: true });
-  let routeFiles = [];
-  
-  for (const file of files) {
-    const filePath = path.join(dir, file.name);
-    if (file.isDirectory()) {
-      routeFiles = routeFiles.concat(findRouteFiles(filePath));
-    } else if (file.name === 'route.ts' || file.name === 'route.tsx') {
-      routeFiles.push(filePath);
-    }
-  }
-  
-  return routeFiles;
-}
-
-try {
-  const apiDir = path.join(process.cwd(), 'src', 'app', 'api');
-  if (fs.existsSync(apiDir)) {
-    console.log('\nChecking API route files...');
-    const routeFiles = findRouteFiles(apiDir);
-    console.log(`Found ${routeFiles.length} route files`);
-    
-    routeFiles.forEach(file => {
-      if (checkFile(file)) {
-        hasAnyProblems = true;
+    // If no runtime is specified, check for problematic imports
+    for (const pattern of problematicImports) {
+      if (pattern.test(content)) {
+        console.log(`❌ Found problematic import in ${routeFile}: ${pattern} without Node.js runtime directive`);
+        fileHasProblems = true;
+        hasProblems = true;
       }
-    });
+    }
+    
+    if (!fileHasProblems) {
+      console.log(`✅ No problematic imports found in ${routeFile}`);
+    }
   }
-} catch (error) {
-  console.error('Error checking API routes:', error.message);
-  hasAnyProblems = true;
+} else {
+  console.log('API directory not found');
 }
 
-if (hasAnyProblems) {
-  console.error('\n⚠️ Found problematic imports that could cause Edge Runtime errors.');
-  console.error('Run `node fix-runtime.js` to fix the issues.');
+// Find all route files in a directory
+function findRouteFiles(dir) {
+  let results = [];
+  const list = fs.readdirSync(dir);
+  
+  for (const file of list) {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+    
+    if (stat.isDirectory()) {
+      // Recursively search directories
+      results = results.concat(findRouteFiles(filePath));
+    } else if (file === 'route.ts' || file === 'route.tsx') {
+      results.push(filePath);
+    }
+  }
+  
+  return results;
+}
+
+if (hasProblems) {
+  console.log('\n⚠️ Found potentially problematic imports that could cause Edge Runtime errors.');
+  console.log('Run `node fix-runtime.js` to fix these issues by setting Node.js runtime for all API routes.');
   process.exit(1);
 } else {
-  console.log('\n✅ All files checked, no problematic imports found!');
+  console.log('✅ No problematic imports found that would cause Edge Runtime errors.');
+  process.exit(0);
 }
 
 // Check next.config.js

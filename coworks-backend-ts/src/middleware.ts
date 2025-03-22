@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-// Use the verifyToken function from our JWT utils
+// Only import the verifyToken function, which doesn't use Sequelize
 import { verifyToken } from './utils/jwt';
 
 // Add validation helper functions

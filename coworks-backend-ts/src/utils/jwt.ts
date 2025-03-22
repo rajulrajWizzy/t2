@@ -146,17 +146,20 @@ export async function generateJWT(payload: { id: string; email: string; role: st
  * Note: This must only be used in API routes with nodejs runtime, not in middleware/Edge
  */
 export async function isTokenBlacklisted(token: string): Promise<boolean> {
-  // Dynamically import models only when needed (in API routes with nodejs runtime)
-  try {
-    const { default: models } = await import('@/models');
-    const blacklistedToken = await models.BlacklistedToken.findOne({
-      where: { token }
-    });
-    return !!blacklistedToken;
-  } catch (error) {
-    console.error('Error checking blacklisted token:', error);
-    return false;
+  // This function should only be called from API routes, not middleware
+  if (typeof window === 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
+    try {
+      // Dynamically import models only when needed
+      const { default: models } = await import('@/models');
+      const blacklistedToken = await models.BlacklistedToken.findOne({
+        where: { token }
+      });
+      return !!blacklistedToken;
+    } catch (error) {
+      console.error('Error checking blacklisted token:', error);
+    }
   }
+  return false;
 }
 
 /**
@@ -166,22 +169,26 @@ export async function isTokenBlacklisted(token: string): Promise<boolean> {
  * @param userId ID of the user who owned the token
  */
 export async function blacklistToken(token: string, userId: number): Promise<void> {
-  try {
-    // Dynamically import models
-    const { default: models } = await import('@/models');
-    
-    // Calculate token expiry time from decoded payload
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-    const expiresAt = payload.exp ? new Date(payload.exp * 1000) : new Date();
-    
-    await models.BlacklistedToken.create({
-      token,
-      user_id: userId,
-      expires_at: expiresAt,
-      blacklisted_at: new Date()
-    });
-  } catch (error) {
-    console.error('Error blacklisting token:', error);
-    throw error;
+  // Only run in Node.js environment, not Edge
+  if (typeof window === 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
+    try {
+      const secretKey = getJwtSecretKey();
+      // Verify token to get expiry
+      const { payload } = await jwtVerify(token, secretKey);
+      const expiresAt = payload.exp ? new Date(payload.exp * 1000) : new Date();
+      
+      // Dynamically import models
+      const { default: models } = await import('@/models');
+      
+      await models.BlacklistedToken.create({
+        token,
+        user_id: userId,
+        expires_at: expiresAt,
+        blacklisted_at: new Date()
+      });
+    } catch (error) {
+      console.error('Error blacklisting token:', error);
+      throw error;
+    }
   }
 } 
