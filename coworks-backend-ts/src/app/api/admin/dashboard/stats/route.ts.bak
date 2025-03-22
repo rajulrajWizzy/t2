@@ -3,8 +3,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-// Properly configured Next.js API route directives
-
 import { verifyAdmin } from '@/utils/adminAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/models';
@@ -14,13 +12,16 @@ import { SeatingTypeEnum } from '@/types/seating';
 
 export async function GET(req: NextRequest) {
   try {
+    // Verify admin authentication
     const adminAuth = await verifyAdmin(req);
     if ('status' in adminAuth) {
       return adminAuth as NextResponse;
     }
 
+    // Get admin role and branch_id (if applicable)
     const { role, branch_id } = adminAuth;
     
+    // Extract customization options from query params
     const url = new URL(req.url);
     const showQuantityStats = url.searchParams.get('quantity_stats') === 'true';
     const showCostSavings = url.searchParams.get('cost_savings') === 'true';
@@ -28,7 +29,9 @@ export async function GET(req: NextRequest) {
     const from = url.searchParams.get('from') ? new Date(url.searchParams.get('from') as string) : null;
     const to = url.searchParams.get('to') ? new Date(url.searchParams.get('to') as string) : null;
     
+    // Fetch different stats based on admin role
     if (role === 'branch_admin' && branch_id) {
+      // Branch admin - fetch stats for their branch only
       const branchStats = await getBranchStats(
         branch_id, 
         showQuantityStats, 
@@ -43,6 +46,7 @@ export async function GET(req: NextRequest) {
         data: branchStats
       });
     } else {
+      // Super admin or general admin - fetch global stats
       const globalStats = await getGlobalStats(
         showQuantityStats, 
         showCostSavings, 
@@ -70,6 +74,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Function to get stats for a specific branch
 async function getBranchStats(
   branchId: string | number, 
   showQuantityStats = false,
@@ -78,6 +83,7 @@ async function getBranchStats(
   from: Date | null = null,
   to: Date | null = null
 ) {
+  // Build date filter if provided
   const dateFilter: any = {};
   if (from && to) {
     dateFilter['created_at'] = {
@@ -93,6 +99,7 @@ async function getBranchStats(
     };
   }
   
+  // First get seats for this branch
   const branchSeats = await db.Seat.findAll({
     where: { branch_id: branchId },
     attributes: ['id']
@@ -100,6 +107,7 @@ async function getBranchStats(
   
   const seatIds = branchSeats.map((seat: any) => seat.id);
   
+  // Get total bookings for this branch's seats
   const totalBookings = seatIds.length > 0 ? await db.SeatBooking.count({
     where: { 
       seat_id: { [Op.in]: seatIds },
@@ -107,6 +115,7 @@ async function getBranchStats(
     }
   }) : 0;
 
+  // Get active bookings
   const activeBookings = seatIds.length > 0 ? await db.SeatBooking.count({
     where: { 
       seat_id: { [Op.in]: seatIds },
@@ -117,6 +126,7 @@ async function getBranchStats(
     }
   }) : 0;
 
+  // Get pending bookings
   const pendingBookings = seatIds.length > 0 ? await db.SeatBooking.count({
     where: { 
       seat_id: { [Op.in]: seatIds },
@@ -125,6 +135,7 @@ async function getBranchStats(
     }
   }) : 0;
 
+  // Get open support tickets
   const openTickets = await db.SupportTicket.count({
     where: { 
       branch_id: branchId,
@@ -133,6 +144,7 @@ async function getBranchStats(
     }
   });
 
+  // Get total seats and available seats
   const totalSeats = await db.Seat.count({
     where: { branch_id: branchId }
   });
@@ -144,6 +156,7 @@ async function getBranchStats(
     }
   });
 
+  // Get total revenue
   const payments = await db.Payment.findAll({
     where: {
       booking_id: { 
@@ -166,6 +179,7 @@ async function getBranchStats(
   
   const totalRevenue = parseFloat(payments[0]?.total || '0');
 
+  // Build response object
   const response: any = {
     totalBookings,
     activeBookings,
@@ -176,7 +190,9 @@ async function getBranchStats(
     availability: availableSeats,
   };
   
+  // Get detailed seating stats if requested
   if (detailedSeatingStats) {
+  // Get seating types and counts
   const seatingTypes = await db.SeatingType.findAll({
     include: [{
       model: db.Seat,
@@ -215,11 +231,14 @@ async function getBranchStats(
     }));
   }
   
+  // Add quantity stats if requested
   if (showQuantityStats) {
+    // Get bookings with quantity > 1 for hot desk and dedicated desk
     const hotDeskId = await getSeatingTypeId(SeatingTypeEnum.HOT_DESK);
     const dedicatedDeskId = await getSeatingTypeId(SeatingTypeEnum.DEDICATED_DESK);
     
     if (hotDeskId && dedicatedDeskId) {
+      // Get seats of these types in the branch
       const configurableSeats = await db.Seat.findAll({
         where: {
           branch_id: branchId,
@@ -238,8 +257,10 @@ async function getBranchStats(
         .filter((s: any) => s.seating_type_id === dedicatedDeskId)
         .map((s: any) => s.id);
       
+      // Get hot desk bookings by quantity
       const hotDeskBookingsByQuantity = await getBookingsByQuantity(hotDeskSeatIds, dateFilter);
       
+      // Get dedicated desk bookings by quantity
       const dedicatedDeskBookingsByQuantity = await getBookingsByQuantity(dedicatedDeskSeatIds, dateFilter);
       
       response.quantityStats = {
@@ -249,6 +270,7 @@ async function getBranchStats(
     }
   }
   
+  // Add cost savings if requested
   if (showCostSavings && seatIds.length > 0) {
     const savingsData = await db.SeatBooking.findAll({
       attributes: [
@@ -287,6 +309,7 @@ async function getBranchStats(
   return response;
 }
 
+// Helper function to get seating type ID by enum
 async function getSeatingTypeId(seatingTypeEnum: SeatingTypeEnum): Promise<number | null> {
   const seatingType = await db.SeatingType.findOne({
     where: { name: seatingTypeEnum },
@@ -296,9 +319,11 @@ async function getSeatingTypeId(seatingTypeEnum: SeatingTypeEnum): Promise<numbe
   return seatingType ? seatingType.id : null;
 }
 
+// Helper function to get bookings by quantity
 async function getBookingsByQuantity(seatIds: number[], dateFilter: any) {
   if (!seatIds.length) return [];
   
+  // Get bookings with quantity data
   const bookingsByQuantity = await db.sequelize.query(`
     SELECT 
       quantity, 
@@ -325,6 +350,7 @@ async function getBookingsByQuantity(seatIds: number[], dateFilter: any) {
   return bookingsByQuantity;
 }
 
+// Function to get global stats for super admin
 async function getGlobalStats(
   showQuantityStats = false,
   showCostSavings = false,
@@ -332,6 +358,7 @@ async function getGlobalStats(
   from: Date | null = null,
   to: Date | null = null
 ) {
+  // Build date filter if provided
   const dateFilter: any = {};
   if (from && to) {
     dateFilter['created_at'] = {
@@ -347,10 +374,12 @@ async function getGlobalStats(
     };
   }
   
+  // Get total bookings across all branches
   const totalBookings = await db.SeatBooking.count({
     where: dateFilter
   });
 
+  // Get active bookings across all branches
   const activeBookings = await db.SeatBooking.count({
     where: { 
       status: 'CONFIRMED',
@@ -360,6 +389,7 @@ async function getGlobalStats(
     }
   });
 
+  // Get pending bookings across all branches
   const pendingBookings = await db.SeatBooking.count({
     where: { 
       status: 'PENDING',
@@ -367,6 +397,7 @@ async function getGlobalStats(
     }
   });
 
+  // Get open support tickets across all branches
   const openTickets = await db.SupportTicket.count({
     where: { 
       status: { [Op.in]: ['OPEN', 'IN_PROGRESS', 'ASSIGNED'] },
@@ -374,6 +405,7 @@ async function getGlobalStats(
     }
   });
 
+  // Get total revenue across all branches
   const payments = await db.Payment.findAll({
     where: {
       payment_status: 'COMPLETED',
@@ -387,14 +419,18 @@ async function getGlobalStats(
   
   const totalRevenue = parseFloat(payments[0]?.total || '0');
 
+  // Get total branches
   const branches = await db.Branch.count();
 
+  // Get total seats
   const seats = await db.Seat.count();
   
+  // Get available seats
   const availableSeats = await db.Seat.count({
     where: { availability_status: 'AVAILABLE' }
   });
 
+  // Build response object
   const response: any = {
     totalBookings,
     activeBookings,
@@ -406,7 +442,9 @@ async function getGlobalStats(
     availableSeats
   };
   
+  // Get detailed seating stats if requested
   if (detailedSeatingStats) {
+    // Get seating types and counts
     const seatingTypes = await db.SeatingType.findAll({
       include: [{
         model: db.Seat,
@@ -444,11 +482,14 @@ async function getGlobalStats(
     }));
   }
   
+  // Add quantity stats if requested
   if (showQuantityStats) {
+    // Get bookings with quantity > 1 for hot desk and dedicated desk
     const hotDeskId = await getSeatingTypeId(SeatingTypeEnum.HOT_DESK);
     const dedicatedDeskId = await getSeatingTypeId(SeatingTypeEnum.DEDICATED_DESK);
     
     if (hotDeskId && dedicatedDeskId) {
+      // Get seats of these types
       const hotDeskSeatIds = (await db.Seat.findAll({
         where: {
           seating_type_id: hotDeskId
@@ -463,8 +504,10 @@ async function getGlobalStats(
         attributes: ['id']
       })).map((s: any) => s.id);
       
+      // Get hot desk bookings by quantity
       const hotDeskBookingsByQuantity = await getBookingsByQuantity(hotDeskSeatIds, dateFilter);
       
+      // Get dedicated desk bookings by quantity
       const dedicatedDeskBookingsByQuantity = await getBookingsByQuantity(dedicatedDeskSeatIds, dateFilter);
       
       response.quantityStats = {
@@ -474,6 +517,7 @@ async function getGlobalStats(
     }
   }
   
+  // Add cost savings if requested
   if (showCostSavings) {
     const savingsData = await db.SeatBooking.findAll({
       attributes: [
