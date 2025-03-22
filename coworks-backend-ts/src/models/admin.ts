@@ -9,6 +9,10 @@ export enum AdminRole {
   SUPPORT_ADMIN = 'support_admin',
 }
 
+// Permission types
+export type Permission = 'read' | 'create' | 'update' | 'delete';
+export type ResourcePermissions = Record<string, Permission[]>;
+
 // Admin attributes interface
 export interface AdminAttributes {
   id: number;
@@ -20,6 +24,7 @@ export interface AdminAttributes {
   profile_image?: string;
   role: string;
   branch_id?: number;
+  permissions?: ResourcePermissions | null;
   is_active: boolean;
   last_login?: Date;
   created_at: Date;
@@ -27,7 +32,7 @@ export interface AdminAttributes {
 }
 
 // Admin creation attributes
-interface AdminCreationAttributes extends Optional<AdminAttributes, 'id' | 'created_at' | 'updated_at' | 'is_active'> {}
+interface AdminCreationAttributes extends Optional<AdminAttributes, 'id' | 'created_at' | 'updated_at' | 'is_active' | 'permissions'> {}
 
 // Admin model
 class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements AdminAttributes {
@@ -40,6 +45,7 @@ class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements A
   public profile_image?: string;
   public role!: string;
   public branch_id?: number;
+  public permissions?: ResourcePermissions | null;
   public is_active!: boolean;
   public last_login?: Date;
   public created_at!: Date;
@@ -48,6 +54,18 @@ class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements A
   // Password validation method
   public async validatePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password);
+  }
+
+  // Check if admin has permission for a specific resource and action
+  public hasPermission(resource: string, action: Permission): boolean {
+    // Super admins have all permissions
+    if (this.role === AdminRole.SUPER_ADMIN) return true;
+    
+    // If permissions not set, deny
+    if (!this.permissions) return false;
+    
+    // Check if resource exists and if action is in the list
+    return !!this.permissions[resource]?.includes(action);
   }
 
   // Password complexity check - returns true if password meets requirements
@@ -89,6 +107,53 @@ class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements A
   public static isEmailValid(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  }
+  
+  // Default permissions based on role
+  public static getDefaultPermissions(role: string): ResourcePermissions | null {
+    switch (role) {
+      case AdminRole.SUPER_ADMIN:
+        return {
+          "seats": ["read", "create", "update", "delete"],
+          "seating_types": ["read", "create", "update", "delete"],
+          "branches": ["read", "create", "update", "delete"],
+          "customers": ["read", "create", "update", "delete"],
+          "bookings": ["read", "create", "update", "delete"],
+          "payments": ["read", "create", "update", "delete"],
+          "reports": ["read", "create", "update", "delete"],
+          "admins": ["read", "create", "update", "delete"],
+          "support": ["read", "create", "update", "delete"],
+          "settings": ["read", "update"]
+        };
+      case AdminRole.BRANCH_ADMIN:
+        return {
+          "seats": ["read", "update"],
+          "seating_types": ["read"],
+          "branches": ["read"],
+          "customers": ["read"],
+          "bookings": ["read", "create", "update"],
+          "payments": ["read"],
+          "reports": ["read"],
+          "admins": [],
+          "support": ["read", "create", "update"],
+          "settings": []
+        };
+      case AdminRole.SUPPORT_ADMIN:
+        return {
+          "seats": [],
+          "seating_types": [],
+          "branches": ["read"],
+          "customers": ["read"],
+          "bookings": ["read"],
+          "payments": [],
+          "reports": [],
+          "admins": [],
+          "support": ["read", "create", "update", "delete"],
+          "settings": []
+        };
+      default:
+        return null;
+    }
   }
 }
 
@@ -145,6 +210,11 @@ Admin.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    permissions: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -179,12 +249,22 @@ Admin.init(
           const salt = await bcrypt.genSalt(10);
           admin.password = await bcrypt.hash(admin.password, salt);
         }
+        
+        // Set default permissions based on role if not set
+        if (!admin.permissions) {
+          admin.permissions = Admin.getDefaultPermissions(admin.role);
+        }
       },
       // Hash password before update (if changed)
       beforeUpdate: async (admin: Admin) => {
         if (admin.changed('password')) {
           const salt = await bcrypt.genSalt(10);
           admin.password = await bcrypt.hash(admin.password, salt);
+        }
+        
+        // Update permissions if role changed and permissions not explicitly set
+        if (admin.changed('role') && !admin.changed('permissions')) {
+          admin.permissions = Admin.getDefaultPermissions(admin.role);
         }
       },
       // Validate role and branch_id consistency

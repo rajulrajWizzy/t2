@@ -1,20 +1,20 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
+import { JwtPayload } from '@/types/common';
+import models from '@/models';
 
 // Interface for token payload
 export interface JWTPayload {
   id: number;
   email: string;
-  role?: string;
-  name?: string;
-  exp?: number;
-  iat?: number;
+  name: string;
   [key: string]: any;
 }
 
 // Set a secret key for JWT - in production, use environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d'; // 1 day by default
 
 // Secret key for JWT
 const getJwtSecretKey = () => {
@@ -25,72 +25,94 @@ const getJwtSecretKey = () => {
   return new TextEncoder().encode(secret);
 };
 
+// Admin JWT Payload type
+export interface AdminJWTPayload extends JWTPayload {
+  id: number;
+  email: string;
+  username: string;
+  name: string;
+  role: string;
+  branch_id?: number;
+  permissions?: Record<string, string[]>;
+  is_admin: boolean;
+}
+
+// Result of token verification
+export interface VerificationResult {
+  valid: boolean;
+  decoded: JWTPayload | null;
+}
+
 /**
  * Sign a new JWT token
  * @param payload Data to include in the token
- * @param expiresIn Expiration time in seconds
- * @returns Signed JWT token string
+ * @returns Signed JWT token
  */
-export async function signToken(payload: JWTPayload, expiresIn = '24h'): Promise<string> {
-  try {
-    const token = await new SignJWT(payload)
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime(expiresIn)
-      .sign(getJwtSecretKey());
-    
-    return token;
-  } catch (error) {
-    throw new Error(`Error signing token: ${error instanceof Error ? error.message : String(error)}`);
-  }
+export async function signToken(payload: JWTPayload): Promise<string> {
+  return jwt.sign(
+    payload,
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
 }
 
 /**
  * Verify and decode a JWT token
  * @param token JWT token to verify
- * @returns Decoded token payload
+ * @returns Object with validity status and decoded payload
  */
-export async function verifyToken(token: string): Promise<JWTPayload> {
+export async function verifyToken(token: string): Promise<VerificationResult> {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-    return payload as JWTPayload;
+    // Check if token is blacklisted
+    const blacklistedToken = await models.BlacklistedToken.findOne({
+      where: { token }
+    });
+    
+    if (blacklistedToken) {
+      return { valid: false, decoded: null };
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return { valid: true, decoded };
   } catch (error) {
-    throw new Error(`Invalid token: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('Token verification error:', error);
+    return { valid: false, decoded: null };
   }
 }
 
 /**
- * Verify a request's Authorization token
- * @param request Next.js request object
+ * Verify a token and return the decoded payload or an error response
+ * @param request Request object with Authorization header
  * @returns Decoded token payload or error response
  */
-export async function verifyAuth(request: Request): Promise<JWTPayload | NextResponse> {
-  // Extract token from Authorization header
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-  
-  if (!token) {
-    return NextResponse.json(
-      { success: false, message: 'Authorization token is required' },
-      { status: 401 }
-    );
-  }
-  
+export async function verifyTokenFromRequest(request: Request): Promise<JWTPayload | NextResponse> {
   try {
-    // Verify the token
-    const decoded = await verifyToken(token);
+    // Extract token from Authorization header
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
     
-    // Validate required fields
-    if (!decoded.id || !decoded.email) {
+    if (!token) {
       return NextResponse.json(
-        { success: false, message: 'Invalid token format' },
+        { success: false, message: 'Authentication token is required' },
         { status: 401 }
       );
     }
     
-    return decoded;
+    // Verify the token
+    const verificationResult = await verifyToken(token);
+    
+    if (!verificationResult.valid || !verificationResult.decoded) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+    
+    return verificationResult.decoded;
   } catch (error) {
+    console.error('Token verification error:', error);
     return NextResponse.json(
-      { success: false, message: 'Invalid or expired token' },
+      { success: false, message: 'Authentication error' },
       { status: 401 }
     );
   }
@@ -121,5 +143,28 @@ export async function verifyJWT(token: string): Promise<DecodedToken | null> {
   } catch (error) {
     console.error('JWT verification error:', error);
     return null;
+  }
+}
+
+/**
+ * Blacklist a token for immediate invalidation
+ * @param token Token to blacklist
+ * @param userId ID of the user who owned the token
+ */
+export async function blacklistToken(token: string, userId: number): Promise<void> {
+  try {
+    // Calculate token expiry time from decoded payload
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000) : new Date();
+    
+    await models.BlacklistedToken.create({
+      token,
+      user_id: userId,
+      expires_at: expiresAt,
+      blacklisted_at: new Date()
+    });
+  } catch (error) {
+    console.error('Error blacklisting token:', error);
+    throw error;
   }
 } 
