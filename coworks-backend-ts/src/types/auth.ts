@@ -10,6 +10,12 @@ export interface Customer {
   proof_of_identity: string | null;
   proof_of_address: string | null;
   address: string | null;
+  is_identity_verified: boolean;
+  is_address_verified: boolean;
+  verification_status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  verification_notes: string | null;
+  verification_date: Date | null;
+  verified_by: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -28,6 +34,12 @@ export interface CustomerInput {
 
 export interface CustomerAttributes extends CustomerInput {
   id?: number;
+  is_identity_verified?: boolean;
+  is_address_verified?: boolean;
+  verification_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  verification_notes?: string;
+  verification_date?: Date;
+  verified_by?: number;
   created_at?: Date;
   updated_at?: Date;
 }

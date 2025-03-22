@@ -4,17 +4,46 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Database connection setup
+const dbSchema = process.env.DB_SCHEMA || 'public';
+
 // Create Sequelize instance
-const sequelize = new Sequelize(
-  process.env.DB_NAME as string,
-  process.env.DB_USER as string,
-  process.env.DB_PASS as string,
-  {
-    host: process.env.DB_HOST || 'localhost',
+let sequelize: Sequelize;
+
+if (process.env.DATABASE_URL) {
+  console.log('Using DATABASE_URL for connection');
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    logging: console.log
-  }
-);
+    logging: console.log,
+    schema: dbSchema,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    }
+  });
+} else {
+  // Fallback to individual credentials (local development)
+  console.log('Using individual credentials for connection');
+  sequelize = new Sequelize(
+    process.env.DB_NAME || 'coworks_db',
+    process.env.DB_USER || 'postgres',
+    process.env.DB_PASS || '',
+    {
+      host: process.env.DB_HOST || 'localhost',
+      dialect: 'postgres',
+      logging: console.log,
+      schema: dbSchema,
+      dialectOptions: {
+        ssl: process.env.DB_SSL === 'true' ? {
+          require: true,
+          rejectUnauthorized: false
+        } : undefined
+      }
+    }
+  );
+}
 
 // Function to check if a type exists
 async function typeExists(transaction: any, typeName: string): Promise<boolean> {
@@ -334,3 +363,105 @@ async function runMigrations(): Promise<void> {
 
 // Run the migrations
 runMigrations();
+
+/**
+ * Add verification fields to the customers table
+ */
+export async function addProfileVerificationFields(): Promise<void> {
+  try {
+    console.log('Starting profile verification fields migration...');
+    
+    // Check if the columns already exist
+    const checkColumnResult = await sequelize.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = '${dbSchema}' AND table_name = 'customers' AND column_name = 'verification_status';
+    `);
+    
+    const columnExists = (checkColumnResult[0] as any[]).length > 0;
+    
+    if (columnExists) {
+      console.log('Verification fields already exist in customers table. Skipping migration.');
+      return;
+    }
+    
+    // Create enum type for verification status
+    await sequelize.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_customers_verification_status') THEN
+          CREATE TYPE "enum_customers_verification_status" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+        END IF;
+      END
+      $$;
+    `);
+    
+    // Add is_identity_verified column
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."customers" 
+      ADD COLUMN IF NOT EXISTS "is_identity_verified" BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
+    
+    // Add is_address_verified column
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."customers" 
+      ADD COLUMN IF NOT EXISTS "is_address_verified" BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
+    
+    // Add verification_status column
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."customers" 
+      ADD COLUMN IF NOT EXISTS "verification_status" "enum_customers_verification_status" NOT NULL DEFAULT 'PENDING';
+    `);
+    
+    // Add verification_notes column
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."customers" 
+      ADD COLUMN IF NOT EXISTS "verification_notes" TEXT NULL;
+    `);
+    
+    // Add verification_date column
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."customers" 
+      ADD COLUMN IF NOT EXISTS "verification_date" TIMESTAMP WITH TIME ZONE NULL;
+    `);
+    
+    // Add verified_by column
+    await sequelize.query(`
+      ALTER TABLE "${dbSchema}"."customers" 
+      ADD COLUMN IF NOT EXISTS "verified_by" INTEGER NULL 
+      REFERENCES "${dbSchema}"."admins"(id) ON DELETE SET NULL;
+    `);
+    
+    // Add indexes for faster searches
+    await sequelize.query(`
+      CREATE INDEX IF NOT EXISTS "idx_customers_verification_status" 
+      ON "${dbSchema}"."customers" ("verification_status");
+    `);
+    
+    await sequelize.query(`
+      CREATE INDEX IF NOT EXISTS "idx_customers_verified_by" 
+      ON "${dbSchema}"."customers" ("verified_by");
+    `);
+    
+    console.log('Successfully added verification fields to customers table');
+  } catch (error) {
+    console.error('Error adding verification fields:', error);
+    throw error;
+  }
+}
+
+// This function can be called directly when needed
+// Example usage: npx ts-node -r tsconfig-paths/register src/utils/migrations.ts
+if (require.main === module) {
+  (async () => {
+    try {
+      await addProfileVerificationFields();
+      console.log('Migration completed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Migration failed:', error);
+      process.exit(1);
+    }
+  })();
+}

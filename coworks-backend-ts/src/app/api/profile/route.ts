@@ -43,10 +43,54 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const customerData = customer.get({ plain: true });
     const { password, ...customerWithoutPassword } = customerData;
     
+    // Add a convenience flag to indicate if the profile is complete and verified for booking
+    const isProfileComplete = 
+      !!customerWithoutPassword.proof_of_identity && 
+      !!customerWithoutPassword.proof_of_address && 
+      !!customerWithoutPassword.address;
+    
+    const canMakeBookings = 
+      isProfileComplete && 
+      customerWithoutPassword.verification_status === 'APPROVED' &&
+      customerWithoutPassword.is_identity_verified &&
+      customerWithoutPassword.is_address_verified;
+    
+    // Also provide information about what is missing
+    const missingProfileItems = {};
+    if (!customerWithoutPassword.proof_of_identity) {
+      (missingProfileItems as any).proof_of_identity = 'Proof of identity document is required';
+    }
+    
+    if (!customerWithoutPassword.proof_of_address) {
+      (missingProfileItems as any).proof_of_address = 'Proof of address document is required';
+    }
+    
+    if (!customerWithoutPassword.address) {
+      (missingProfileItems as any).address = 'Address information is required';
+    }
+    
+    // Add verification message if relevant
+    let verificationMessage = null;
+    if (isProfileComplete && !canMakeBookings) {
+      if (customerWithoutPassword.verification_status === 'PENDING') {
+        verificationMessage = 'Your profile is awaiting verification by our team. You will be able to make bookings once your profile is verified.';
+      } else if (customerWithoutPassword.verification_status === 'REJECTED') {
+        verificationMessage = `Your profile verification was rejected. ${customerWithoutPassword.verification_notes || 'Please update your information and try again.'}`;
+      }
+    }
+    
     return NextResponse.json<ApiResponse<any>>({
       success: true,
       message: 'Profile retrieved successfully',
-      data: customerWithoutPassword
+      data: {
+        ...customerWithoutPassword,
+        verification_summary: {
+          is_profile_complete: isProfileComplete,
+          can_make_bookings: canMakeBookings,
+          missing_items: Object.keys(missingProfileItems).length > 0 ? missingProfileItems : null,
+          verification_message: verificationMessage
+        }
+      }
     });
   } catch (error) {
     console.error('Error retrieving profile:', error);

@@ -22,6 +22,9 @@ export interface SeatingType {
   min_booking_duration: number;
   min_seats: number; // Added field for minimum seats requirement
   short_code: string; // Short code for API calls
+  capacity_options: number[] | null; // Available capacity options for configurable types
+  quantity_options: number[] | null; // Available quantity options for booking multiple units
+  cost_multiplier: Record<string, number> | null; // Cost multipliers for different quantities
   created_at: Date;
   updated_at: Date;
 }
@@ -34,6 +37,9 @@ export interface SeatingTypeInput {
   min_booking_duration?: number;
   min_seats?: number; // Added field
   short_code?: string; // Short code for API calls
+  capacity_options?: number[] | null; // Available capacity options for configurable types
+  quantity_options?: number[] | null; // Available quantity options for booking multiple units
+  cost_multiplier?: Record<string, number> | null; // Cost multipliers for different quantities
 }
 
 export interface SeatingTypeAttributes extends SeatingTypeInput {
@@ -49,6 +55,8 @@ export interface Seat {
   seat_number: string;
   seat_code: string; // Unique seat code (e.g., HD101)
   price: number;
+  capacity: number | null; // Number of people the seat can accommodate
+  is_configurable: boolean; // Whether the seat capacity can be configured in admin panel
   availability_status: AvailabilityStatusEnum;
   created_at: Date;
   updated_at: Date;
@@ -58,8 +66,10 @@ export interface SeatInput {
   branch_id: number;
   seating_type_id: number;
   seat_number: string;
-  seat_code?: string; // Optional, will be auto-generated if not provided
+  seat_code?: string; // Optional, can be auto-generated
   price: number;
+  capacity?: number | null; // Number of people the seat can accommodate
+  is_configurable?: boolean; // Whether the seat capacity can be configured in admin panel
   availability_status?: AvailabilityStatusEnum;
 }
 

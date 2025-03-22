@@ -143,7 +143,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         {
           model: models.SeatingType,
           as: 'SeatingType',
-          attributes: ['id', 'name', 'short_code', 'description', 'hourly_rate', 'is_hourly', 'min_booking_duration', 'min_seats']
+          attributes: ['id', 'name', 'short_code', 'description', 'hourly_rate', 'is_hourly', 'min_booking_duration', 'min_seats', 'quantity_options', 'cost_multiplier']
         },
         {
           model: models.Branch,
@@ -209,6 +209,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           message: 'Hot desk requires at least 1 seat'
         }, { status: 400 });
       }
+      
+      // Validate quantity against available quantity options
+      if (seatingType.quantity_options && !seatingType.quantity_options.includes(quantity)) {
+        return NextResponse.json({
+          success: false,
+          message: `Invalid quantity. Available options are: ${seatingType.quantity_options.join(', ')}`,
+          data: {
+            available_quantities: seatingType.quantity_options
+          }
+        }, { status: 400 });
+      }
     } 
     else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
       // Dedicated desk: minimum 1 month and at least 1 seat
@@ -223,6 +234,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({
           success: false,
           message: 'Dedicated desk requires a minimum of 1 seat'
+        }, { status: 400 });
+      }
+      
+      // Validate quantity against available quantity options
+      if (seatingType.quantity_options && !seatingType.quantity_options.includes(quantity)) {
+        return NextResponse.json({
+          success: false,
+          message: `Invalid quantity. Available options are: ${seatingType.quantity_options.join(', ')}`,
+          data: {
+            available_quantities: seatingType.quantity_options
+          }
         }, { status: 400 });
       }
     }
@@ -316,6 +338,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 400 });
     }
     
+    // Apply cost multiplier based on quantity if applicable
+    let adjustedTotalPrice = total_price;
+    if (
+      seatingType.cost_multiplier && 
+      (seatingType.name === SeatingTypeEnum.HOT_DESK || seatingType.name === SeatingTypeEnum.DEDICATED_DESK) &&
+      quantity > 1
+    ) {
+      const multiplierKey = quantity.toString();
+      if (seatingType.cost_multiplier[multiplierKey]) {
+        // Apply the multiplier to the total price
+        const basePrice = total_price / quantity; // Get the price per seat
+        adjustedTotalPrice = basePrice * quantity * seatingType.cost_multiplier[multiplierKey];
+      }
+    }
+    
     // For seat types that require multiple seats, we need to book multiple seats
     const bookings = [];
     
@@ -330,7 +367,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           seat_id: seat.id,
           start_time: startTimeDate,
           end_time: endTimeDate,
-          total_price,
+          total_price: adjustedTotalPrice,
           status: BookingStatusEnum.CONFIRMED
         });
         
@@ -377,7 +414,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             seat_id: seatToBook.id,
             start_time: startTimeDate,
             end_time: endTimeDate,
-            total_price: total_price / seatsToBook, // Divide total price among seats
+            total_price: adjustedTotalPrice / seatsToBook, // Divide total price among seats
             status: BookingStatusEnum.CONFIRMED
           });
           
@@ -418,7 +455,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         end_time: endTimeDate,
         num_participants,
         amenities: amenities || null,
-        total_price,
+        total_price: adjustedTotalPrice,
         status: BookingStatusEnum.CONFIRMED
       });
       
@@ -461,7 +498,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           id: seatingType.id,
           name: seatingType.name,
           short_code: seatingType.short_code,
-          description: seatingType.description
+          description: seatingType.description,
+          quantity_options: seatingType.quantity_options,
+          cost_multiplier: seatingType.cost_multiplier
         },
         branch: seat.Branch ? {
           id: seat.Branch.id,
@@ -475,12 +514,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           quantity: seatsToBook,
           start_time: startTimeDate,
           end_time: endTimeDate,
+          original_price: total_price,
+          adjusted_price: adjustedTotalPrice,
+          discount_applied: adjustedTotalPrice < total_price,
           duration: {
             hours: durationHours,
             days: durationDays,
             months: durationMonths
           },
-          total_price
+          total_price: adjustedTotalPrice
         }
       }
     };
