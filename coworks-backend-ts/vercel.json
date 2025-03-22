@@ -1,68 +1,22 @@
 {
     "version": 2,
-    "buildCommand": "npm run build",
-    "installCommand": "npm install",
     "framework": "nextjs",
+    "buildCommand": "next build",
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
       "NODE_ENV": "production",
       "NODE_OPTIONS": "--max-old-space-size=4096"
     },
-    "builds": [
+    "headers": [
       {
-        "src": "package.json",
-        "use": "@vercel/next",
-        "config": {
-          "nodeVersion": "18.x",
-          "installCommand": "npm install",
-          "buildCommand": "npm run vercel-build"
-        }
-      }
-    ],
-    "routes": [
-      {
-        "src": "/api/admin/auth/login",
-        "dest": "/api/admin/auth/login",
-        "headers": {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization"
-        }
-      },
-      {
-        "src": "/api/test",
-        "dest": "/api/test",
-        "headers": {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization"
-        }
-      },
-      {
-        "src": "/api/status",
-        "dest": "/api/status",
-        "headers": {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization"
-        }
-      },
-      {
-        "src": "/api/database-status",
-        "dest": "/api/database-status",
-        "headers": {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization"
-        }
-      },
-      {
-        "src": "/(.*)",
-        "dest": "/$1",
-        "continue": true
+        "source": "/api/(.*)",
+        "headers": [
+          { "key": "Access-Control-Allow-Origin", "value": "*" },
+          { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+          { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        ]
       }
     ],
     "outputDirectory": ".next",
-    "regions": ["iad1"],
-    "ignoreCommand": "exit 0"
+    "regions": ["iad1"]
   }

@@ -1,137 +1,146 @@
+#!/usr/bin/env node
+
+/**
+ * Debug Build Script
+ * 
+ * This script helps troubleshoot common build issues by checking:
+ * 1. Node version compatibility
+ * 2. Package versions
+ * 3. File existence
+ * 4. Configuration validity
+ */
+
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const chalk = require('chalk') || { green: (t) => t, red: (t) => t, yellow: (t) => t, blue: (t) => t };
 
-console.log('🔍 Build Debug Script - Starting diagnostics');
+console.log(chalk.blue('=== CoWorks Debug Build Script ==='));
 
-// Display environment info
-console.log('\n📋 Environment Information:');
-console.log('Node.js version:', process.version);
-console.log('Platform:', process.platform);
-console.log('Architecture:', process.arch);
-console.log('Current directory:', process.cwd());
+// Check Node version
+const nodeVersion = process.version;
+console.log(`Node version: ${nodeVersion}`);
+if (!nodeVersion.startsWith('v18')) {
+  console.log(chalk.yellow('Warning: Recommended Node version is v18.x'));
+}
 
 // Check for critical files
-console.log('\n📋 Checking for critical files:');
 const criticalFiles = [
-  'package.json',
   'next.config.js',
-  'next.config.mjs',
-  'src/app/layout.tsx',
-  '.babelrc',
   'vercel.json',
-  'tsconfig.json'
+  '.nvmrc',
+  'package.json',
+  'src/app/layout.tsx',
+  'src/app/page.tsx'
 ];
 
+console.log(chalk.blue('\nChecking for critical files:'));
 criticalFiles.forEach(file => {
-  const exists = fs.existsSync(path.join(process.cwd(), file));
-  console.log(`- ${file}: ${exists ? '✅ Found' : '❌ Not found'}`);
-  
-  if (exists && file.endsWith('.json')) {
-    try {
-      // Validate JSON files
-      const content = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
-      JSON.parse(content);
-      console.log(`  - Valid JSON: ✅`);
-    } catch (error) {
-      console.log(`  - Invalid JSON: ❌ Error: ${error.message}`);
-    }
+  if (fs.existsSync(file)) {
+    console.log(chalk.green(`✓ ${file} exists`));
+  } else {
+    console.log(chalk.red(`✗ ${file} missing`));
   }
 });
 
-// Check for dependencies
-console.log('\n📋 Checking package.json dependencies:');
+// Check package.json
+console.log(chalk.blue('\nAnalyzing package.json:'));
 try {
-  const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   
-  const criticalDeps = ['next', 'react', 'react-dom', 'sequelize', 'date-fns'];
-  criticalDeps.forEach(dep => {
-    console.log(`- ${dep}: ${packageJson.dependencies[dep] || 'Not installed'}`);
-  });
+  // Check engines
+  if (packageJson.engines && packageJson.engines.node) {
+    console.log(chalk.green(`✓ Node engine: ${packageJson.engines.node}`));
+  } else {
+    console.log(chalk.red('✗ No Node engine specified in package.json'));
+  }
   
   // Check scripts
-  console.log('\n📋 Build scripts:');
-  console.log('- build:', packageJson.scripts.build || 'Not defined');
-  console.log('- vercel-build:', packageJson.scripts['vercel-build'] || 'Not defined');
+  const requiredScripts = ['build', 'start', 'dev'];
+  requiredScripts.forEach(script => {
+    if (packageJson.scripts && packageJson.scripts[script]) {
+      console.log(chalk.green(`✓ Script "${script}" exists: ${packageJson.scripts[script]}`));
+    } else {
+      console.log(chalk.red(`✗ Script "${script}" missing`));
+    }
+  });
+  
+  // Check dependencies
+  const criticalDeps = ['next', 'react', 'react-dom', 'sequelize', 'pg'];
+  criticalDeps.forEach(dep => {
+    if (packageJson.dependencies && packageJson.dependencies[dep]) {
+      console.log(chalk.green(`✓ Dependency ${dep}: ${packageJson.dependencies[dep]}`));
+    } else {
+      console.log(chalk.red(`✗ Dependency ${dep} missing`));
+    }
+  });
 } catch (error) {
-  console.log('❌ Error parsing package.json:', error.message);
+  console.log(chalk.red('Error parsing package.json:', error.message));
 }
 
-// Print first few lines of next.config.js/mjs
-console.log('\n📋 Next.js configuration:');
-['next.config.js', 'next.config.mjs'].forEach(configFile => {
-  const configPath = path.join(process.cwd(), configFile);
-  if (fs.existsSync(configPath)) {
-    const content = fs.readFileSync(configPath, 'utf8');
-    const lines = content.split('\n').slice(0, 10).join('\n');
-    console.log(`\n${configFile} (first 10 lines):\n${lines}\n...`);
-  }
-});
-
-// Check for Sequelize models
-console.log('\n📋 Checking Sequelize models:');
-const modelsDir = path.join(process.cwd(), 'src', 'models');
-if (fs.existsSync(modelsDir)) {
-  const modelFiles = fs.readdirSync(modelsDir)
-    .filter(file => file.endsWith('.ts') || file.endsWith('.js'));
-  console.log(`Found ${modelFiles.length} model files:`, modelFiles);
-} else {
-  console.log('❌ Models directory not found');
-}
-
-// Check for API routes
-console.log('\n📋 Checking API routes:');
-const apiDir = path.join(process.cwd(), 'src', 'app', 'api');
-if (fs.existsSync(apiDir)) {
-  function countRoutesInDir(dir) {
-    let count = 0;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        count += countRoutesInDir(fullPath);
-      } else if (entry.name === 'route.ts' || entry.name === 'route.js') {
-        count++;
-      }
+// Check next.config.js
+console.log(chalk.blue('\nAnalyzing next.config.js:'));
+try {
+  if (fs.existsSync('next.config.js')) {
+    const nextConfig = fs.readFileSync('next.config.js', 'utf8');
+    if (nextConfig.includes('ignoreBuildErrors')) {
+      console.log(chalk.green('✓ TypeScript errors are being ignored during build'));
+    } else {
+      console.log(chalk.yellow('! TypeScript errors may cause build failures'));
     }
     
-    return count;
+    if (nextConfig.includes('ignoreDuringBuilds')) {
+      console.log(chalk.green('✓ ESLint errors are being ignored during build'));
+    } else {
+      console.log(chalk.yellow('! ESLint errors may cause build failures'));
+    }
+    
+    if (nextConfig.includes('standalone')) {
+      console.log(chalk.green('✓ Using standalone output for better Vercel compatibility'));
+    } else {
+      console.log(chalk.yellow('! Not using standalone output, which might affect Vercel deployment'));
+    }
   }
-  
-  const routeCount = countRoutesInDir(apiDir);
-  console.log(`Found ${routeCount} API routes`);
-} else {
-  console.log('❌ API directory not found');
-}
-
-// Try to identify issues with layout.tsx
-console.log('\n📋 Checking layout.tsx:');
-const layoutPath = path.join(process.cwd(), 'src', 'app', 'layout.tsx');
-if (fs.existsSync(layoutPath)) {
-  const content = fs.readFileSync(layoutPath, 'utf8');
-  
-  // Check for common issues
-  const hasUseClient = content.includes("'use client'") || content.includes('"use client"');
-  const hasMetadata = content.includes('export const metadata');
-  
-  console.log('- Has "use client" directive:', hasUseClient ? '⚠️ Yes' : '✅ No');
-  console.log('- Has metadata export:', hasMetadata ? '✅ Yes' : 'No');
-  
-  if (hasUseClient && hasMetadata) {
-    console.log('❌ Error: layout.tsx has both "use client" and metadata export which causes conflicts');
-  }
-} else {
-  console.log('❌ layout.tsx not found');
-}
-
-// Try running next build with diagnostics
-console.log('\n📋 Attempting test build with diagnostics...');
-try {
-  execSync('npx next build --debug', { stdio: 'inherit' });
-  console.log('✅ Build completed successfully');
 } catch (error) {
-  console.log('❌ Build failed with error code:', error.status);
+  console.log(chalk.red('Error analyzing next.config.js:', error.message));
 }
 
-console.log('\n🔍 Build Debug Script - Diagnostics complete'); 
+// Check database configuration
+console.log(chalk.blue('\nChecking database configuration:'));
+if (process.env.DATABASE_URL) {
+  console.log(chalk.green('✓ DATABASE_URL is set'));
+} else {
+  console.log(chalk.red('✗ DATABASE_URL is not set'));
+}
+
+// Check disk space
+console.log(chalk.blue('\nChecking disk space:'));
+try {
+  const dfOutput = execSync('df -h .').toString();
+  console.log(dfOutput);
+} catch (error) {
+  console.log(chalk.yellow('Unable to check disk space:', error.message));
+}
+
+// Check memory
+console.log(chalk.blue('\nChecking memory:'));
+try {
+  const memInfo = execSync('free -m').toString();
+  console.log(memInfo);
+} catch (error) {
+  console.log(chalk.yellow('Unable to check memory:', error.message));
+}
+
+// Run a trial build (with limited output)
+console.log(chalk.blue('\nRunning a trial build preparation:'));
+try {
+  console.log('This might take a minute...');
+  execSync('npm run build -- --no-lint', { stdio: 'pipe' });
+  console.log(chalk.green('✓ Trial build preparation completed successfully'));
+} catch (error) {
+  console.log(chalk.red('✗ Trial build preparation failed'));
+  console.log('Build error summary:', error.message.split('\n').slice(0, 5).join('\n'));
+}
+
+console.log(chalk.blue('\n=== Debug Build Complete ==='));
+console.log('If you continue to experience issues, please check the deployment guide in DEPLOYMENT.md'); 
