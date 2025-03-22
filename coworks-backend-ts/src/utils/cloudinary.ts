@@ -11,6 +11,10 @@ cloudinary.config({
 // Folder paths for different image types
 export const CLOUDINARY_FOLDERS = {
   PROFILES: 'coworks/profiles',
+  DOCUMENTS: {
+    IDENTITY: 'coworks/documents/identity',
+    ADDRESS: 'coworks/documents/address'
+  },
   BRANCHES: {
     HOT_DESK: 'coworks/branches/hotdesk',
     DEDICATED_DESK: 'coworks/branches/dedicated',
@@ -72,21 +76,71 @@ export async function uploadImage(
 
 /**
  * Upload a profile picture
- * @param imageBuffer The image buffer to upload
- * @param userId The user ID to use as the public ID
- * @returns The Cloudinary profile image URL
+ * @param file The file to upload
+ * @returns The Cloudinary profile image result
  */
-export async function uploadProfilePicture(
-  imageBuffer: Buffer, 
-  userId: number | string
-): Promise<string> {
-  const { url } = await uploadImage(
-    imageBuffer,
-    CLOUDINARY_FOLDERS.PROFILES,
-    `user_${userId}`
-  );
+export async function uploadProfilePicture(file: Blob): Promise<UploadResult> {
+  // Create a FormData instance
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'coworks_profiles');
+  formData.append('folder', CLOUDINARY_FOLDERS.PROFILES);
   
-  return url;
+  // Upload to Cloudinary
+  const response = await fetch(`https://api.cloudinary.com/v1_1/coworks/image/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Upload failed with status: ${response.status}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Upload a proof document
+ * @param file The file to upload
+ * @param documentType The type of document (proof_of_identity or proof_of_address)
+ * @returns The Cloudinary document result
+ */
+export async function uploadProofDocument(file: Blob, documentType: string): Promise<UploadResult> {
+  // Create a FormData instance
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Determine folder and upload preset based on document type
+  let folder = '';
+  let uploadPreset = '';
+  
+  if (documentType === 'proof_of_identity') {
+    folder = CLOUDINARY_FOLDERS.DOCUMENTS.IDENTITY;
+    uploadPreset = 'coworks_identity';
+  } else if (documentType === 'proof_of_address') {
+    folder = CLOUDINARY_FOLDERS.DOCUMENTS.ADDRESS;
+    uploadPreset = 'coworks_address';
+  } else {
+    throw new Error(`Invalid document type: ${documentType}`);
+  }
+  
+  formData.append('upload_preset', uploadPreset);
+  formData.append('folder', folder);
+  
+  // Determine resource type based on file type
+  const resourceType = file.type === 'application/pdf' ? 'raw' : 'image';
+  
+  // Upload to Cloudinary
+  const response = await fetch(`https://api.cloudinary.com/v1_1/coworks/${resourceType}/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Upload failed with status: ${response.status}`);
+  }
+  
+  return await response.json();
 }
 
 /**

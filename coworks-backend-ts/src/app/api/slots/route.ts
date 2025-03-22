@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import { verifyToken } from '@/config/jwt';
 import { ApiResponse } from '@/types/common';
 import { TimeSlotGenerationParams } from '@/types/booking';
+import { verifyProfileComplete } from '../middleware/verifyProfileComplete';
 
 // Define interfaces for our response structure
 interface SlotCategory {
@@ -27,6 +28,34 @@ interface SlotGenerationResponse {
 // GET slots based on filters
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    // Get token from the authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify the token
+    const { valid, decoded } = await verifyToken(token);
+    if (!valid || !decoded) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
+    }
+    
+    // Verify profile is complete with required documents
+    const profileVerificationResponse = await verifyProfileComplete(request);
+    if (profileVerificationResponse) {
+      return profileVerificationResponse;
+    }
+    
     // Extract query parameters
     const url = new URL(request.url);
     const branch_id = url.searchParams.get('branch_id');

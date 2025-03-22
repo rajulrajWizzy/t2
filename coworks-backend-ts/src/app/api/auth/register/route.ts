@@ -10,7 +10,17 @@ import mailService from '@/utils/mailService';
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json() as RegisterRequest;
-    const { name, email, phone, password, profile_picture, company_name } = body;
+    const { 
+      name, 
+      email, 
+      phone, 
+      password, 
+      profile_picture, 
+      company_name,
+      proof_of_identity,
+      proof_of_address,
+      address
+    } = body;
     
     // Basic validation
     if (!name || !email || !password) {
@@ -74,6 +84,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     
+    // Validate address if provided
+    if (address && !validation.isValidAddress(address)) {
+      return NextResponse.json(
+        { message: 'Address cannot be empty or contain only whitespace' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate proof document paths if provided
+    if (proof_of_identity && !validation.isValidDocumentPath(proof_of_identity)) {
+      return NextResponse.json(
+        { message: 'Proof of identity must be a PDF, JPG, JPEG, or PNG file' },
+        { status: 400 }
+      );
+    }
+    
+    if (proof_of_address && !validation.isValidDocumentPath(proof_of_address)) {
+      return NextResponse.json(
+        { message: 'Proof of address must be a PDF, JPG, JPEG, or PNG file' },
+        { status: 400 }
+      );
+    }
+    
     // Check if email already exists
     const existingUser = await models.Customer.findOne({ where: { email } });
     if (existingUser) {
@@ -93,7 +126,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       phone,
       password: hashedPassword,
       profile_picture: profile_picture || undefined,
-      company_name: company_name || undefined
+      company_name: company_name || undefined,
+      proof_of_identity: proof_of_identity || undefined,
+      proof_of_address: proof_of_address || undefined,
+      address: address || undefined
     });
     
     console.log('Customer created successfully with ID:', customer.id);

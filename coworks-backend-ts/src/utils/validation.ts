@@ -62,12 +62,26 @@ export const getSeatNumberRequirements = (): string => {
   return 'Seat number must contain only alphanumeric characters (no spaces or special characters) and be at most 10 characters long.';
 };
 
+// Validate address (not just whitespace)
+export const isValidAddress = (address: string): boolean => {
+  return address.trim().length > 0;
+};
+
+// Validate file path for proof documents
+export const isValidDocumentPath = (path: string): boolean => {
+  if (!path) return true; // Path is optional
+  const allowedExtensions = /\.(pdf|jpg|jpeg|png)$/i;
+  return allowedExtensions.test(path);
+};
+
 export default {
   isValidEmail,
   isValidPhone,
   isValidName,
   isValidPassword,
   isValidSeatNumber,
+  isValidAddress,
+  isValidDocumentPath,
   getPasswordRequirements,
   getSeatNumberRequirements
 };

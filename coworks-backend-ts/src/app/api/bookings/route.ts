@@ -12,6 +12,7 @@ import {
 } from '@/utils/shortCodes';
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
 import { BookingStatusEnum } from '@/types/booking';
+import { verifyProfileComplete } from '../middleware/verifyProfileComplete';
 
 // POST create a new booking
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -19,10 +20,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -30,10 +32,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Unauthorized',
+        data: null
+      }, { status: 401 });
+    }
+    
+    // Verify profile is complete with required documents
+    const profileVerificationResponse = await verifyProfileComplete(request);
+    if (profileVerificationResponse) {
+      return profileVerificationResponse;
     }
     
     // Parse the request body
@@ -491,7 +500,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // GET bookings with optional filtering by branch and seating type short codes
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    // Get token from the authorization header
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json<ApiResponse<null>>({
@@ -502,17 +510,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
     
     const token = authHeader.split(' ')[1];
-    
-    // Verify the token
     const { valid, decoded } = await verifyToken(token);
+    
     if (!valid || !decoded) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
-        message: 'Invalid token',
+        message: 'Unauthorized',
         data: null
       }, { status: 401 });
     }
-
+    
+    // Verify profile is complete with required documents
+    const profileVerificationResponse = await verifyProfileComplete(req);
+    if (profileVerificationResponse) {
+      return profileVerificationResponse;
+    }
+    
     // Extract query parameters
     const url = new URL(req.url);
     const branchCode = url.searchParams.get('branch');

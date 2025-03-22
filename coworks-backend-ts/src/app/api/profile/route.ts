@@ -97,7 +97,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     
     // Parse the request body
     const body = await request.json();
-    const { name, phone, profile_picture, company_name } = body;
+    const { 
+      name, 
+      phone, 
+      profile_picture, 
+      company_name, 
+      proof_of_identity, 
+      proof_of_address, 
+      address 
+    } = body;
     
     // Prepare update data
     const updateData: any = {};
@@ -144,7 +152,63 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     
     // Add company_name if provided
     if (company_name !== undefined) {
+      // Company name validation
+      if (!company_name) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Company name is required',
+          data: null
+        }, { status: 400 });
+      }
+      
+      if (!validation.isValidName(company_name)) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Company name cannot be empty or contain only whitespace',
+          data: null
+        }, { status: 400 });
+      }
+      
       updateData.company_name = company_name;
+    }
+    
+    // Validate and add proof of identity if provided
+    if (proof_of_identity !== undefined) {
+      if (proof_of_identity && !validation.isValidDocumentPath(proof_of_identity)) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Proof of identity must be a PDF, JPG, JPEG, or PNG file',
+          data: null
+        }, { status: 400 });
+      }
+      
+      updateData.proof_of_identity = proof_of_identity;
+    }
+    
+    // Validate and add proof of address if provided
+    if (proof_of_address !== undefined) {
+      if (proof_of_address && !validation.isValidDocumentPath(proof_of_address)) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Proof of address must be a PDF, JPG, JPEG, or PNG file',
+          data: null
+        }, { status: 400 });
+      }
+      
+      updateData.proof_of_address = proof_of_address;
+    }
+    
+    // Validate and add address if provided
+    if (address !== undefined) {
+      if (address && !validation.isValidAddress(address)) {
+        return NextResponse.json<ApiResponse<null>>({
+          success: false,
+          message: 'Address cannot be empty or contain only whitespace',
+          data: null
+        }, { status: 400 });
+      }
+      
+      updateData.address = address;
     }
     
     // Update the customer

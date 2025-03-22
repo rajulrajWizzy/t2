@@ -7,6 +7,9 @@ export interface Customer {
   password: string;
   profile_picture: string | null;
   company_name: string | null;
+  proof_of_identity: string | null;
+  proof_of_address: string | null;
+  address: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -18,6 +21,9 @@ export interface CustomerInput {
   password: string;
   profile_picture?: string;
   company_name?: string;
+  proof_of_identity?: string;
+  proof_of_address?: string;
+  address?: string;
 }
 
 export interface CustomerAttributes extends CustomerInput {
@@ -44,6 +50,9 @@ export interface RegisterRequest {
   password: string;
   profile_picture?: string;
   company_name?: string;
+  proof_of_identity?: string;
+  proof_of_address?: string;
+  address?: string;
 }
 
 export interface RegisterResponse {
