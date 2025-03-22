@@ -33,25 +33,26 @@ function processFile(filePath) {
     console.log(`Processing ${filePath}`);
     let content = fs.readFileSync(filePath, 'utf8');
     
-    // Clean up existing directives to prevent duplicates
-    // Remove ALL existing directive declarations
+    // More aggressive approach to remove all directives and their comments
+    // This handles cases where there are multiple instances
+    content = content.replace(/\/\/.*?runtime.*?\n/g, '');
+    content = content.replace(/\/\/.*?Node\.js.*?\n/g, '');
+    content = content.replace(/\/\/.*?dynamic.*?\n/g, '');
+    content = content.replace(/\/\/.*?Explicitly.*?\n/g, '');
     content = content.replace(/export const runtime.*?\n/g, '');
     content = content.replace(/export const dynamic.*?\n/g, '');
     content = content.replace(/export const fetchCache.*?\n/g, '');
     
+    // Clean up any blank lines at the top of the file
+    while (content.startsWith('\n')) {
+      content = content.substring(1);
+    }
+    
     // Add fresh comment and directives at the top of the file
     const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
     
-    // Check if there are any imports or other content at the top
-    const firstImportIndex = content.indexOf('import ');
-    
-    if (firstImportIndex > 0) {
-      // Insert directives before the first import
-      content = content.substring(0, firstImportIndex) + directives + content.substring(firstImportIndex);
-    } else {
-      // No imports, just add at the top
-      content = directives + content;
-    }
+    // Add directives at the top of the file
+    content = directives + content;
     
     // Write back to the file
     fs.writeFileSync(filePath, content);

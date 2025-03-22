@@ -210,7 +210,3 @@ export async function blacklistToken(token: string, userId: number): Promise<voi
     }
   }
 } 
-
-// Handle Edge Runtime safely
-export const verifyJWT = verifyToken;
-export const verifyAuth = verifySession;
