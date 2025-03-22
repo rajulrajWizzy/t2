@@ -4,6 +4,8 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
+        "add-runtime-directives": "node add-runtime-directive.js",
+        "prebuild": "node add-runtime-directive.js",
         "build": "node vercel-deploy-fix.js && next build",
         "vercel-build": "node vercel-deploy-fix.js && node scripts/vercel-tailwind.js && next build && npm run vercel-seed",
         "vercel-seed": "node scripts/vercel-seed.js",

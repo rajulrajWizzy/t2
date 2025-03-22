@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 console.log('Running Vercel deployment fix script...');
 
@@ -74,6 +75,21 @@ try {
   }
 } catch (error) {
   console.error('Error updating layout.tsx:', error);
+}
+
+// Add Node.js runtime directive to all API route files
+try {
+  console.log('Adding Node.js runtime directive to all API route files...');
+  
+  // Run the add-runtime-directive.js script
+  if (fs.existsSync(path.join(__dirname, 'add-runtime-directive.js'))) {
+    execSync('node add-runtime-directive.js', { stdio: 'inherit' });
+    console.log('Successfully added runtime directive to API route files');
+  } else {
+    console.log('add-runtime-directive.js not found, skipping this step');
+  }
+} catch (error) {
+  console.error('Error adding runtime directive to API routes:', error);
 }
 
 console.log('Vercel deployment fix script completed.'); 
