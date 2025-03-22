@@ -11,10 +11,10 @@ const nextConfig = {
   // Use standalone output for better Vercel compatibility
   output: 'standalone',
   
-  // Disable Edge Runtime and use Node.js runtime
+  // Configure experimental options properly
   experimental: {
-    runtime: 'nodejs',
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
+    esmExternals: 'loose'
   },
 
   // Add headers for CORS

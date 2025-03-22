@@ -14,7 +14,7 @@ A TypeScript-based backend service for managing coworking spaces.
 
 ### Prerequisites
 
-- Node.js (v18.x recommended)
+- Node.js (v14 or higher)
 - npm or yarn
 - PostgreSQL or MySQL database
 
@@ -111,32 +111,51 @@ A comprehensive API collection is available in the following formats:
 
 ## Deployment
 
-This project is set up for deployment on Vercel. For detailed deployment instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
+This project is set up for deployment on Vercel with the following features:
+- Tailwind CSS processing
+- Next.js API routes
+- PostgreSQL integration
 
-### Quick Deployment Steps
+## Vercel Deployment Instructions
 
-1. **Prepare Your Environment**:
-   - Make sure you're using Node.js 18.x (check with `node --version`)
-   - Install the Vercel CLI: `npm i -g vercel`
+If you're experiencing issues with Vercel deployment, follow these steps:
 
-2. **Fix Common Issues**:
-   - Run the fix scripts:
-     ```
-     node fix-package.js
-     node fix-babel.js
-     ```
-   - These scripts ensure your configuration is ready for Vercel
+### 1. Make Sure Your Repository Is Up to Date
 
-3. **Deploy**:
-   - On Windows: `.\deploy.ps1`
-   - On Linux/Mac: `./deploy.sh`
+Ensure you have the following files in your repository:
+- `fix-vercel-build.js` - Comprehensive fix script
+- `add-runtime-directive.js` - Script to add Node.js runtime directive to API routes
+- `runtime-config.js` - Global runtime configuration
+- `.babelrc` - Babel configuration
 
-### Troubleshooting
+### 2. Configure Vercel Project Settings
 
-If you encounter deployment issues:
-1. Run `node debug-build.js` to diagnose common problems
-2. Check the Babel configuration with `node fix-babel.js`
-3. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for detailed solutions to common errors
+1. **Environment Variables**:
+   - Add `NODE_OPTIONS` with value `--max-old-space-size=4096`
+
+2. **Build & Development Settings**:
+   - Build Command: `npm run vercel-build`
+   - Output Directory: `.next`
+   - Node.js Version: 18.x (important!)
+
+### 3. Clear Cache and Redeploy
+
+1. Go to your Vercel project settings
+2. Navigate to "General" settings
+3. Scroll down to "Build & Development Settings"
+4. Click "Clear Build Cache"
+5. Trigger a new deployment
+
+### 4. Check Logs for Specific Errors
+
+If issues persist, check the build logs for specific errors. Common issues include:
+- Missing dependencies
+- Incompatible package versions
+- Edge Runtime conflicts with Sequelize
+
+### 5. Need More Help?
+
+See the comprehensive guide in `VERCEL_DEPLOYMENT.md` for detailed troubleshooting.
 
 ## License
 

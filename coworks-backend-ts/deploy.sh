@@ -20,6 +20,10 @@ fi
 echo -e "${YELLOW}Installing dependencies...${NC}"
 npm install
 
+# Fix Babel configuration
+echo -e "${YELLOW}Fixing Babel configuration...${NC}"
+node fix-babel.js
+
 # Run build
 echo -e "${YELLOW}Building application...${NC}"
 npm run build
