@@ -1,14 +1,9 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import Script from 'next/script'
 
-// Define the font at module scope with a fallback
-const inter = Inter({ 
-  subsets: ['latin'],
-  fallback: ['system-ui', 'Arial', 'sans-serif'],
-  display: 'swap',
-});
+// Define a CSS class instead of using next/font
+const interFontClass = 'font-inter';
 
 export const metadata: Metadata = {
   title: 'Coworks Backend API',
@@ -29,6 +24,11 @@ export default function RootLayout({
           href="/css/tailwind.css" 
           precedence="default"
         />
+        {/* Add Inter font via standard CSS */}
+        <link 
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        />
         <Script id="fb-error-fix" strategy="beforeInteractive">
           {`
             // Fix for Facebook getUserFbFullName error
@@ -43,7 +43,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} min-h-full`}>
+      <body className={`${interFontClass} min-h-full`}>
         {children}
         <Script id="theme-script" strategy="afterInteractive">
           {`

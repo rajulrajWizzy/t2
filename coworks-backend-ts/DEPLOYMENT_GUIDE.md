@@ -40,12 +40,18 @@ The following configuration files are essential for deployment:
    npm install
    ```
 
-2. Build the application:
+2. Fix Babel and font configurations:
+   ```bash
+   node fix-babel.js
+   node fix-fonts.js
+   ```
+
+3. Build the application:
    ```bash
    npm run build
    ```
 
-3. Deploy to Vercel:
+4. Deploy to Vercel:
    ```bash
    npx vercel --prod
    ```
@@ -71,13 +77,25 @@ node fix-babel.js
 
 This script:
 1. Installs necessary Babel plugins for private methods and TypeScript
-2. Updates .babelrc with the correct configuration
+2. Updates .babelrc with the correct configuration and enables `allowDeclareFields`
 3. Creates a backup babel.config.js file for added reliability
 
-Common Babel errors to watch for:
-- "Class private methods are not enabled"
-- "TypeScript 'declare' fields must first be transformed"
+### Font Import Conflicts
+
+If you encounter errors related to next/font with Babel, run:
+
+```bash
+node fix-fonts.js
+```
+
+This script:
+1. Replaces next/font imports with standard CSS approaches
+2. Adds necessary font CSS classes to globals.css
+3. Ensures layout files don't use SWC-dependent font functionality
+
+Common font-related errors:
 - "next/font requires SWC although Babel is being used"
+- Font loading issues due to SWC and Babel conflicts
 
 ### Build Failures
 
@@ -136,14 +154,13 @@ Common Babel errors to watch for:
 ### Error: TypeScript 'declare' fields must first be transformed
 
 **Solution**:
-- Ensure `@babel/plugin-transform-typescript` is added to your Babel configuration before class-related plugins
+- Enable `allowDeclareFields` option in the TypeScript Babel plugin
 - Run `node fix-babel.js` to automatically fix this issue
 
 ### Error: next/font requires SWC although Babel is being used
 
 **Solution**:
-- Update .babelrc to properly support SWC and font loading
+- Use `node fix-fonts.js` to replace next/font imports with standard CSS
 - Consider removing .babelrc entirely if you don't need custom Babel configuration
-- Run `node fix-babel.js` to create an appropriate configuration
 
 For additional support, refer to the [Vercel Documentation](https://vercel.com/docs) or create an issue in the GitHub repository. 

@@ -8,7 +8,9 @@ module.exports = {
     }]
   ],
   plugins: [
-    "@babel/plugin-transform-typescript",
+    ["@babel/plugin-transform-typescript", {
+      "allowDeclareFields": true
+    }],
     "@babel/plugin-transform-private-methods",
     "@babel/plugin-transform-class-properties"
   ]

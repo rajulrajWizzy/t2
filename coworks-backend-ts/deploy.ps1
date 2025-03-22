@@ -19,6 +19,10 @@ npm install
 Write-Host "Fixing Babel configuration..." -ForegroundColor Yellow
 node fix-babel.js
 
+# Fix font imports to avoid SWC conflicts
+Write-Host "Fixing font imports..." -ForegroundColor Yellow
+node fix-fonts.js
+
 # Run build
 Write-Host "Building application..." -ForegroundColor Yellow
 npm run build

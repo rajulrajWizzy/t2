@@ -24,6 +24,10 @@ npm install
 echo -e "${YELLOW}Fixing Babel configuration...${NC}"
 node fix-babel.js
 
+# Fix font imports to avoid SWC conflicts
+echo -e "${YELLOW}Fixing font imports...${NC}"
+node fix-fonts.js
+
 # Run build
 echo -e "${YELLOW}Building application...${NC}"
 npm run build
