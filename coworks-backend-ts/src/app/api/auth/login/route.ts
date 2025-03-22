@@ -1,7 +1,13 @@
 // Explicitly set Node.js runtime for this route
-export const runtime = "nodejs";
 
 // Use Node.js runtime for Sequelize compatibility
+
+// Explicitly set Node.js runtime for this route
+
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';

@@ -33,40 +33,14 @@ function processFile(filePath) {
     console.log(`Processing ${filePath}`);
     let content = fs.readFileSync(filePath, 'utf8');
     
-    // Check if file already has all necessary directives
-    const hasRuntime = content.includes('export const runtime = "nodejs"') || 
-                     content.includes("export const runtime = 'nodejs'");
-                     
-    const hasDynamic = content.includes('export const dynamic = "force-dynamic"') || 
-                     content.includes("export const dynamic = 'force-dynamic'");
-                     
-    const hasNoCache = content.includes('export const fetchCache = "force-no-store"') || 
-                     content.includes("export const fetchCache = 'force-no-store'");
+    // Clean up existing directives to prevent duplicates
+    // Remove ALL existing directive declarations
+    content = content.replace(/export const runtime.*?\n/g, '');
+    content = content.replace(/export const dynamic.*?\n/g, '');
+    content = content.replace(/export const fetchCache.*?\n/g, '');
     
-    // Remove any existing directives we might be replacing
-    if (content.includes('export const runtime')) {
-      content = content.replace(/export const runtime.*?\n/g, '');
-    }
-    
-    if (content.includes('export const dynamic')) {
-      content = content.replace(/export const dynamic.*?\n/g, '');
-    }
-    
-    if (content.includes('export const fetchCache')) {
-      content = content.replace(/export const fetchCache.*?\n/g, '');
-    }
-    
-    // Add all necessary directives at the top of the file
-    let directives = '';
-    
-    // Add comment if not already present
-    if (!content.includes('// Explicitly set Node.js runtime')) {
-      directives += '// Explicitly set Node.js runtime for this route\n';
-    }
-    
-    directives += 'export const runtime = "nodejs";\n';
-    directives += 'export const dynamic = "force-dynamic";\n';
-    directives += 'export const fetchCache = "force-no-store";\n\n';
+    // Add fresh comment and directives at the top of the file
+    const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
     
     // Check if there are any imports or other content at the top
     const firstImportIndex = content.indexOf('import ');
