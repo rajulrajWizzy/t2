@@ -124,8 +124,14 @@ This project is set up for deployment on Vercel. For detailed deployment instruc
      ```
      node fix-package.js
      node fix-babel.js
+     node fix-fonts.js
+     node fix-runtime.js
      ```
-   - These scripts ensure your configuration is ready for Vercel
+   - These scripts ensure your configuration is ready for Vercel:
+     - `fix-package.js`: Updates package.json for compatibility
+     - `fix-babel.js`: Configures Babel for proper TypeScript transpilation
+     - `fix-fonts.js`: Resolves font import conflicts with SWC
+     - `fix-runtime.js`: Ensures API routes use Node.js runtime for Sequelize compatibility
 
 3. **Deploy**:
    - On Windows: `.\deploy.ps1`
@@ -136,7 +142,10 @@ This project is set up for deployment on Vercel. For detailed deployment instruc
 If you encounter deployment issues:
 1. Run `node debug-build.js` to diagnose common problems
 2. Check the Babel configuration with `node fix-babel.js`
-3. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for detailed solutions to common errors
+3. Fix font import issues with `node fix-fonts.js`
+4. Resolve runtime errors with `node fix-runtime.js`
+5. Run `node check-edge-imports.js` to identify problematic imports
+6. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for detailed solutions to common errors
 
 ## License
 

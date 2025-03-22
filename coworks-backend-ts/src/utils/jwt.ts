@@ -3,9 +3,6 @@ export const runtime = "nodejs";
 
 import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
-import * as jwt from 'jsonwebtoken';
-import { JwtPayload } from '@/types/common';
-import models from '@/models';
 
 // Interface for token payload
 export interface JWTPayload {
@@ -14,19 +11,6 @@ export interface JWTPayload {
   name: string;
   [key: string]: any;
 }
-
-// Set a secret key for JWT - in production, use environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d'; // 1 day by default
-
-// Secret key for JWT
-const getJwtSecretKey = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT Secret key is not set in environment variables');
-  }
-  return new TextEncoder().encode(secret);
-};
 
 // Admin JWT Payload type
 export interface AdminJWTPayload extends JWTPayload {
@@ -46,37 +30,66 @@ export interface VerificationResult {
   decoded: JWTPayload | null;
 }
 
+// Set a secret key for JWT - in production, use environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d'; // 1 day by default
+
+// Get secret key for JWT
+const getJwtSecretKey = () => {
+  const secret = process.env.JWT_SECRET || JWT_SECRET;
+  return new TextEncoder().encode(secret);
+};
+
 /**
  * Sign a new JWT token
  * @param payload Data to include in the token
  * @returns Signed JWT token
  */
 export async function signToken(payload: JWTPayload): Promise<string> {
-  return jwt.sign(
-    payload,
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+  try {
+    const secretKey = getJwtSecretKey();
+    
+    // Parse expiration time - convert days or hours to seconds
+    let expiresInSeconds = 86400; // Default 1 day
+    
+    if (typeof JWT_EXPIRES_IN === 'string') {
+      if (JWT_EXPIRES_IN.endsWith('d')) {
+        const days = parseInt(JWT_EXPIRES_IN.slice(0, -1));
+        expiresInSeconds = days * 24 * 60 * 60;
+      } else if (JWT_EXPIRES_IN.endsWith('h')) {
+        const hours = parseInt(JWT_EXPIRES_IN.slice(0, -1));
+        expiresInSeconds = hours * 60 * 60;
+      } else if (JWT_EXPIRES_IN.endsWith('m')) {
+        const minutes = parseInt(JWT_EXPIRES_IN.slice(0, -1));
+        expiresInSeconds = minutes * 60;
+      } else if (JWT_EXPIRES_IN.endsWith('s')) {
+        expiresInSeconds = parseInt(JWT_EXPIRES_IN.slice(0, -1));
+      }
+    }
+    
+    const token = await new SignJWT({...payload})
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
+      .sign(secretKey);
+    
+    return token;
+  } catch (error) {
+    console.error('Error signing token:', error);
+    throw error;
+  }
 }
 
 /**
- * Verify and decode a JWT token
+ * Verify and decode a JWT token without checking blacklist
  * @param token JWT token to verify
  * @returns Object with validity status and decoded payload
  */
 export async function verifyToken(token: string): Promise<VerificationResult> {
   try {
-    // Check if token is blacklisted
-    const blacklistedToken = await models.BlacklistedToken.findOne({
-      where: { token }
-    });
-    
-    if (blacklistedToken) {
-      return { valid: false, decoded: null };
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    return { valid: true, decoded };
+    const secretKey = getJwtSecretKey();
+    const { payload } = await jwtVerify(token, secretKey);
+    return { valid: true, decoded: payload as unknown as JWTPayload };
   } catch (error) {
     console.error('Token verification error:', error);
     return { valid: false, decoded: null };
@@ -121,44 +134,45 @@ export async function verifyTokenFromRequest(request: Request): Promise<JWTPaylo
   }
 }
 
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: string;
-  iat?: number;
-  exp?: number;
-}
-
 /**
  * Generate a JWT token for an admin user
  */
-export function generateJWT(payload: { id: string; email: string; role: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+export async function generateJWT(payload: { id: string; email: string; role: string }): Promise<string> {
+  return signToken(payload as unknown as JWTPayload);
 }
 
 /**
- * Verify a JWT token and return the decoded payload
+ * For server-side only: Check if a token is blacklisted
+ * Note: This must only be used in API routes with nodejs runtime, not in middleware/Edge
  */
-export async function verifyJWT(token: string): Promise<DecodedToken | null> {
+export async function isTokenBlacklisted(token: string): Promise<boolean> {
+  // Dynamically import models only when needed (in API routes with nodejs runtime)
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-    return decoded;
+    const { default: models } = await import('@/models');
+    const blacklistedToken = await models.BlacklistedToken.findOne({
+      where: { token }
+    });
+    return !!blacklistedToken;
   } catch (error) {
-    console.error('JWT verification error:', error);
-    return null;
+    console.error('Error checking blacklisted token:', error);
+    return false;
   }
 }
 
 /**
  * Blacklist a token for immediate invalidation
+ * This should ONLY be used in API routes with nodejs runtime, not in middleware
  * @param token Token to blacklist
  * @param userId ID of the user who owned the token
  */
 export async function blacklistToken(token: string, userId: number): Promise<void> {
   try {
+    // Dynamically import models
+    const { default: models } = await import('@/models');
+    
     // Calculate token expiry time from decoded payload
-    const decoded = jwt.decode(token) as { exp?: number } | null;
-    const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000) : new Date();
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
+    const expiresAt = payload.exp ? new Date(payload.exp * 1000) : new Date();
     
     await models.BlacklistedToken.create({
       token,

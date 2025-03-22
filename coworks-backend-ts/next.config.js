@@ -14,7 +14,9 @@ const nextConfig = {
   // Configure experimental options properly
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
-    esmExternals: 'loose'
+    esmExternals: 'loose',
+    // Force Node.js runtime for all server code to avoid Edge Runtime errors with Sequelize
+    runtime: 'nodejs',
   },
 
   // Add headers for CORS

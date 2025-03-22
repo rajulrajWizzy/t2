@@ -7,13 +7,16 @@
   },
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js",
     "build": "next build",
-    "vercel-build": "next build",
+    "vercel-build": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && next build",
     "start": "next start",
     "lint": "next lint",
     "migrate": "node scripts/migrate.js",
     "migrate:up": "sequelize-cli db:migrate",
-    "migrate:down": "sequelize-cli db:migrate:undo"
+    "migrate:down": "sequelize-cli db:migrate:undo",
+    "check:edge": "node check-edge-imports.js",
+    "fix:runtime": "node fix-runtime.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -63,6 +66,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^8.40.0",
     "eslint-config-next": "^14.0.0",
+    "glob": "^11.0.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0"
   },

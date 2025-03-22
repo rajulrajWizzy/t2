@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+// Use the verifyToken function from our JWT utils
 import { verifyToken } from './utils/jwt';
 
 // Add validation helper functions
@@ -145,7 +146,14 @@ export async function middleware(request: NextRequest) {
     }
     
     try {
-      const decoded = await verifyToken(token);
+      const { valid, decoded } = await verifyToken(token);
+      
+      if (!valid || !decoded) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid or expired authorization token' },
+          { status: 401 }
+        );
+      }
       
       // Validate auth token claims
       if (!decoded.id || !decoded.email) {
@@ -156,7 +164,7 @@ export async function middleware(request: NextRequest) {
       }
       
       // Email validation
-      if (!validateEmail(decoded.email)) {
+      if (!validateEmail(decoded.email as string)) {
         return NextResponse.json(
           { success: false, message: 'Invalid email in authorization token' },
           { status: 401 }
