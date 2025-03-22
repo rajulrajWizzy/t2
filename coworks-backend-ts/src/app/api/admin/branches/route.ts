@@ -6,7 +6,7 @@ import { Op } from 'sequelize';
 import { verifyAdmin, verifyBranchAccess, verifySuperAdmin } from '@/utils/adminAuth';
 import models from '@/models';
 import { ApiResponse } from '@/types/api';
-import { verifyJWT } from '../../../../utils/jwt';
+import { verifyJWT } from '@/utils/jwt';
 
 // Mock data for branches
 const branches = [

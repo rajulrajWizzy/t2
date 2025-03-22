@@ -2,7 +2,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJWT } from '../../../../../utils/jwt';
+import { verifyJWT } from '@/utils/jwt';
 
 // Mock function to create a new admin user
 // In a real application, this would connect to your database

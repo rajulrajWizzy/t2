@@ -156,14 +156,26 @@ This script:
 - Creates a safe version of models for edge functions
 - Configures `next.config.js` properly for Sequelize compatibility
 
+### JWT Import Issues
+
+If you see errors related to missing JWT utility functions like `verifyJWT` or `verifyAuth`, run:
+
+```bash
+node fix-jwt-exports.js
+```
+
+This script:
+- Fixes import paths for JWT utility functions in API route files
+- Ensures all routes use proper imports from the JWT utilities
+
 ### Other Common Deployment Issues
 
 Run the following helper scripts to fix other common issues:
 
 ```bash
-node debug-build.js  # Diagnose common deployment issues
-node fix-babel.js    # Fix Babel dependencies
-node fix-fonts.js    # Fix font imports
+node debug-build.js    # Diagnose common deployment issues
+node fix-babel.js      # Fix Babel dependencies
+node fix-fonts.js      # Fix font imports
 node check-edge-imports.js  # Check for problematic imports in Edge Runtime files
 ```
 

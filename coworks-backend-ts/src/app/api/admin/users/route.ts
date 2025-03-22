@@ -2,7 +2,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJWT } from '../../../../utils/jwt';
+import { verifyJWT } from '@/utils/jwt';
 
 // Mock data for demonstration - replace with actual database queries
 const adminUsers = [

@@ -142,6 +142,24 @@ export async function generateJWT(payload: { id: string; email: string; role: st
 }
 
 /**
+ * Alias for verifyTokenFromRequest - fixes import errors in routes
+ * @param request Request object with Authorization header
+ * @returns Decoded token payload or error response
+ */
+export async function verifyAuth(request: Request): Promise<JWTPayload | NextResponse> {
+  return verifyTokenFromRequest(request);
+}
+
+/**
+ * Alias for verifyToken - fixes import errors in routes
+ * @param token JWT token to verify
+ * @returns Object with validity status and decoded payload
+ */
+export async function verifyJWT(token: string): Promise<VerificationResult> {
+  return verifyToken(token);
+}
+
+/**
  * For server-side only: Check if a token is blacklisted
  * Note: This must only be used in API routes with nodejs runtime, not in middleware/Edge
  */
