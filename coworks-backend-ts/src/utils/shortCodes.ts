@@ -5,8 +5,15 @@ import { SeatingTypeEnum } from '@/types/seating';
  */
 export const branchShortCodes: { [key: string]: string } = {
   'naagarbhaavi': 'ngb',
-  // Add more branches as needed
-  // Example: 'koramangala': 'kor',
+  'outer ring road': 'orr',
+  'electronic city': 'ec',
+  'whitefield': 'wtf',
+  'indiranagar': 'ind',
+  'koramangala': 'kor',
+  'jayanagar': 'jay',
+  'mg road': 'mgr',
+  'hsr layout': 'hsr',
+  'marathahalli': 'mrt'
 };
 
 /**

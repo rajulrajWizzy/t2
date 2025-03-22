@@ -56,7 +56,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         'id', 'name', 'address', 'location', 'latitude', 'longitude',
         'cost_multiplier', 'opening_time', 'closing_time', 'is_active', 
         'created_at', 'updated_at', 'short_code'
-      ]
+      ],
+      include: []
     };
     
     // Determine seating type filter condition
@@ -67,58 +68,75 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       seatingTypeCondition = { short_code: seatingTypeCode };
     }
     
-    // Add relationship includes
-    if (Object.keys(seatingTypeCondition).length > 0) {
-      // If seating type filter is provided, get only branches that have seats of that type
-      query.include = [
-        {
-          model: models.Seat,
-          as: 'Seats',
-          include: [
-            {
+    // Add relationship includes based on whether the models are properly associated
+    try {
+      // First verify the association exists to avoid the "missing FROM-clause" error
+      const hasSeatsAssociation = models.Branch.associations && models.Branch.associations.Seats;
+      
+      if (hasSeatsAssociation) {
+        if (Object.keys(seatingTypeCondition).length > 0) {
+          // If seating type filter is provided, get only branches that have seats of that type
+          query.include.push({
+            model: models.Seat,
+            as: 'Seats',
+            required: true,
+            include: [{
               model: models.SeatingType,
               as: 'SeatingType',
-              where: seatingTypeCondition
-            }
-          ],
-          required: true
-        }
-      ];
-    } else {
-      // If no seating type filter, get all branches
-      query.include = [
-        {
-          model: models.Seat,
-          as: 'Seats',
-          include: [
-            {
+              where: seatingTypeCondition,
+              required: true
+            }]
+          });
+        } else {
+          // If no seating type filter, get all branches with optional seats
+          query.include.push({
+            model: models.Seat,
+            as: 'Seats',
+            required: false,
+            include: [{
               model: models.SeatingType,
-              as: 'SeatingType'
-            }
-          ]
+              as: 'SeatingType',
+              required: false
+            }]
+          });
         }
-      ];
+      } else {
+        console.warn('Branch-Seats association is not defined, querying without join');
+      }
+    } catch (error) {
+      console.error('Error setting up associations:', error);
+      // Continue with basic query without associations
     }
     
     // Get total count for pagination
-    const count = await models.Branch.count({
-      ...(Object.keys(seatingTypeCondition).length > 0 ? {
-        include: [
-          {
+    let count = 0;
+    try {
+      if (Object.keys(seatingTypeCondition).length > 0) {
+        // If filtering by seating type, we need to count properly
+        const countResult = await models.Branch.findAndCountAll({
+          include: [{
             model: models.Seat,
             as: 'Seats',
-            include: [
-              {
-                model: models.SeatingType,
-                as: 'SeatingType',
-                where: seatingTypeCondition
-              }
-            ],
-            required: true
-          }
-        ]
-      } : {})
-    });
+            required: true,
+            include: [{
+              model: models.SeatingType,
+              as: 'SeatingType',
+              where: seatingTypeCondition,
+              required: true
+            }]
+          }],
+          distinct: true // Important to get correct count with associations
+        });
+        count = countResult.count as number;
+      } else {
+        // Simple count if no filters
+        count = await models.Branch.count();
+      }
+    } catch (countError) {
+      console.error('Error counting branches:', countError);
+      // Fallback to simple count
+      count = await models.Branch.count();
+    }
     
     // Execute query with pagination
     const branches = await models.Branch.findAll(query);
