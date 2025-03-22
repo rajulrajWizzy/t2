@@ -116,6 +116,47 @@ This project is set up for deployment on Vercel with the following features:
 - Next.js API routes
 - PostgreSQL integration
 
+## Vercel Deployment Instructions
+
+If you're experiencing issues with Vercel deployment, follow these steps:
+
+### 1. Make Sure Your Repository Is Up to Date
+
+Ensure you have the following files in your repository:
+- `fix-vercel-build.js` - Comprehensive fix script
+- `add-runtime-directive.js` - Script to add Node.js runtime directive to API routes
+- `runtime-config.js` - Global runtime configuration
+- `.babelrc` - Babel configuration
+
+### 2. Configure Vercel Project Settings
+
+1. **Environment Variables**:
+   - Add `NODE_OPTIONS` with value `--max-old-space-size=4096`
+
+2. **Build & Development Settings**:
+   - Build Command: `npm run vercel-build`
+   - Output Directory: `.next`
+   - Node.js Version: 18.x (important!)
+
+### 3. Clear Cache and Redeploy
+
+1. Go to your Vercel project settings
+2. Navigate to "General" settings
+3. Scroll down to "Build & Development Settings"
+4. Click "Clear Build Cache"
+5. Trigger a new deployment
+
+### 4. Check Logs for Specific Errors
+
+If issues persist, check the build logs for specific errors. Common issues include:
+- Missing dependencies
+- Incompatible package versions
+- Edge Runtime conflicts with Sequelize
+
+### 5. Need More Help?
+
+See the comprehensive guide in `VERCEL_DEPLOYMENT.md` for detailed troubleshooting.
+
 ## License
 
 [MIT](LICENSE)
