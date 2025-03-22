@@ -285,33 +285,45 @@ function fixDuplicates() {
     
     for (const filePath of routeFiles) {
       try {
-        const content = fs.readFileSync(filePath, 'utf8');
+        let content = fs.readFileSync(filePath, 'utf8');
         
         // Check for multiple runtime directives
         const runtimeDirectiveMatches = content.match(/export const runtime\s*=/g);
+        const dynamicDirectiveMatches = content.match(/export const dynamic\s*=/g);
+        const fetchCacheDirectiveMatches = content.match(/export const fetchCache\s*=/g);
         
-        if (runtimeDirectiveMatches && runtimeDirectiveMatches.length > 1) {
+        // If we have multiple of any directive, completely clean up and rewrite
+        if ((runtimeDirectiveMatches && runtimeDirectiveMatches.length > 1) ||
+            (dynamicDirectiveMatches && dynamicDirectiveMatches.length > 1) ||
+            (fetchCacheDirectiveMatches && fetchCacheDirectiveMatches.length > 1)) {
+          
           console.log(`🔍 Found duplicate runtime directives in ${filePath}`);
           
-          // Fix the content by using a single runtime directive
-          const lines = content.split('\n');
-          const newLines = [];
-          let runtimeAdded = false;
+          // Remove all comment lines with these keywords
+          content = content.replace(/\/\/.*?(runtime|Node\.js|dynamic|Explicitly|fetchCache).*?\n/g, '');
           
-          for (const line of lines) {
-            if (line.includes('export const runtime =')) {
-              if (!runtimeAdded) {
-                newLines.push('// Explicitly set Node.js runtime for this route');
-                newLines.push('export const runtime = "nodejs";');
-                runtimeAdded = true;
-              }
-              // Skip this line since we've already added a runtime directive
-            } else if (!line.includes('Explicitly set Node.js runtime')) {
-              newLines.push(line);
-            }
+          // Remove all export declarations
+          content = content.replace(/export\s+const\s+runtime\s*=.*?\n/g, '');
+          content = content.replace(/export\s+const\s+dynamic\s*=.*?\n/g, '');
+          content = content.replace(/export\s+const\s+fetchCache\s*=.*?\n/g, '');
+          
+          // Clean up any consecutive blank lines that might have been created
+          while (content.includes('\n\n\n')) {
+            content = content.replace(/\n\n\n/g, '\n\n');
           }
           
-          fs.writeFileSync(filePath, newLines.join('\n'));
+          // Clean up any blank lines at the top of the file
+          while (content.startsWith('\n')) {
+            content = content.substring(1);
+          }
+          
+          // Add fresh directives at the top of the file
+          const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
+          
+          // Add directives at the top of the file
+          content = directives + content;
+          
+          fs.writeFileSync(filePath, content);
           fixedCount++;
         }
       } catch (error) {
@@ -320,7 +332,9 @@ function fixDuplicates() {
     }
     
     console.log(`✅ Fixed ${fixedCount} files with duplicate runtime directives`);
+    return fixedCount;
   }
+  return 0;
 }
 
 // Fix JWT utilities

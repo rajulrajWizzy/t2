@@ -3,10 +3,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
-
 import { verifyAdmin } from '@/utils/adminAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/models';
@@ -88,7 +84,7 @@ async function getBranchStats(
   to: Date | null = null
 ) {
   // Build date filter if provided
-  const dateFilter = {};
+  const dateFilter: any = {};
   if (from && to) {
     dateFilter['created_at'] = {
       [Op.between]: [from, to]
@@ -182,7 +178,7 @@ async function getBranchStats(
   }) as unknown as { total: string }[];
   
   const totalRevenue = parseFloat(payments[0]?.total || '0');
-  
+
   // Build response object
   const response: any = {
     totalBookings,
@@ -196,38 +192,38 @@ async function getBranchStats(
   
   // Get detailed seating stats if requested
   if (detailedSeatingStats) {
-    // Get seating types and counts
-    const seatingTypes = await db.SeatingType.findAll({
-      include: [{
-        model: db.Seat,
-        as: 'Seats',
-        where: { branch_id: branchId },
-        required: false
-      }],
-      attributes: [
-        'id',
-        'name',
+  // Get seating types and counts
+  const seatingTypes = await db.SeatingType.findAll({
+    include: [{
+      model: db.Seat,
+      as: 'Seats',
+      where: { branch_id: branchId },
+      required: false
+    }],
+    attributes: [
+      'id',
+      'name',
         'capacity_options',
         'quantity_options',
         'cost_multiplier',
-        [db.sequelize.fn('COUNT', db.sequelize.col('Seats.id')), 'count'],
-        [
-          db.sequelize.fn(
-            'SUM', 
+      [db.sequelize.fn('COUNT', db.sequelize.col('Seats.id')), 'count'],
+      [
+        db.sequelize.fn(
+          'SUM', 
             db.sequelize.literal(`CASE WHEN "Seats"."availability_status" = 'AVAILABLE' THEN 1 ELSE 0 END`)
-          ), 
-          'available'
-        ]
-      ],
-      group: ['SeatingType.id'],
-      raw: true,
-      nest: true
-    });
+        ), 
+        'available'
+      ]
+    ],
+    group: ['SeatingType.id'],
+    raw: true,
+    nest: true
+  });
 
     response.seatsByType = seatingTypes.map((type: any) => ({
-      typeId: type.id,
-      typeName: type.name,
-      count: parseInt(type.count || '0'),
+    typeId: type.id,
+    typeName: type.name,
+    count: parseInt(type.count || '0'),
       available: parseInt(type.available || '0'),
       capacity_options: type.capacity_options,
       quantity_options: type.quantity_options,
@@ -297,8 +293,8 @@ async function getBranchStats(
     });
     
     if (savingsData && savingsData.length > 0) {
-      const adjustedPrice = parseFloat(savingsData[0].adjusted_price || '0');
-      const originalPrice = parseFloat(savingsData[0].original_price || '0');
+      const adjustedPrice = parseFloat((savingsData[0] as any).adjusted_price || '0');
+      const originalPrice = parseFloat((savingsData[0] as any).original_price || '0');
       const savings = originalPrice - adjustedPrice;
       
       response.costSavings = {
@@ -349,7 +345,7 @@ async function getBookingsByQuantity(seatIds: number[], dateFilter: any) {
     : ''}
     GROUP BY quantity
     ORDER BY quantity ASC
-  `, { type: db.sequelize.QueryTypes.SELECT });
+  `, { type: 'SELECT' } as any);
   
   return bookingsByQuantity;
 }
@@ -363,7 +359,7 @@ async function getGlobalStats(
   to: Date | null = null
 ) {
   // Build date filter if provided
-  const dateFilter = {};
+  const dateFilter: any = {};
   if (from && to) {
     dateFilter['created_at'] = {
       [Op.between]: [from, to]
@@ -433,7 +429,7 @@ async function getGlobalStats(
   const availableSeats = await db.Seat.count({
     where: { availability_status: 'AVAILABLE' }
   });
-  
+
   // Build response object
   const response: any = {
     totalBookings,
@@ -541,8 +537,8 @@ async function getGlobalStats(
     });
     
     if (savingsData && savingsData.length > 0) {
-      const adjustedPrice = parseFloat(savingsData[0].adjusted_price || '0');
-      const originalPrice = parseFloat(savingsData[0].original_price || '0');
+      const adjustedPrice = parseFloat((savingsData[0] as any).adjusted_price || '0');
+      const originalPrice = parseFloat((savingsData[0] as any).original_price || '0');
       const savings = originalPrice - adjustedPrice;
       
       response.costSavings = {

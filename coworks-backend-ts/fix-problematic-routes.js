@@ -31,24 +31,32 @@ const PROBLEMATIC_ROUTES = [
 function processFile(filePath) {
   try {
     console.log(`Processing ${filePath}`);
+    
+    // Read the file content
     let content = fs.readFileSync(filePath, 'utf8');
     
-    // More aggressive approach to remove all directives and their comments
-    // This handles cases where there are multiple instances
-    content = content.replace(/\/\/.*?runtime.*?\n/g, '');
-    content = content.replace(/\/\/.*?Node\.js.*?\n/g, '');
-    content = content.replace(/\/\/.*?dynamic.*?\n/g, '');
-    content = content.replace(/\/\/.*?Explicitly.*?\n/g, '');
-    content = content.replace(/export const runtime.*?\n/g, '');
-    content = content.replace(/export const dynamic.*?\n/g, '');
-    content = content.replace(/export const fetchCache.*?\n/g, '');
+    // First, completely remove all export declarations and their comments
+    // More aggressive approach to ensure no duplicates remain
+    
+    // Remove any comment lines containing "runtime", "dynamic", etc.
+    content = content.replace(/\/\/.*?(runtime|Node\.js|dynamic|Explicitly|fetchCache).*?\n/g, '');
+    
+    // Remove the export declarations
+    content = content.replace(/export\s+const\s+runtime\s*=.*?\n/g, '');
+    content = content.replace(/export\s+const\s+dynamic\s*=.*?\n/g, '');
+    content = content.replace(/export\s+const\s+fetchCache\s*=.*?\n/g, '');
+    
+    // Clean up any consecutive blank lines that might have been created
+    while (content.includes('\n\n\n')) {
+      content = content.replace(/\n\n\n/g, '\n\n');
+    }
     
     // Clean up any blank lines at the top of the file
     while (content.startsWith('\n')) {
       content = content.substring(1);
     }
     
-    // Add fresh comment and directives at the top of the file
+    // Add fresh directives at the top of the file
     const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
     
     // Add directives at the top of the file
