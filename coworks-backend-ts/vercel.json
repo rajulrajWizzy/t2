@@ -55,10 +55,5 @@
         "dest": "/$1",
         "continue": true
       }
-    ],
-    "functions": {
-      "api/**/*": {
-        "memory": 1024
-      }
-    }
+    ]
   }
