@@ -7,9 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js",
+    "prebuild": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && node fix-dynamic-server.js",
     "build": "next build",
-    "vercel-build": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && next build",
+    "vercel-build": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && node fix-dynamic-server.js && next build",
     "start": "next start",
     "lint": "next lint",
     "migrate": "node scripts/migrate.js",
@@ -17,7 +17,9 @@
     "migrate:down": "sequelize-cli db:migrate:undo",
     "check:edge": "node check-edge-imports.js",
     "fix:runtime": "node fix-runtime.js",
-    "fix:jwt": "node fix-jwt-exports.js"
+    "fix:jwt": "node fix-jwt-exports.js",
+    "fix:dynamic-server": "node fix-dynamic-server.js",
+    "fix:all": "node fix-build-issues.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

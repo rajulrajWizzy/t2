@@ -14,7 +14,8 @@ const nextConfig = {
   // Configure experimental options properly
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
-    esmExternals: 'loose'
+    esmExternals: 'loose',
+    missingSuspenseWithCSRBailout: false // Prevent hydration issues with dynamic content
   },
 
   // Add headers for CORS

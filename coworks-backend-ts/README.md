@@ -141,6 +141,23 @@ This project is set up for deployment on Vercel. For detailed deployment instruc
 
 If you're encountering issues when deploying to Vercel, try the following:
 
+### Comprehensive Fix Script
+
+For a one-stop solution to all common deployment issues, run:
+
+```bash
+npm run fix:all
+```
+
+This script will:
+- Run all fix scripts in the correct order
+- Verify Node.js version compatibility
+- Check for and fix Edge Runtime issues
+- Fix JWT import problems
+- Resolve dynamic server usage errors
+- Fix Babel and font dependencies
+- Provide a detailed report of all fixes applied
+
 ### Edge Runtime Issues
 
 If you encounter errors like `Dynamic Code Evaluation (e. g. 'eval', 'new Function') not allowed in Edge Runtime`, run:
@@ -155,6 +172,19 @@ This script:
 - Updates middleware to avoid direct Sequelize imports
 - Creates a safe version of models for edge functions
 - Configures `next.config.js` properly for Sequelize compatibility
+
+### Dynamic Server Usage Errors
+
+If you see errors like `Dynamic server usage: Route couldn't be rendered statically because it used request.headers` during build, run:
+
+```bash
+node fix-dynamic-server.js
+```
+
+This script:
+- Adds `export const runtime = "nodejs"` to all API routes that use request.headers or request.url
+- Prevents Next.js from trying to statically render dynamic API routes
+- Resolves common deployment errors related to dynamic server usage
 
 ### JWT Import Issues
 
