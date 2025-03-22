@@ -2,12 +2,15 @@
     "name": "coworks-backend-ts",
     "version": "0.1.0",
     "private": true,
+    "engines": {
+        "node": "18.x"
+    },
     "scripts": {
         "dev": "next dev",
         "add-runtime-directives": "node add-runtime-directive.js",
         "prebuild": "node fix-vercel-build.js",
         "build": "next build",
-        "vercel-build": "node fix-vercel-build.js && node scripts/vercel-tailwind.js && next build && npm run vercel-seed",
+        "vercel-build": "next build",
         "vercel-seed": "node scripts/vercel-seed.js",
         "start": "next start",
         "lint": "next lint",

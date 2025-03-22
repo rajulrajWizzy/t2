@@ -14,8 +14,8 @@ interface TabPanelProps {
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
-
-  return (
+    
+    return (
     <div
       role="tabpanel"
       hidden={value !== index}
@@ -28,8 +28,8 @@ function TabPanel(props: TabPanelProps) {
           {children}
         </Box>
       )}
-    </div>
-  );
+      </div>
+    );
 }
 
 function a11yProps(index: number) {
