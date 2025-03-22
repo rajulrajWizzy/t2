@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for middleware
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from './utils/jwt';

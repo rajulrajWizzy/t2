@@ -12,6 +12,8 @@ const nextConfig = {
   // Set api routes as dynamically rendered to avoid static generation errors
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
+    runtime: 'nodejs',
+    disableEdgeRuntime: true,
   },
   
   // Explicitly configure which routes are dynamic
