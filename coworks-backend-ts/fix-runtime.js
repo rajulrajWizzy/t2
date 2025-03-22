@@ -8,6 +8,7 @@
  * 2. Replaces 'export const runtime = "edge"' with Node.js runtime to ensure compatibility with Sequelize
  * 3. Updates middleware.ts if needed
  * 4. Updates next.config.js with appropriate settings
+ * 5. Fixes conflict between transpilePackages and serverComponentsExternalPackages
  */
 
 const fs = require('fs');
@@ -65,25 +66,82 @@ function processRuntimeDirective(filePath) {
   return modified;
 }
 
-// Ensure next.config.js has appropriate runtime settings
+// Ensure next.config.js has appropriate runtime settings and fix conflicts
 function updateNextConfig() {
   const configPath = 'next.config.js';
   
   if (fs.existsSync(configPath)) {
-    console.log('📝 Checking next.config.js for runtime settings...');
+    console.log('📝 Checking next.config.js for runtime settings and package conflicts...');
     
     let content = fs.readFileSync(configPath, 'utf8');
+    let modified = false;
+    
+    // Check for conflicting packages between transpilePackages and serverComponentsExternalPackages
+    if (content.includes('transpilePackages') && content.includes('serverComponentsExternalPackages')) {
+      console.log('⚠️ Checking for package conflicts between transpilePackages and serverComponentsExternalPackages...');
+      
+      try {
+        // Extract serverComponentsExternalPackages
+        const serverComponentsMatch = content.match(/serverComponentsExternalPackages\s*:\s*\[(.*?)\]/s);
+        const transpilePackagesMatch = content.match(/transpilePackages\s*:\s*\[(.*?)\]/s);
+        
+        if (serverComponentsMatch && transpilePackagesMatch) {
+          const serverComponents = serverComponentsMatch[1]
+            .replace(/'/g, '"')
+            .split(',')
+            .map(item => item.trim().replace(/^["']|["']$/g, ''))
+            .filter(Boolean);
+          
+          const transpilePackages = transpilePackagesMatch[1]
+            .replace(/'/g, '"')
+            .split(',')
+            .map(item => item.trim().replace(/^["']|["']$/g, ''))
+            .filter(Boolean);
+          
+          // Find conflicts (packages in both arrays)
+          const conflicts = serverComponents.filter(pkg => transpilePackages.includes(pkg));
+          
+          if (conflicts.length > 0) {
+            console.log(`⚠️ Found conflicts: ${conflicts.join(', ')} appears in both arrays`);
+            
+            // Create a backup
+            fs.copyFileSync(configPath, `${configPath}.bak`);
+            console.log('💾 Created backup of next.config.js');
+            
+            // Remove conflicts from transpilePackages
+            const nonConflictingPackages = transpilePackages.filter(pkg => !conflicts.includes(pkg));
+            
+            if (nonConflictingPackages.length === 0) {
+              // If there are no non-conflicting packages left, remove the transpilePackages line
+              content = content.replace(/\s*transpilePackages\s*:\s*\[(.*?)\],?/s, '');
+            } else {
+              // Replace transpilePackages with non-conflicting packages
+              const newTranspilePackages = `transpilePackages: [${nonConflictingPackages.map(pkg => `'${pkg}'`).join(', ')}]`;
+              content = content.replace(/transpilePackages\s*:\s*\[(.*?)\]/s, newTranspilePackages);
+            }
+            
+            fs.writeFileSync(configPath, content, 'utf8');
+            console.log('✅ Fixed conflicts in next.config.js');
+            modified = true;
+          } else {
+            console.log('✓ No conflicts found between transpilePackages and serverComponentsExternalPackages');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error checking for package conflicts:', error.message);
+      }
+    }
     
     // If the file doesn't have experimental setting for runtime
     if (!content.includes('experimental') || !content.includes('esmExternals')) {
       try {
-        // Make a backup
-        fs.copyFileSync(configPath, `${configPath}.bak`);
-        console.log('💾 Created backup of next.config.js');
+        if (!fs.existsSync(`${configPath}.bak`)) {
+          // Make a backup if we haven't already
+          fs.copyFileSync(configPath, `${configPath}.bak`);
+          console.log('💾 Created backup of next.config.js');
+        }
         
         // Simple string-based approach - find the config object
-        let modified = false;
-        
         if (content.includes('const nextConfig = {')) {
           // Add experimental settings if the config object exists
           if (!content.includes('experimental:')) {

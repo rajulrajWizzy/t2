@@ -183,4 +183,11 @@ This script:
 - Remove or modify code using `eval()`, `Function()`, or dynamic `require()`
 - Switch from Edge Runtime to Node.js runtime for affected routes
 
+### Error: The packages specified in the 'transpilePackages' conflict with the 'serverComponentsExternalPackages'
+
+**Solution**:
+- Do not include the same package in both `transpilePackages` and `serverComponentsExternalPackages` arrays
+- Run `node fix-runtime.js` to automatically fix this issue
+- If using sequelize, keep it in `serverComponentsExternalPackages` and remove it from `transpilePackages`
+
 For additional support, refer to the [Vercel Documentation](https://vercel.com/docs) or create an issue in the GitHub repository. 

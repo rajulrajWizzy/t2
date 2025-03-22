@@ -37,8 +37,8 @@ const nextConfig = {
     PROJECT_ROOT: __dirname,
   },
   
+  // Remove sequelize from transpilePackages since it's in serverComponentsExternalPackages
   // Ensure all middleware and API routes use Node.js runtime, not Edge
-  transpilePackages: ['sequelize'],
   
   // Custom webpack config for Node.js modules
   webpack: (config, { isServer }) => {
