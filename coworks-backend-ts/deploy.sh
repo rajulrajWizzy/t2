@@ -28,6 +28,10 @@ node fix-babel.js
 echo -e "${YELLOW}Fixing font imports...${NC}"
 node fix-fonts.js
 
+# Fix runtime settings to avoid Edge runtime issues
+echo -e "${YELLOW}Fixing runtime settings...${NC}"
+node fix-runtime.js
+
 # Run build
 echo -e "${YELLOW}Building application...${NC}"
 npm run build

@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+
 import { NextResponse } from 'next/server';
 
 // A simple health check endpoint that never requires authentication

@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import AdminModel, { AdminRole } from '@/models/admin';

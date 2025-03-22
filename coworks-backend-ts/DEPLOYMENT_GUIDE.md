@@ -97,6 +97,19 @@ Common font-related errors:
 - "next/font requires SWC although Babel is being used"
 - Font loading issues due to SWC and Babel conflicts
 
+### Runtime Fixes
+
+If you encounter errors related to Edge Runtime, run:
+
+```bash
+node fix-runtime.js
+```
+
+This script:
+1. Updates route configuration to avoid using Edge Runtime where not needed
+2. Ensures compatibility with Node.js environment
+3. Fixes issues with dynamic code evaluation in Edge Runtime
+
 ### Build Failures
 
 1. **TypeScript Errors**
@@ -162,5 +175,12 @@ Common font-related errors:
 **Solution**:
 - Use `node fix-fonts.js` to replace next/font imports with standard CSS
 - Consider removing .babelrc entirely if you don't need custom Babel configuration
+
+### Error: Dynamic code evaluation is not allowed in Edge Runtime
+
+**Solution**:
+- Use `node fix-runtime.js` to update your route configuration
+- Remove or modify code using `eval()`, `Function()`, or dynamic `require()`
+- Switch from Edge Runtime to Node.js runtime for affected routes
 
 For additional support, refer to the [Vercel Documentation](https://vercel.com/docs) or create an issue in the GitHub repository. 

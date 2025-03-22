@@ -31,6 +31,15 @@ const nextConfig = {
     ];
   },
   
+  // Explicitly set the runtime for each route
+  // This ensures Sequelize and other Node.js modules work properly
+  serverRuntimeConfig: {
+    PROJECT_ROOT: __dirname,
+  },
+  
+  // Ensure all middleware and API routes use Node.js runtime, not Edge
+  transpilePackages: ['sequelize'],
+  
   // Custom webpack config for Node.js modules
   webpack: (config, { isServer }) => {
     if (isServer) {

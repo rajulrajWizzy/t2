@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+
 import { verifyAdmin } from '@/utils/adminAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/models';

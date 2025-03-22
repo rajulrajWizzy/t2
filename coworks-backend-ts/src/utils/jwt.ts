@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for this utility
+export const runtime = "nodejs";
+
 import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
 import * as jwt from 'jsonwebtoken';

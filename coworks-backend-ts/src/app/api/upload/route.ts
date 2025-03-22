@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+
 // src/app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/config/jwt';

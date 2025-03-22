@@ -23,6 +23,10 @@ node fix-babel.js
 Write-Host "Fixing font imports..." -ForegroundColor Yellow
 node fix-fonts.js
 
+# Fix runtime settings to avoid Edge runtime issues
+Write-Host "Fixing runtime settings..." -ForegroundColor Yellow
+node fix-runtime.js
+
 # Run build
 Write-Host "Building application..." -ForegroundColor Yellow
 npm run build

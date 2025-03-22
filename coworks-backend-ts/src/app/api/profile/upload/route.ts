@@ -1,3 +1,6 @@
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadProfilePicture, uploadProofDocument } from '@/utils/cloudinary';
 import { verifyAuth } from '@/utils/jwt';
