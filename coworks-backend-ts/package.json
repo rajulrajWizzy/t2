@@ -7,9 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && node fix-dynamic-server.js",
+    "prebuild": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && node fix-dynamic-server.js && node fix-problematic-routes.js",
     "build": "next build",
-    "vercel-build": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && node fix-dynamic-server.js && next build",
+    "vercel-build": "node check-node-version.js && node check-edge-imports.js && node fix-runtime.js && node fix-jwt-exports.js && node fix-dynamic-server.js && node fix-problematic-routes.js && next build",
     "start": "next start",
     "lint": "next lint",
     "migrate": "node scripts/migrate.js",
@@ -19,6 +19,7 @@
     "fix:runtime": "node fix-runtime.js",
     "fix:jwt": "node fix-jwt-exports.js",
     "fix:dynamic-server": "node fix-dynamic-server.js",
+    "fix:problematic-routes": "node fix-problematic-routes.js",
     "fix:all": "node fix-build-issues.js"
   },
   "dependencies": {

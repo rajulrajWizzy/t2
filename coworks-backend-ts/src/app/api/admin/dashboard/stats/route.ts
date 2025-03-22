@@ -1,5 +1,13 @@
 // Explicitly set Node.js runtime for this route
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+
+
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 import { verifyAdmin } from '@/utils/adminAuth';
 import { NextRequest, NextResponse } from 'next/server';

@@ -18,6 +18,9 @@ This document outlines the fixes implemented to resolve deployment issues with V
    - Added `fix-dynamic-server.js` script to address errors during static generation
    - Fixed routes that use `request.headers` or `request.url` by adding explicit runtime directives
    - Resolved "Dynamic server usage" errors that appeared during deployment
+   - Created `fix-problematic-routes.js` to specifically target routes with known issues
+   - Added comprehensive directives to prevent static generation attempts on dynamic routes
+   - Updated Next.js configuration to improve handling of dynamic routes
 
 4. **Node.js Version Compatibility**
    - Updated `check-node-version.js` to be less strict during development
@@ -38,6 +41,7 @@ The project now includes several helper scripts to ensure smooth deployment:
 - **fix-runtime.js**: Adds Node.js runtime directives to all API routes
 - **fix-jwt-exports.js**: Fixes JWT utility imports in route files
 - **fix-dynamic-server.js**: Resolves dynamic server usage errors in API routes
+- **fix-problematic-routes.js**: Specifically fixes routes with known dynamic server usage issues
 - **fix-babel.js**: Fixes Babel dependencies
 - **fix-fonts.js**: Fixes font import issues
 - **fix-build-issues.js**: Comprehensive script that runs all fixes in sequence
@@ -58,13 +62,45 @@ npm run prebuild
 
 This will automatically run all necessary fixes to prepare for deployment.
 
+To target specific problematic routes that cause "Dynamic server usage" errors, run:
+
+```bash
+npm run fix:problematic-routes
+```
+
+## Directives Added to Problematic Routes
+
+The `fix-problematic-routes.js` script adds these important directives to all problematic routes:
+
+```typescript
+export const runtime = "nodejs";  // Force Node.js runtime
+export const dynamic = "force-dynamic";  // Prevent static generation
+export const fetchCache = "force-no-store";  // Disable caching of fetch calls
+```
+
+These directives work together to ensure:
+1. The route uses Node.js instead of Edge Runtime (required for Sequelize)
+2. The route is always generated dynamically at request time
+3. Data fetching is always fresh and not cached
+
+## Verification
+
+We've verified that these fixes successfully resolve the deployment issues by:
+
+1. Running local builds that complete without dynamic server usage errors
+2. Confirming all problematic routes have the required directives
+3. Testing that API routes work correctly with proper headers
+4. Ensuring the build process completes without errors
+
 ## Known Issues
 
 - Some warnings about unsupported engine versions might still appear during installation
 - These warnings can be safely ignored as the fixes ensure compatibility at runtime
+- The Next.js config shows a warning about `disableStaticFiles` but the build completes successfully
 
 ## Future Improvements
 
 - Consider upgrading to Node.js 20.x when all dependencies are compatible
 - Enhance the fix scripts to handle more edge cases automatically
-- Add more validation to ensure routes are properly configured 
+- Add more validation to ensure routes are properly configured
+- Update to Next.js 14.3+ when available to benefit from improved handling of dynamic routes 

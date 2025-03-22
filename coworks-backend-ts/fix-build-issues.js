@@ -85,6 +85,12 @@ async function main() {
       description: 'Resolves dynamic server usage errors in API routes'
     },
     { 
+      name: 'Fix Problematic Routes', 
+      command: 'node fix-problematic-routes.js',
+      file: 'fix-problematic-routes.js',
+      description: 'Specifically fixes routes that cause dynamic server usage errors'
+    },
+    { 
       name: 'Fix Babel Dependencies', 
       command: 'node fix-babel.js',
       file: 'fix-babel.js',

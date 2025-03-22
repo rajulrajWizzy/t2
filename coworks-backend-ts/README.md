@@ -137,76 +137,67 @@ This project is set up for deployment on Vercel. For detailed deployment instruc
    - On Windows: `.\deploy.ps1`
    - On Linux/Mac: `./deploy.sh`
 
-### Troubleshooting
-
-If you're encountering issues when deploying to Vercel, try the following:
-
-### Comprehensive Fix Script
-
-For a one-stop solution to all common deployment issues, run:
-
-```bash
-npm run fix:all
-```
-
-This script will:
-- Run all fix scripts in the correct order
-- Verify Node.js version compatibility
-- Check for and fix Edge Runtime issues
-- Fix JWT import problems
-- Resolve dynamic server usage errors
-- Fix Babel and font dependencies
-- Provide a detailed report of all fixes applied
+### Troubleshooting Deployment Issues
 
 ### Edge Runtime Issues
 
-If you encounter errors like `Dynamic Code Evaluation (e. g. 'eval', 'new Function') not allowed in Edge Runtime`, run:
+If you encounter errors related to Edge Runtime during deployment, run:
 
 ```bash
 node fix-runtime.js
 ```
 
 This script:
-- Adds `export const runtime = "nodejs"` to all API routes 
-- Fixes JWT utils to safely run in Edge and Node.js environments
-- Updates middleware to avoid direct Sequelize imports
-- Creates a safe version of models for edge functions
-- Configures `next.config.js` properly for Sequelize compatibility
-
-### Dynamic Server Usage Errors
-
-If you see errors like `Dynamic server usage: Route couldn't be rendered statically because it used request.headers` during build, run:
-
-```bash
-node fix-dynamic-server.js
-```
-
-This script:
-- Adds `export const runtime = "nodejs"` to all API routes that use request.headers or request.url
-- Prevents Next.js from trying to statically render dynamic API routes
-- Resolves common deployment errors related to dynamic server usage
+- Fixes API routes to use Node.js runtime instead of Edge
+- Updates middleware to be compatible with Edge and Node.js environments
+- Modifies how dynamic code evaluation is handled to prevent errors
 
 ### JWT Import Issues
 
-If you see errors related to missing JWT utility functions like `verifyJWT` or `verifyAuth`, run:
+If you encounter errors with missing JWT utility functions, run:
 
 ```bash
 node fix-jwt-exports.js
 ```
 
 This script:
-- Fixes import paths for JWT utility functions in API route files
-- Ensures all routes use proper imports from the JWT utilities
+- Fixes import paths for JWT utilities in API route files
+- Ensures proper exports for verifyJWT and verifyAuth functions
+- Updates all middleware to use the correct import paths
+
+### Dynamic Server Usage Errors
+
+If you encounter "Dynamic server usage" errors during build, run:
+
+```bash
+node fix-problematic-routes.js
+```
+
+This script:
+- Adds necessary directives to problematic routes
+- Prevents static generation attempts on dynamic routes
+- Fixes routes that use request.headers or other server-side features
+- Resolves the "Error occurred prerendering page" errors during build
 
 ### Other Common Deployment Issues
 
-Run the following helper scripts to fix other common issues:
+The following helper scripts are available to diagnose and fix various deployment issues:
 
 ```bash
-node debug-build.js    # Diagnose common deployment issues
-node fix-babel.js      # Fix Babel dependencies
-node fix-fonts.js      # Fix font imports
-node check-edge-imports.js  # Check for problematic imports in Edge Runtime files
+# Run all fixes at once
+node fix-build-issues.js
+
+# Check for problematic imports in Edge runtime files
+node debug-build.js
+
+# Fix Babel dependencies for deployment
+node fix-babel.js
+
+# Fix font import issues
+node fix-fonts.js
+
+# Check Edge runtime imports
+node check-edge-imports.js
 ```
 
 ## License

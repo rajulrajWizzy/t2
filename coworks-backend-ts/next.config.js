@@ -15,7 +15,10 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
     esmExternals: 'loose',
-    missingSuspenseWithCSRBailout: false // Prevent hydration issues with dynamic content
+    missingSuspenseWithCSRBailout: false, // Prevent hydration issues with dynamic content
+    // Ensure all API routes are built as server-side only
+    disableStaticFiles: true,
+    disableOptimizedLoading: true
   },
 
   // Add headers for CORS
@@ -37,6 +40,9 @@ const nextConfig = {
   serverRuntimeConfig: {
     PROJECT_ROOT: __dirname,
   },
+  
+  // Disable static generation for API routes
+  staticPageGenerationTimeout: 1000,
   
   // Custom webpack config for Node.js modules
   webpack: (config, { isServer }) => {
