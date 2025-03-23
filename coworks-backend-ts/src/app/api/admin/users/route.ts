@@ -3,6 +3,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJWT } from '@/utils/jwt';
 import { verifyAdmin } from '@/utils/adminAuth';
@@ -43,35 +46,40 @@ export async function GET(request: NextRequest) {
       return auth as NextResponse;
     }
     
-
-  try {
     // Verify authentication
     const token = request.headers.get('authorization')?.split(' ')[1];
     
     if (!token) {
       return NextResponse.json(
-        { message: 'Unauthorized: No token provided' },
+        { 
+          success: false, 
+          error: { 
+            code: 'UNAUTHORIZED', 
+            message: 'No authentication token provided' 
+          } 
+        },
         { status: 401 }
       );
     }
-    
-    const decoded = await verifyJWT(token);
-    
-    if (!decoded || decoded.role !== 'super_admin') {
-      return NextResponse.json(
-        { message: 'Forbidden: Super admin access required' },
-        { status: 403 }
-      );
-    }
-    
-    // In a real application, you would fetch admin users from the database
-    // For demonstration, we're using mock data
-    
-    return NextResponse.json({ admins: adminUsers });
+
+    // Return list of admin users
+    return NextResponse.json({ 
+      success: true, 
+      data: { 
+        users: adminUsers 
+      }, 
+      message: 'Admin users retrieved successfully' 
+    });
   } catch (error) {
-    console.error('Error fetching admin users:', error);
+    console.error('Error in GET /api/admin/users:', error);
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { 
+        success: false, 
+        error: { 
+          code: 'SERVER_ERROR', 
+          message: 'Failed to retrieve admin users' 
+        } 
+      },
       { status: 500 }
     );
   }
