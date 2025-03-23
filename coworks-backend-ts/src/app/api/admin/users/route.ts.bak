@@ -5,7 +5,6 @@ export const fetchCache = "force-no-store";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJWT } from '@/utils/jwt';
-import { verifyAdmin } from '@/utils/adminAuth';
 
 // Mock data for demonstration - replace with actual database queries
 const adminUsers = [
@@ -37,13 +36,6 @@ const adminUsers = [
 ];
 
 export async function GET(request: NextRequest) {
-  try {
-    const auth = await verifyAdmin(request);
-    if ('status' in auth) {
-      return auth as NextResponse;
-    }
-    
-
   try {
     // Verify authentication
     const token = request.headers.get('authorization')?.split(' ')[1];

@@ -102,12 +102,34 @@ The system seeds an initial super admin with the following credentials:
 
 **Important:** Change this password after the first login.
 
-## API Documentation
+## Authorization and Testing
 
-A comprehensive API collection is available in the following formats:
-- Markdown: `coworks-api-collection.md`
-- Curl commands: `coworks-api-collection.curl`
-- Postman collection: `coworks-api-collection.json`
+### Auth Fix Script
+
+For testing purposes, we've provided an authorization fix script that:
+
+1. Ensures the JWT secret is correctly set in your environment
+2. Generates test tokens for different user roles (regular user, branch admin, super admin)
+3. Creates a Postman collection for API testing
+4. Provides curl commands for quick API testing
+
+To run the script:
+
+```bash
+cd src/scripts
+node auth-fix.js
+```
+
+This will generate:
+- Test tokens in `tokens/access-tokens.json`
+- Curl commands in `tokens/api-commands.txt`
+- Postman collection in `tokens/coworks-api.postman_collection.json`
+
+### API Documentation
+
+For a comprehensive list of all available API endpoints:
+
+- [API Reference](./docs/API_REFERENCE.md) - Complete documentation of all API endpoints for users and admins
 
 ## Deployment
 

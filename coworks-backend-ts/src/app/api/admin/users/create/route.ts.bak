@@ -3,11 +3,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySuperAdmin } from '@/utils/adminAuth';
+import { verifyJWT } from '@/utils/jwt';
 
 // Mock function to create a new admin user
 // In a real application, this would connect to your database
@@ -28,9 +25,23 @@ async function createAdminUser(userData: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await verifySuperAdmin(request);
-    if ('status' in auth) {
-      return auth as NextResponse;
+    // Verify authentication
+    const token = request.headers.get('authorization')?.split(' ')[1];
+    
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Unauthorized: No token provided' },
+        { status: 401 }
+      );
+    }
+    
+    const decoded = await verifyJWT(token);
+    
+    if (!decoded || decoded.role !== 'super_admin') {
+      return NextResponse.json(
+        { message: 'Forbidden: Super admin access required' },
+        { status: 403 }
+      );
     }
     
     // Parse request body
