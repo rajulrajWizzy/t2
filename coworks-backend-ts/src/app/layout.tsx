@@ -1,5 +1,6 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 'use client';
 
 import './globals.css'
@@ -29,6 +30,14 @@ import { Providers } from './providers'
 // Force dynamic rendering for the entire app
 export const dynamic = 'force-dynamic'
 >>>>>>> Stashed changes
+=======
+import '@/styles/globals.css'
+import { Metadata } from 'next'
+import { Providers } from './providers'
+
+// Force dynamic rendering for the entire app
+export const dynamic = 'force-dynamic'
+>>>>>>> Stashed changes
 
 export const metadata: Metadata = {
   title: 'Excel Coworks Admin Portal',
@@ -42,6 +51,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
     <html lang="en" className="h-full">
@@ -81,6 +91,11 @@ export default function RootLayout({
         </Script>
       </body>
     </html>
+=======
+    <Providers>
+      {children}
+    </Providers>
+>>>>>>> Stashed changes
 =======
     <Providers>
       {children}

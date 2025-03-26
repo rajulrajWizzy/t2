@@ -1,5 +1,6 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { NextRequest, NextResponse } from 'next/server';
 import { signToken } from '@/utils/jwt';
 import AdminModel, { AdminRole } from '@/models/admin';
@@ -7,6 +8,8 @@ import { comparePasswords } from '@/utils/password';
 
 // Set up CORS headers for all responses
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 // Explicitly set Node.js runtime for this route
@@ -29,6 +32,9 @@ import { generateAdminToken } from '@/utils/jwt';
 
 // CORS headers
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -40,6 +46,11 @@ const corsHeaders = {
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+
+>>>>>>> Stashed changes
 =======
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
@@ -156,8 +167,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.error('[Admin Login] Failed to update last login time:', updateError);
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       // Continue with login process even if updating timestamp fails
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     }
@@ -170,6 +184,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         console.error('[Admin Login] Failed to set default permissions:', permissionError);
       }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -178,6 +195,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Generate JWT token with admin data and is_admin flag
     let token;
     try {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
       token = await signToken({
@@ -189,6 +207,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         branch_id: admin.branch_id,
         is_admin: true
       });
+=======
+      token = await generateAdminToken(admin);
+>>>>>>> Stashed changes
 =======
       token = await generateAdminToken(admin);
 >>>>>>> Stashed changes

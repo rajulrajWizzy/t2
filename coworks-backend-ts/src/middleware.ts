@@ -236,6 +236,7 @@ export async function middleware(request: NextRequest) {
     
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
@@ -265,6 +266,9 @@ export async function middleware(request: NextRequest) {
       }
       
     } catch (error) {
+=======
+    if (!valid || !decoded) {
+>>>>>>> Stashed changes
 =======
     if (!valid || !decoded) {
 >>>>>>> Stashed changes

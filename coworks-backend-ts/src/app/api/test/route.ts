@@ -4,6 +4,7 @@
 =======
 // Explicitly set Node.js runtime for this route
 export const runtime = "nodejs";
+<<<<<<< Updated upstream
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
@@ -40,6 +41,8 @@ export async function OPTIONS(): Promise<NextResponse> {
 =======
 // Explicitly set Node.js runtime for this route
 export const runtime = "nodejs";
+=======
+>>>>>>> Stashed changes
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
@@ -61,6 +64,19 @@ export async function GET(): Promise<NextResponse> {
       environment: process.env.NODE_ENV || 'development'
     }
   }, { headers: corsHeaders });
+<<<<<<< Updated upstream
+=======
+}
+
+/**
+ * Handle OPTIONS request for CORS
+ */
+export async function OPTIONS(): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+>>>>>>> Stashed changes
 }
 
 /**

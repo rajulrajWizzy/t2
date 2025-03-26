@@ -241,8 +241,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 <<<<<<< Updated upstream
 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
 }
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 
@@ -263,6 +266,9 @@ function handleOptionsRequest(): NextResponse {
   });
 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
