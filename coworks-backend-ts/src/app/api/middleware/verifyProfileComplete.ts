@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 
 /**

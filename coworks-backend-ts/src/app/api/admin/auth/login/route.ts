@@ -1,15 +1,42 @@
+<<<<<<< Updated upstream
 import { NextRequest, NextResponse } from 'next/server';
 import { signToken } from '@/utils/jwt';
 import AdminModel, { AdminRole } from '@/models/admin';
 import { comparePasswords } from '@/utils/password';
 
 // Set up CORS headers for all responses
+=======
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+// Import middleware bypass configuration
+import { bypassMiddleware } from '../middleware-bypass';
+
+// Apply middleware bypass configuration
+export const config = bypassMiddleware;
+
+import { NextRequest, NextResponse } from 'next/server';
+import AdminModel from '@/models/admin';
+import { comparePasswords } from '@/utils/password';
+import { ApiResponse } from '@/types/common';
+import { generateAdminToken } from '@/utils/jwt';
+
+// CORS headers
+>>>>>>> Stashed changes
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+<<<<<<< Updated upstream
+=======
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+
+>>>>>>> Stashed changes
 /**
  * Admin login endpoint
  * @param req Request object
@@ -116,12 +143,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await admin.update({ last_login: new Date() });
     } catch (updateError) {
       console.error('[Admin Login] Failed to update last login time:', updateError);
+<<<<<<< Updated upstream
       // Continue with login process even if updating timestamp fails
+=======
+    }
+
+    if (!admin.permissions) {
+      try {
+        admin.permissions = AdminModel.getDefaultPermissions(admin.role);
+        await admin.save();
+      } catch (permissionError) {
+        console.error('[Admin Login] Failed to set default permissions:', permissionError);
+      }
+>>>>>>> Stashed changes
     }
 
     // Generate JWT token with admin data and is_admin flag
     let token;
     try {
+<<<<<<< Updated upstream
       token = await signToken({
         id: admin.id,
         email: admin.email,
@@ -131,6 +171,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         branch_id: admin.branch_id,
         is_admin: true
       });
+=======
+      token = await generateAdminToken(admin);
+>>>>>>> Stashed changes
     } catch (tokenError) {
       console.error('[Admin Login] Token generation error:', tokenError);
       return NextResponse.json(

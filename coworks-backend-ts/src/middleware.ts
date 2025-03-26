@@ -9,7 +9,12 @@ function validateEmail(email: string): boolean {
 }
 
 function validateShortCode(code: string): boolean {
-  return typeof code === 'string' && code.length >= 3 && code.length <= 10;
+  // More flexible validation for short codes:
+  // - Allow lowercase and uppercase letters
+  // - Allow digits
+  // - Allow underscore and hyphen
+  // - Length between 2 and 10 characters
+  return typeof code === 'string' && /^[a-zA-Z0-9_-]{2,10}$/.test(code);
 }
 
 function validateSeatCode(code: string): boolean {
@@ -34,14 +39,90 @@ function validateTime(time: string): boolean {
   return timeRegex.test(time);
 }
 
+// Define routes that require specific roles
+export const adminRoutes = ['/api/admin'];
+export const superAdminRoutes = ['/api/admin/super'];
+
+// Split public routes into string and regex patterns
+const publicRouteStrings = [
+  '/api/auth/register',
+  '/api/auth/login',
+  '/api/auth/refresh',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/admin/auth/login',
+  '/api/setup/database-status',
+  '/api/setup/fix-customers-table',
+  '/api/status',
+  '/api/test',
+  '/api/database-status',
+  '/api/files', // File serving endpoint
+];
+
+const publicRouteRegexes = [
+  /^\/api\/files\/.+/, // All file paths
+];
+
+// Same but as regex for more complex patterns
+export const bypassPatterns = [
+  /^\/api\/public\/.*/,     // All public API routes
+  /^\/api\/status\/?$/,     // API status endpoint
+  /^\/api\/test\/?$/,       // API test endpoint
+  /^\/api\/auth\/login\/?$/,            // Login endpoint
+  /^\/api\/auth\/register\/?$/,         // Registration endpoint
+  /^\/api\/auth\/forgot-password\/?$/,  // Forgot password
+  /^\/api\/auth\/reset-password\/?$/,   // Reset password
+  /^\/api\/admin\/auth\/login\/?$/,     // Admin login
+  /^\/api\/admin\/auth\/forgot-password\/?$/,  // Admin forgot password
+  /^\/api\/admin\/auth\/reset-password\/?$/,   // Admin reset password
+  /^\/api\/setup\/database-status\/?$/,        // Database status
+  /^\/api\/setup\/fix-customers-table\/?$/,    // Fix customers table
+  /^\/api\/setup\/env-test\/?$/,               // Environment test
+];
+
+// Function to check if a route matches any of the patterns
+function matchesRoutePattern(pathname: string, patterns: string[] | RegExp[]): boolean {
+  for (const pattern of patterns) {
+    if (typeof pattern === 'string') {
+      // Exact match
+      if (pathname === pattern) {
+        return true;
+      }
+      
+      // Pattern with trailing slash
+      if (pattern.endsWith('/') && pathname.startsWith(pattern)) {
+        return true;
+      }
+      
+      // Pattern without trailing slash - check if it's at start of path
+      if (!pattern.endsWith('/') && 
+          (pathname.startsWith(pattern + '/') || pathname === pattern)) {
+        return true;
+      }
+    } else if (pattern instanceof RegExp) {
+      // Regex pattern
+      if (pattern.test(pathname)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 // Middleware function to handle token verification and request validation
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Skip middleware for non-API routes and auth-related endpoints
+  // Log the requested path for debugging
+  console.log(`[Middleware] Path accessed: ${pathname}`);
+  
+  // Skip middleware for non-API routes and public endpoints
   if (!pathname.startsWith('/api/') || 
-      pathname.startsWith('/api/auth/') || 
-      pathname === '/api/health') {
+      matchesRoutePattern(pathname, publicRouteStrings) ||
+      matchesRoutePattern(pathname, publicRouteRegexes) ||
+      matchesRoutePattern(pathname, bypassPatterns)) {
+    console.log(`[Middleware] Allowing public path: ${pathname}`);
     return NextResponse.next();
   }
 
@@ -126,12 +207,34 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Paths that require token verification - all /api/ routes except auth and public endpoints
-  if (pathname.startsWith('/api/') && 
-      !pathname.startsWith('/api/auth/') && 
-      !pathname.startsWith('/api/public/') && 
-      pathname !== '/api/health') {
+  // Securely extract token from Authorization header
+  let authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
+  
+  // Check if header exists and has correct format (case insensitive)
+  if (!authHeader || 
+     (!authHeader.toLowerCase().startsWith('bearer ') && 
+      !authHeader.toLowerCase().startsWith('bearer:'))) {
+    return NextResponse.json(
+      { success: false, message: 'Invalid authorization header format' },
+      { status: 401 }
+    );
+  }
+  
+  // Standardize the format regardless of how it was provided
+  authHeader = authHeader.replace(/^bearer:?\s*/i, '');
+  
+  // Ensure token is not empty
+  if (!authHeader || authHeader.trim() === '') {
+    return NextResponse.json(
+      { success: false, message: 'Authorization token is required' },
+      { status: 401 }
+    );
+  }
+  
+  try {
+    const { valid, decoded, role } = await verifyToken(authHeader.trim());
     
+<<<<<<< Updated upstream
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
@@ -161,32 +264,69 @@ export async function middleware(request: NextRequest) {
       }
       
     } catch (error) {
+=======
+    if (!valid || !decoded) {
+>>>>>>> Stashed changes
       return NextResponse.json(
         { success: false, message: 'Invalid or expired authorization token' },
         { status: 401 }
       );
     }
-  }
-
-  // Check for POST/PUT/PATCH requests to validate request body
-  if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
-    try {
-      // For JSON requests, clone and validate content
-      const contentType = request.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        // We'll do basic validation in the route handlers
-        // This is just a safeguard against completely malformed requests
-        await request.clone().json();
-      }
-    } catch (error) {
+    
+    // Validate auth token claims
+    if (!decoded.id || !decoded.email) {
       return NextResponse.json(
-        { success: false, message: 'Invalid JSON in request body' },
-        { status: 400 }
+        { success: false, message: 'Invalid authorization token' },
+        { status: 401 }
       );
     }
+    
+    // Email validation
+    if (!validateEmail(decoded.email as string)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid email in authorization token' },
+        { status: 401 }
+      );
+    }
+    
+    // Role-based access control
+    if (matchesRoutePattern(pathname, superAdminRoutes) && role !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized: Super admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    if (matchesRoutePattern(pathname, adminRoutes) && role !== 'admin' && role !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Add user info to request headers for downstream handlers
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('X-User-Id', decoded.id.toString());
+    requestHeaders.set('X-User-Email', decoded.email as string);
+    requestHeaders.set('X-User-Role', role || 'user');
+    
+    // Continue with updated headers
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Authentication failed', 
+        error: (error as Error).message 
+      },
+      { status: 401 }
+    );
   }
-
-  return NextResponse.next();
 }
 
 export const config = {

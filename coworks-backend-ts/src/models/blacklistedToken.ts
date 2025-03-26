@@ -4,6 +4,9 @@ import sequelize from '@/config/database';
 interface BlacklistedTokenAttributes {
   id: number;
   token: string;
+  user_id?: number | null;
+  token_id?: string | null;
+  blacklisted_at: Date;
   expires_at: Date;
   created_at: Date;
   updated_at: Date;
@@ -16,6 +19,9 @@ interface BlacklistedTokenCreationAttributes extends Optional<BlacklistedTokenAt
 class BlacklistedTokenModel extends Model<BlacklistedTokenAttributes, BlacklistedTokenCreationAttributes> implements BlacklistedTokenAttributes {
   public id!: number;
   public token!: string;
+  public user_id?: number | null;
+  public token_id?: string | null;
+  public blacklisted_at!: Date;
   public expires_at!: Date;
   public created_at!: Date;
   public updated_at!: Date;
@@ -32,6 +38,23 @@ BlacklistedTokenModel.init(
       type: DataTypes.TEXT,
       allowNull: false,
       unique: true,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    token_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    blacklisted_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     expires_at: {
       type: DataTypes.DATE,
@@ -52,6 +75,16 @@ BlacklistedTokenModel.init(
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+    indexes: [
+      {
+        name: 'idx_blacklisted_tokens_token_id',
+        fields: ['token_id'],
+      },
+      {
+        name: 'idx_blacklisted_tokens_user_id',
+        fields: ['user_id'],
+      }
+    ]
   }
 );
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 
@@ -21,10 +21,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: 'Invalid token',
+        error: 'INVALID_TOKEN',
+        data: null
+      } as ApiResponse<null>, { status: 401 });
     }
     
     // Parse the request body
@@ -33,8 +35,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!Array.isArray(body.branches) || body.branches.length === 0) {
       return NextResponse.json({
         success: false,
-        message: 'Request must include an array of branches'
-      }, { status: 400 });
+        message: 'Branch data is required',
+        error: 'VALIDATION_ERROR',
+        data: null
+      } as ApiResponse<null>, { status: 400 });
     }
 
     // Validate and prepare branches for creation
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Create branches in bulk
     const createdBranches = await models.Branch.bulkCreate(branchesToCreate);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<any[]> = {
       success: true,
       message: `Successfully created ${createdBranches.length} branches`,
       data: createdBranches
@@ -123,10 +127,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error creating branches in bulk:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to create branches',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });

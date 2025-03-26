@@ -8,9 +8,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Authorization token is required'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -18,36 +19,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     const token = authHeader.split(' ')[1];
     
+    // Blacklist the token
     try {
-      // Decode the token to get expiration time (without verifying)
-      const decoded = jwt.decode(token) as { exp?: number };
+      // Parse token to get expiration time if possible
+      let expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // Default: 24 hours from now
       
-      if (!decoded || !decoded.exp) {
-        return NextResponse.json({
-          success: false,
-          message: 'Invalid token format'
-        }, { status: 400 });
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded && typeof decoded === 'object' && decoded.exp) {
+          expiryDate = new Date(decoded.exp * 1000);
+        }
+      } catch (err) {
+        console.warn('Could not decode token to get expiry, using default');
       }
       
-      // Store the token in the blacklist
       await models.BlacklistedToken.create({
         token,
-        expires_at: new Date(decoded.exp * 1000) // Convert UNIX timestamp to Date
+        blacklisted_at: new Date(),
+        expires_at: expiryDate
       });
       
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: true,
-        message: 'Logout successful'
+        message: 'Logged out successfully',
+        data: null
       };
       
       return NextResponse.json(response);
     } catch (error) {
-      console.error('Error decoding token:', error);
+      console.error('Error during logout:', error);
       
-      return NextResponse.json({
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Invalid token'
-      }, { status: 400 });
+        message: 'Failed to log out',
+        error: (error as Error).message,
+        data: null
+      };
+      
+      return NextResponse.json(response, { status: 500 });
     }
   } catch (error) {
     console.error('Logout error:', error);

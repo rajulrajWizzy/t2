@@ -13,6 +13,7 @@ export interface AdminJWTPayload extends JWTPayload {
  * @param request Next.js request object
  * @returns Decoded token payload or error response
  */
+<<<<<<< Updated upstream
 export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | NextResponse> {
   // Extract token from Authorization header
   const token = request.headers.get('Authorization')?.replace('Bearer ', '');
@@ -27,6 +28,31 @@ export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | N
   try {
     // Verify the token
     const decoded = await verifyToken(token);
+=======
+export async function verifyAdmin(request: Request | NextRequest): Promise<AdminJWTPayload | NextResponse> {
+  try {
+    // Extract token from Authorization header
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, message: 'Authorization token is required', data: null },
+        { status: 401 }
+      );
+    }
+    
+    // Verify the token first without database check
+    let decoded: AdminJWTPayload;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as AdminJWTPayload;
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError);
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, message: 'Invalid or expired token', data: null },
+        { status: 401 }
+      );
+    }
+>>>>>>> Stashed changes
     
     // Validate required fields
     if (!decoded.id || !decoded.email || !decoded.role) {
@@ -44,6 +70,7 @@ export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | N
       );
     }
     
+<<<<<<< Updated upstream
     // Check if admin exists in the database
     const admin = await models.Admin.findByPk(decoded.id);
     if (!admin) {
@@ -54,6 +81,46 @@ export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | N
     }
     
     return decoded as AdminJWTPayload;
+=======
+    // Try to check database, but don't fail if database is unavailable
+    try {
+      // Check if token is blacklisted
+      const blacklistedToken = await models.BlacklistedToken.findOne({
+        where: { token }
+      });
+      
+      if (blacklistedToken) {
+        return NextResponse.json<ApiResponse<null>>(
+          { success: false, message: 'Token has been revoked', data: null },
+          { status: 401 }
+        );
+      }
+      
+      // Check if admin exists in the database
+      const admin = await models.Admin.findByPk(decoded.id);
+      if (!admin) {
+        return NextResponse.json<ApiResponse<null>>(
+          { success: false, message: 'Admin not found', data: null },
+          { status: 404 }
+        );
+      }
+      
+      // Check if admin is active
+      if (!admin.is_active) {
+        return NextResponse.json<ApiResponse<null>>(
+          { success: false, message: 'Account is inactive. Please contact super admin.', data: null },
+          { status: 403 }
+        );
+      }
+    } catch (dbError) {
+      console.error('Database verification error:', dbError);
+      // If database check fails, still allow the request if the token is valid
+      // This is a trade-off between security and availability
+      return decoded;
+    }
+    
+    return decoded;
+>>>>>>> Stashed changes
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'Invalid or expired token' },

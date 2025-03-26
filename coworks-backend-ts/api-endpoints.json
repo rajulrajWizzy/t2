@@ -1,0 +1,629 @@
+{
+  "admin": [],
+  "user": [
+    {
+      "path": "/api/auth/register",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/auth/register/route.ts",
+      "description": "Register a new user account"
+    },
+    {
+      "path": "/api/auth/login",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/auth/login/route.ts",
+      "description": "Login with user credentials"
+    },
+    {
+      "path": "/api/auth/refresh",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/auth/refresh/route.ts",
+      "description": "Refresh access token using refresh token"
+    },
+    {
+      "path": "/api/auth/forgot-password",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/auth/forgot-password/route.ts",
+      "description": "Request password reset email"
+    },
+    {
+      "path": "/api/auth/reset-password",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/auth/reset-password/route.ts",
+      "description": "Reset password using token from email"
+    },
+    {
+      "path": "/api/auth/logout",
+      "method": "POST",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/auth/logout/route.ts",
+      "description": "Logout from user account"
+    },
+    {
+      "path": "/api/setup/fix-customers-table",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/setup/fix-customers-table/route.ts",
+      "description": "Fix customers table by adding missing columns"
+    },
+    {
+      "path": "/api/admin/setup/fix-customers-table",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/setup/fix-customers-table/route.ts",
+      "description": "Admin endpoint to fix customers table by adding missing columns"
+    },
+    {
+      "path": "/api/admin/branches",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/branches/route.ts"
+    },
+    {
+      "path": "/api/admin/branches",
+      "method": "POST",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/branches/route.ts"
+    },
+    {
+      "path": "/api/admin/customers/verify",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/customers/verify/route.ts"
+    },
+    {
+      "path": "/api/admin/customers/verify",
+      "method": "POST",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/customers/verify/route.ts"
+    },
+    {
+      "path": "/api/admin/dashboard/stats",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/dashboard/stats/route.ts"
+    },
+    {
+      "path": "/api/admin/profile",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/profile/route.ts"
+    },
+    {
+      "path": "/api/admin/profile/update",
+      "method": "PUT",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/profile/update/route.ts"
+    },
+    {
+      "path": "/api/admin/seating-types",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seating-types/route.ts"
+    },
+    {
+      "path": "/api/admin/seating-types",
+      "method": "POST",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seating-types/route.ts"
+    },
+    {
+      "path": "/api/admin/seating-types/:id",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seating-types/[id]/route.ts"
+    },
+    {
+      "path": "/api/admin/seating-types/:id",
+      "method": "PUT",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seating-types/[id]/route.ts"
+    },
+    {
+      "path": "/api/admin/seating-types/:id",
+      "method": "DELETE",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seating-types/[id]/route.ts"
+    },
+    {
+      "path": "/api/admin/seats/capacity",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seats/capacity/route.ts"
+    },
+    {
+      "path": "/api/admin/seats/capacity",
+      "method": "POST",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seats/capacity/route.ts"
+    },
+    {
+      "path": "/api/admin/seats/capacity",
+      "method": "PATCH",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/seats/capacity/route.ts"
+    },
+    {
+      "path": "/api/admin/super/stats",
+      "method": "GET",
+      "authRequirement": "Super Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/super/stats/route.ts"
+    },
+    {
+      "path": "/api/admin/support/tickets",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/support/tickets/route.ts"
+    },
+    {
+      "path": "/api/admin/support/tickets/:ticket_id/messages",
+      "method": "POST",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/support/tickets/[ticket_id]/messages/route.ts"
+    },
+    {
+      "path": "/api/admin/support/tickets/:ticket_id",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/support/tickets/[ticket_id]/route.ts"
+    },
+    {
+      "path": "/api/admin/support/tickets/:ticket_id",
+      "method": "PUT",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/support/tickets/[ticket_id]/route.ts"
+    },
+    {
+      "path": "/api/admin/users/create",
+      "method": "POST",
+      "authRequirement": "Super Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/users/create/route.ts"
+    },
+    {
+      "path": "/api/admin/users",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/users/route.ts"
+    },
+    {
+      "path": "/api/admin/users/:id",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/users/[id]/route.ts"
+    },
+    {
+      "path": "/api/admin/users/:id",
+      "method": "PUT",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/users/[id]/route.ts"
+    },
+    {
+      "path": "/api/admin/users/:id",
+      "method": "DELETE",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/users/[id]/route.ts"
+    },
+    {
+      "path": "/api/branches/images/upload",
+      "method": "POST",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/images/upload/route.ts"
+    },
+    {
+      "path": "/api/branches/images/upload",
+      "method": "DELETE",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/images/upload/route.ts"
+    },
+    {
+      "path": "/api/branches/images/upload",
+      "method": "PATCH",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/images/upload/route.ts"
+    },
+    {
+      "path": "/api/profile/upload",
+      "method": "POST",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/profile/upload/route.ts"
+    },
+    {
+      "path": "/api/profile/upload",
+      "method": "PATCH",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/profile/upload/route.ts"
+    },
+    {
+      "path": "/api/support/tickets/messages",
+      "method": "POST",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/support/tickets/messages/route.ts"
+    },
+    {
+      "path": "/api/support/tickets",
+      "method": "GET",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/support/tickets/route.ts"
+    },
+    {
+      "path": "/api/support/tickets",
+      "method": "POST",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/support/tickets/route.ts"
+    },
+    {
+      "path": "/api/support/tickets/:ticket_id",
+      "method": "GET",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/support/tickets/[ticket_id]/route.ts"
+    },
+    {
+      "path": "/api/support/tickets/:ticket_id",
+      "method": "PUT",
+      "authRequirement": "User",
+      "pathParams": [],
+      "filePath": "src/app/api/support/tickets/[ticket_id]/route.ts"
+    }
+  ],
+  "auth": [],
+  "public": [
+    {
+      "path": "/api/admin/auth/login",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/auth/login/route.ts"
+    },
+    {
+      "path": "/api/admin/auth/login",
+      "method": "OPTIONS",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/admin/auth/login/route.ts"
+    },
+    {
+      "path": "/api/bookings",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/bookings/route.ts"
+    },
+    {
+      "path": "/api/bookings",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/bookings/route.ts"
+    },
+    {
+      "path": "/api/bookings/:id",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/bookings/[id]/route.ts"
+    },
+    {
+      "path": "/api/bookings/:id",
+      "method": "PUT",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/bookings/[id]/route.ts"
+    },
+    {
+      "path": "/api/bookings/:id",
+      "method": "DELETE",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/bookings/[id]/route.ts"
+    },
+    {
+      "path": "/api/branches/bulk",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/bulk/route.ts"
+    },
+    {
+      "path": "/api/branches",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/route.ts"
+    },
+    {
+      "path": "/api/branches",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/route.ts"
+    },
+    {
+      "path": "/api/branches/stats",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/stats/route.ts"
+    },
+    {
+      "path": "/api/branches/:id",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/[id]/route.ts"
+    },
+    {
+      "path": "/api/branches/:id",
+      "method": "PUT",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/[id]/route.ts"
+    },
+    {
+      "path": "/api/branches/:id",
+      "method": "DELETE",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/[id]/route.ts"
+    },
+    {
+      "path": "/api/branches/:id/seats",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/branches/[id]/seats/route.ts"
+    },
+    {
+      "path": "/api/database-status",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/database-status/route.ts"
+    },
+    {
+      "path": "/api/database-status",
+      "method": "OPTIONS",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/database-status/route.ts"
+    },
+    {
+      "path": "/api/payments",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/payments/route.ts"
+    },
+    {
+      "path": "/api/payments",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/payments/route.ts"
+    },
+    {
+      "path": "/api/payments/:id",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/payments/[id]/route.ts"
+    },
+    {
+      "path": "/api/payments/:id",
+      "method": "PUT",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/payments/[id]/route.ts"
+    },
+    {
+      "path": "/api/placeholder/:path*",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/placeholder/[...path]/route.ts"
+    },
+    {
+      "path": "/api/profile",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/profile/route.ts"
+    },
+    {
+      "path": "/api/profile",
+      "method": "PATCH",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/profile/route.ts"
+    },
+    {
+      "path": "/api/profile/verification-status",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/profile/verification-status/route.ts"
+    },
+    {
+      "path": "/api/seat",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seat/route.ts"
+    },
+    {
+      "path": "/api/seat",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seat/route.ts"
+    },
+    {
+      "path": "/api/seat/:id",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seat/[id]/route.ts"
+    },
+    {
+      "path": "/api/seat/:id",
+      "method": "PUT",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seat/[id]/route.ts"
+    },
+    {
+      "path": "/api/seat/:id",
+      "method": "DELETE",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seat/[id]/route.ts"
+    },
+    {
+      "path": "/api/seating-types",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seating-types/route.ts"
+    },
+    {
+      "path": "/api/seating-types",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/seating-types/route.ts"
+    },
+    {
+      "path": "/api/slots/available",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/slots/available/route.ts"
+    },
+    {
+      "path": "/api/slots/branch-seating",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/slots/branch-seating/route.ts"
+    },
+    {
+      "path": "/api/slots/categorized",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/slots/categorized/route.ts"
+    },
+    {
+      "path": "/api/slots",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/slots/route.ts"
+    },
+    {
+      "path": "/api/slots",
+      "method": "POST",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/slots/route.ts"
+    },
+    {
+      "path": "/api/slots/seating-type",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/slots/seating-type/route.ts"
+    },
+    {
+      "path": "/api/status",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/status/route.ts"
+    },
+    {
+      "path": "/api/test",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/test/route.ts"
+    },
+    {
+      "path": "/api/upload",
+      "method": "POST",
+      "authRequirement": "Any",
+      "pathParams": [],
+      "filePath": "src/app/api/upload/route.ts",
+      "description": "Upload files to the server"
+    },
+    {
+      "path": "/api/files/:path*",
+      "method": "GET",
+      "authRequirement": "None",
+      "pathParams": ["path"],
+      "filePath": "src/app/api/files/[...path]/route.ts",
+      "description": "Serve uploaded files"
+    },
+    {
+      "path": "/api/uploads",
+      "method": "GET",
+      "authRequirement": "Admin",
+      "pathParams": [],
+      "filePath": "src/app/api/uploads/route.ts",
+      "description": "List all uploaded files (admin only)"
+    },
+    {
+      "path": "/api/uploads",
+      "method": "OPTIONS",
+      "authRequirement": "None",
+      "pathParams": [],
+      "filePath": "src/app/api/uploads/route.ts",
+      "description": "CORS preflight for uploads listing"
+    }
+  ]
+}

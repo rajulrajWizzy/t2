@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 'use client';
 
 import './globals.css'
@@ -11,10 +12,19 @@ const inter = Inter({
   fallback: ['system-ui', 'Arial', 'sans-serif'],
   display: 'swap',
 });
+=======
+import '@/styles/globals.css'
+import { Metadata } from 'next'
+import { Providers } from './providers'
+
+// Force dynamic rendering for the entire app
+export const dynamic = 'force-dynamic'
+>>>>>>> Stashed changes
 
 export const metadata: Metadata = {
-  title: 'Coworks Backend API',
-  description: 'Coworking space management system API',
+  title: 'Excel Coworks Admin Portal',
+  description: 'Administration portal for Excel Coworks booking management',
+  viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({
@@ -23,6 +33,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
+<<<<<<< Updated upstream
     <html lang="en" className="h-full">
       <head>
         {/* Fallback CSS link for production builds */}
@@ -60,5 +71,10 @@ export default function RootLayout({
         </Script>
       </body>
     </html>
+=======
+    <Providers>
+      {children}
+    </Providers>
+>>>>>>> Stashed changes
   )
 }

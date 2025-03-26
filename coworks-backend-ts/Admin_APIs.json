@@ -1,0 +1,524 @@
+{
+  "info": {
+    "_postman_id": "c4c8a3e5-ff12-4ead-9c7d-6803bee75678",
+    "name": "CoWorks Admin APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "APIs for CoWorks admin operations"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin@example.com\",\n  \"password\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auth", "login"]
+            },
+            "description": "Log in as an admin. The username field accepts either email or username."
+          }
+        },
+        {
+          "name": "Admin Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auth", "forgot-password"]
+            },
+            "description": "Request a password reset email for admin account"
+          }
+        },
+        {
+          "name": "Admin Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"password\": \"NewAdminPass123!\",\n  \"confirmPassword\": \"NewAdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auth", "reset-password"]
+            },
+            "description": "Reset admin password using token from email"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Fix Customers Table",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/setup/fix-customers-table",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "setup", "fix-customers-table"]
+            },
+            "description": "Fix the customers table schema by adding missing columns. Call this endpoint if you encounter 'column \"proof_of_identity\" does not exist' errors during registration or login. Administrative version of the public endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile Management",
+      "item": [
+        {
+          "name": "Get Admin Profile",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Admin Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Admin Name\",\n  \"phone\": \"+9876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/profile/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "profile", "update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Branch Management",
+      "item": [
+        {
+          "name": "Get All Branches",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/branches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "branches"]
+            }
+          }
+        },
+        {
+          "name": "Create Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Branch\",\n  \"address\": \"123 Main St, New City\",\n  \"short_code\": \"NYC001\",\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060,\n  \"contact_phone\": \"+1234567890\",\n  \"contact_email\": \"branch@example.com\",\n  \"is_active\": true,\n  \"amenities\": [\"WiFi\", \"Coffee\", \"Parking\"],\n  \"opening_time\": \"09:00:00\",\n  \"closing_time\": \"18:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/branches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "branches"]
+            }
+          }
+        },
+        {
+          "name": "Update Branch",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Branch Name\",\n  \"is_active\": true,\n  \"opening_time\": \"08:00:00\",\n  \"closing_time\": \"19:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "1"]
+            }
+          }
+        },
+        {
+          "name": "Upload Branch Image",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "branch_id", "value": "1"},
+                {"key": "file", "type": "file", "src": "/path/to/branch-image.jpg"},
+                {"key": "type", "value": "main"}
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/images/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "images", "upload"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seating Types Management",
+      "item": [
+        {
+          "name": "Get All Seating Types",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seating-types",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "seating-types"]
+            }
+          }
+        },
+        {
+          "name": "Create Seating Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Executive Suite\",\n  \"code\": \"ES\",\n  \"description\": \"Premium private suite with executive amenities\",\n  \"base_price\": 2500,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seating-types",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "seating-types"]
+            }
+          }
+        },
+        {
+          "name": "Update Seating Type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Seating Type\",\n  \"base_price\": 3000,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seating-types/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "seating-types", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seats Management",
+      "item": [
+        {
+          "name": "Get Seats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/seat?branch_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seat"],
+              "query": [
+                {"key": "branch_id", "value": "1"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Seat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_id\": 1,\n  \"seating_type_id\": 2,\n  \"seat_number\": \"HD-101\",\n  \"status\": \"available\",\n  \"floor\": 1,\n  \"capacity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/seat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seat"]
+            }
+          }
+        },
+        {
+          "name": "Manage Seat Capacity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seat_id\": 1,\n  \"capacity\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seats/capacity",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "seats", "capacity"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Management",
+      "item": [
+        {
+          "name": "Get Customers",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer By ID",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Verify Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": 1,\n  \"verification_status\": \"APPROVED\",\n  \"is_identity_verified\": true,\n  \"is_address_verified\": true,\n  \"verification_notes\": \"All documents verified successfully\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "customers", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Get Customers Pending Verification",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers/verify?status=PENDING",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "customers", "verify"],
+              "query": [
+                {"key": "status", "value": "PENDING"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings Management",
+      "item": [
+        {
+          "name": "Get Bookings",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        },
+        {
+          "name": "Get Booking By ID",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Booking Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\",\n  \"admin_notes\": \"Booking confirmed after payment verification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Admin Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "dashboard", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Support Management",
+      "item": [
+        {
+          "name": "Get Support Tickets",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/support/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "support", "tickets"]
+            }
+          }
+        },
+        {
+          "name": "Get Ticket Details",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/support/tickets/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "support", "tickets", "1"]
+            }
+          }
+        },
+        {
+          "name": "Respond to Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"We are working on resolving your issue.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/support/tickets/1/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "support", "tickets", "1", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Update Ticket Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"admin_notes\": \"Issue resolved as requested\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/support/tickets/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "support", "tickets", "1"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://your-actual-vercel-url.vercel.app",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "your-admin-token-here",
+      "type": "string"
+    }
+  ]
+} 

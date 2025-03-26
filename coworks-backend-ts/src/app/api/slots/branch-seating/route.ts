@@ -105,8 +105,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!branch) {
       return NextResponse.json({
         success: false,
-        message: 'Branch not found'
-      }, { status: 404 });
+        message: 'Branch not found',
+        data: null
+      } as ApiResponse<null>, { status: 404 });
     }
     
     // Find the seating type
@@ -114,9 +115,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (seating_type_id) {
       const seatingTypeIdNum = parseInt(seating_type_id);
       if (isNaN(seatingTypeIdNum)) {
-        const response: ApiResponse = {
+        const response: ApiResponse<null> = {
           success: false,
-          message: 'Seating type ID must be a valid number'
+          message: 'Seating type ID must be a valid number',
+          data: null
         };
         
         return NextResponse.json(response, { status: 400 });
@@ -137,6 +139,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
+<<<<<<< Updated upstream
     // Find all time slots for this branch, date, and seating type
     const timeSlots = await models.TimeSlot.findAll({
       where: {
@@ -192,15 +195,132 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         bookedSlots.push(slot);
       } else if (slot.Seat?.availability_status === 'MAINTENANCE') {
         maintenanceSlots.push(slot);
+=======
+    // Get seats for this branch filtered by seating type if specified
+    const seatsQuery: any = {
+      where: { branch_id: branch.id },
+      attributes: ['id', 'seat_number', 'seat_code', 'price', 'availability_status'],
+      include: [{
+        model: models.SeatingType,
+        as: 'SeatingType',
+        attributes: ['id', 'name', 'short_code']
+      }]
+    };
+    
+    // If a specific seating type is requested, filter seats by that type
+    if (Object.keys(seatingTypeWhere).length > 0) {
+      seatsQuery.include[0].where = seatingTypeWhere;
+    }
+    
+    // Retrieve seats with their seating types
+    const seats = await models.Seat.findAll(seatsQuery);
+    
+    // Group seats by seating type
+    const seatingTypeMap = new Map();
+    
+    // First add all seating types from the query
+    seatingTypes.forEach(st => {
+      seatingTypeMap.set(st.id, {
+        id: st.id,
+        name: st.name,
+        short_code: st.short_code,
+        description: st.description,
+        hourly_rate: st.hourly_rate,
+        is_hourly: st.is_hourly,
+        min_booking_duration: st.min_booking_duration,
+        min_seats: st.min_seats,
+        seats: [],
+        seat_count: 0
+      });
+    });
+    
+    // Then add seats to their respective seating types
+    seats.forEach(seat => {
+      const seatingTypeId = (seat as any).SeatingType.id;
+      
+      // If this seating type wasn't previously added, add it now
+      if (!seatingTypeMap.has(seatingTypeId)) {
+        seatingTypeMap.set(seatingTypeId, {
+          id: (seat as any).SeatingType.id,
+          name: (seat as any).SeatingType.name,
+          short_code: (seat as any).SeatingType.short_code,
+          seats: [],
+          seat_count: 0
+        });
+      }
+      
+      // Only include seat ID for dedicated desk types, as specified in requirements
+      const seatData = {
+        seat_number: seat.seat_number,
+        seat_code: seat.seat_code,
+        price: seat.price,
+        availability_status: seat.availability_status
+      };
+      
+      // Add ID only for dedicated desk as per requirements
+      if ((seat as any).SeatingType.name === 'DEDICATED_DESK') {
+        (seatData as any).id = seat.id;
+      }
+      
+      seatingTypeMap.get(seatingTypeId).seats.push(seatData);
+      seatingTypeMap.get(seatingTypeId).seat_count++;
+    });
+    
+    // Format the response
+    const branchWithSeatingTypes = {
+      ...branch.toJSON(),
+      seating_types: Array.from(seatingTypeMap.values()),
+      total_seats: seats.length
+    };
+    
+    // Check for branch images specific to seating type
+    try {
+      const branchImages = await models.BranchImage.findAll({
+        where: { 
+          branch_id: branch.id,
+          ...(Object.keys(seatingTypeWhere).length > 0 ? { seating_type: seatingTypes.map(st => st.id) } : {})
+        }
+      });
+      
+      if (branchImages && branchImages.length > 0) {
+        // Process images and group by seating type
+        const imagesBySeatingType = new Map();
+        
+        branchImages.forEach(img => {
+          const seatingTypeId = (img as any).seating_type || (img as any).seating_type_id;
+          if (!imagesBySeatingType.has(seatingTypeId)) {
+            imagesBySeatingType.set(seatingTypeId, []);
+          }
+          imagesBySeatingType.get(seatingTypeId).push(img.image_url);
+        });
+        
+        // Add images to each seating type
+        Array.from(seatingTypeMap.values()).forEach(st => {
+          const images = imagesBySeatingType.get(st.id) || [];
+          st.images = images;
+        });
+>>>>>>> Stashed changes
       }
     }
     
+<<<<<<< Updated upstream
     const branchInfo: BranchInfo = {
       id: branch.id,
       name: branch.name,
       location: branch.location,
       address: branch.address
     };
+=======
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Branch seating data retrieved successfully',
+      data: branchWithSeatingTypes
+    };
+    
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error('Error fetching branch with seating:', error);
+>>>>>>> Stashed changes
     
     // Only add short_code if it exists
     if (branch.short_code) {

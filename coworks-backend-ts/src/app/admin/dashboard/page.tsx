@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '../../../utils/bookingCalculations';
 
+<<<<<<< Updated upstream
 interface BookingSummary {
   totalBookings: number;
   activeBookings: number;
@@ -28,6 +29,14 @@ interface BookingSummary {
     totalAmount: number;
     status: string;
   }[];
+=======
+export const dynamic = 'force-dynamic'
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+>>>>>>> Stashed changes
 }
 
 export default function AdminDashboard() {

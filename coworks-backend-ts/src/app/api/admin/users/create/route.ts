@@ -75,12 +75,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // In a real app, you would:
-    // 1. Check if email already exists
-    // 2. Hash the password
-    // 3. Save the user to database
-    // 4. Remove password from the response
-    
     // Create the user (mock function)
     const newUser = await createAdminUser(userData);
     

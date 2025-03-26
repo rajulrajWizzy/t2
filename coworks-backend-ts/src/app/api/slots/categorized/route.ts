@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { Op } from 'sequelize';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import { SeatingTypeEnum } from '@/types/seating';
 
@@ -185,8 +185,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    const response: ApiResponse = {
+    const response: ApiResponse<CategorizedResult> = {
       success: true,
+      message: 'Slots categorized successfully',
       data: result
     };
     
@@ -194,10 +195,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error fetching categorized time slots:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch categorized time slots',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });

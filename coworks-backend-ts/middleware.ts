@@ -3,18 +3,28 @@ import type { NextRequest } from 'next/server';
 
 // Paths that don't require authentication
 const PUBLIC_PATHS: string[] = [
+  // Auth endpoints
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
-  '/',
+  '/api/auth/logout',
+  
+  // Admin auth endpoints
+  '/api/admin/auth/login',
+  '/api/admin/auth/forgot-password',
+  '/api/admin/auth/reset-password',
+  
+  // Public status endpoints
   '/api/test',
   '/api/health',
   '/api/status',
-  '/api/database-status',  // New database status endpoint
-  '/admin/login',
+  '/api/database-status',
+  
+  // Web routes
+  '/',
   '/admin',
-  '/api/admin/auth/login'  // Make sure admin login endpoint is public
+  '/admin/login'
 ];
 
 export function middleware(request: NextRequest) {
@@ -24,11 +34,12 @@ export function middleware(request: NextRequest) {
   // This check is very permissive to prevent blocking any important paths
   if (
     PUBLIC_PATHS.includes(path) || 
+    path.startsWith('/api/auth/') ||         // All auth endpoints are public
     path.startsWith('/api/admin/auth/') ||   // All admin auth endpoints are public
     path.startsWith('/css') || 
     path.startsWith('/_next') ||
     path.startsWith('/public') ||
-    path.includes('.') ||                  // Files with extensions (e.g. favicon.ico)
+    path.includes('.') ||                    // Files with extensions (e.g. favicon.ico)
     path.startsWith('/images')
   ) {
     console.log(`[Middleware] Allowing public path: ${path}`);
@@ -42,7 +53,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For API routes, we'll let the route handlers handle authentication
+  // For API routes, we'll let the inner API middleware handle authentication
   if (path.startsWith('/api/')) {
     console.log(`[Middleware] API path accessed: ${path}`);
     return NextResponse.next();

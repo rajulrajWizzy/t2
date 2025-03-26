@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+<<<<<<< Updated upstream
 export default function AdminLogin() {
+=======
+export const dynamic = 'force-dynamic'
+
+function LoginForm() {
+  const { login, error, loading, clearError } = useAuth();
+>>>>>>> Stashed changes
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

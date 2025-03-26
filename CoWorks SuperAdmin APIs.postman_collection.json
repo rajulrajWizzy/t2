@@ -1,0 +1,925 @@
+{
+	"info": {
+		"_postman_id": "b7ffb66b-c983-4a0c-9b82-d41db2adbd40",
+		"name": "CoWorks SuperAdmin APIs",
+		"description": "APIs for CoWorks super admin operations",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42603123",
+		"_collection_link": "https://wizzybox-coworks-dev.postman.co/workspace/coworks-test~b8106858-de3d-487e-a664-30898a2c26d2/collection/42603123-b7ffb66b-c983-4a0c-9b82-d41db2adbd40?action=share&source=collection_link&creator=42603123"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "SuperAdmin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"superadmin@example.com\",\n  \"password\": \"SuperAdmin123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Log in as a super admin. The username field accepts either email or username."
+					},
+					"response": []
+				},
+				{
+					"name": "SuperAdmin Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"superadmin@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Request a password reset email for super admin account"
+					},
+					"response": []
+				},
+				{
+					"name": "SuperAdmin Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"password\": \"NewSuperAdmin123!\",\n  \"confirmPassword\": \"NewSuperAdmin123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"auth",
+								"reset-password"
+							]
+						},
+						"description": "Reset super admin password using token from email"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "Fix Customers Table",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/setup/fix-customers-table",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"setup",
+								"fix-customers-table"
+							]
+						},
+						"description": "Fix the customers table schema by adding missing columns. Super admin privileged endpoint to fix database issues."
+					},
+					"response": []
+				},
+				{
+					"name": "Database Health Check",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/database-status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"database-status"
+							]
+						},
+						"description": "Check database connection and table status"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin Management",
+			"item": [
+				{
+					"name": "Get All Admins",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Admin by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Admin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"New Admin\",\n  \"email\": \"newadmin@example.com\",\n  \"password\": \"Admin123!\",\n  \"role\": \"branch_admin\",\n  \"permissions\": [\"manage_bookings\", \"manage_customers\"],\n  \"assigned_branches\": [1, 2]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/create",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Admin",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Admin Name\",\n  \"role\": \"admin\",\n  \"permissions\": [\"manage_bookings\", \"manage_customers\", \"manage_branches\"],\n  \"assigned_branches\": [1, 2, 3]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Admin",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Admin Permissions",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"permissions\": {\n    \"seats\": [\"read\", \"create\", \"update\"],\n    \"branches\": [\"read\"],\n    \"customers\": [\"read\"],\n    \"bookings\": [\"read\", \"update\"],\n    \"support\": [\"read\", \"create\", \"update\"]\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/2/permissions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"2",
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "System Configuration",
+			"item": [
+				{
+					"name": "Get Seating Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seating-types",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"seating-types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seating Type by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seating-types/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"seating-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Seating Type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Premium Suite\",\n  \"code\": \"PS\",\n  \"description\": \"Luxurious private office with premium amenities\",\n  \"base_price\": 3000,\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seating-types",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"seating-types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Seating Type",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Seating Type\",\n  \"description\": \"Updated description\",\n  \"base_price\": 3500,\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seating-types/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"seating-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Seating Type",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seating-types/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"seating-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Get Overall Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Revenue Reports",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=revenue&period=monthly",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "revenue"
+								},
+								{
+									"key": "period",
+									"value": "monthly"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booking Trends",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=bookings&period=weekly",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "bookings"
+								},
+								{
+									"key": "period",
+									"value": "weekly"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Branch Comparison",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=branch_comparison&branch_ids=1,2,3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "branch_comparison"
+								},
+								{
+									"key": "branch_ids",
+									"value": "1,2,3"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Growth Metrics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=user_growth&period=quarterly",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "user_growth"
+								},
+								{
+									"key": "period",
+									"value": "quarterly"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Branch Comparison",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=branch_comparison&metric=revenue&period=monthly&month=4&year=2025",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "branch_comparison"
+								},
+								{
+									"key": "metric",
+									"value": "revenue"
+								},
+								{
+									"key": "period",
+									"value": "monthly"
+								},
+								{
+									"key": "month",
+									"value": "4"
+								},
+								{
+									"key": "year",
+									"value": "2025"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Growth",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=user_growth&period=quarterly&year=2025",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "user_growth"
+								},
+								{
+									"key": "period",
+									"value": "quarterly"
+								},
+								{
+									"key": "year",
+									"value": "2025"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Coin Usage Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/stats?type=coins&period=monthly&year=2025",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "coins"
+								},
+								{
+									"key": "period",
+									"value": "monthly"
+								},
+								{
+									"key": "year",
+									"value": "2025"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "System Maintenance",
+			"item": [
+				{
+					"name": "Check Database Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/database-status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"database-status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Clear System Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cache_type\": \"all\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/maintenance/cache",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"maintenance",
+								"cache"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Run Database Migrations",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"migration_name\": \"verification_fields\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/maintenance/migrations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"maintenance",
+								"migrations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "System Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{superAdminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/super/maintenance/logs?level=error&date=2025-04-01",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"super",
+								"maintenance",
+								"logs"
+							],
+							"query": [
+								{
+									"key": "level",
+									"value": "error"
+								},
+								{
+									"key": "date",
+									"value": "2025-04-01"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "superAdminToken",
+			"value": "your-superadmin-token-here",
+			"type": "string"
+		}
+	]
+}

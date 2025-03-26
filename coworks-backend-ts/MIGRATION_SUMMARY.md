@@ -822,4 +822,108 @@ We've implemented a many-to-many relationship between admins and branches, allow
 
 - Super admins have access to all branches
 - Branch admins can manage one or more specific branches
-- Each admin-branch relationship can be marked as primary for default assignment 
+- Each admin-branch relationship can be marked as primary for default assignment
+
+# Database Schema Recreation
+
+## Overview
+
+This document describes the complete database schema re-creation that was performed on the CoWorks backend. The migration recreates all tables from scratch with updated schema definitions.
+
+## Migration File
+
+The migration is contained in a single file: `migrations/20250401000000-recreate-database-schema.js`
+
+This file drops all existing tables and recreates them with the correct schema and relationships.
+
+## Running the Migration
+
+To run the migration, use:
+
+```bash
+npm run migrate:recreate-schema
+```
+
+This command will:
+1. Drop all existing tables in the reverse order of creation
+2. Create all tables with the proper schema
+3. Add appropriate indexes for performance
+
+**CAUTION**: This migration will delete all data in the database. Only run it if you are sure you want to completely recreate the database schema.
+
+## Script Organization
+
+For better organization and documentation, all scripts in the project have been categorized based on their purpose. A comprehensive documentation of all scripts can be found in the `SCRIPTS.md` file.
+
+You can generate or update this documentation anytime by running:
+
+```bash
+npm run docs:scripts
+```
+
+Scripts are categorized into the following groups:
+
+1. **Migration Scripts** - Scripts that modify the database schema or structure
+2. **Seeding Scripts** - Scripts that add initial or test data to the database
+3. **Utility Scripts** - Helper scripts for various tasks like creating directories, testing, etc.
+4. **Deployment Scripts** - Scripts used during deployment on platforms like Vercel
+5. **Admin Management Scripts** - Scripts for managing admin users and their permissions
+6. **Other Scripts** - Scripts that don't fit into any other category
+
+This organization helps new developers understand the purpose and function of each script in the project.
+
+## Creating New Migrations
+
+To create a new migration, you can use the built-in migration creator script:
+
+```bash
+npm run create:migration "description-of-your-migration"
+```
+
+For example:
+
+```bash
+npm run create:migration "add-user-preferences"
+```
+
+This will generate a properly timestamped migration file with boilerplate code in the migrations directory. The file will include:
+
+- A properly formatted timestamp prefix (YYYYMMDDHHMMSS)
+- Documentation headers
+- Up and down methods for migration and rollback
+- Error handling
+- Schema setting
+- Migration recording
+
+After creating the migration file, you can edit it to add your specific database changes. The migration will be automatically picked up and applied when you run the migration sequence.
+
+## Schema Changes
+
+The migration creates the following tables:
+
+1. `migrations` - Tracks applied migrations
+2. `branches` - Stores coworking space branch information
+3. `admins` - Stores administrative user accounts
+4. `admin_branches` - Bridge table for admin-branch relationships
+5. `customers` - Stores customer user accounts
+6. `seating_types` - Defines different types of seating (hot desk, dedicated, etc.)
+7. `seats` - Individual seats/spaces available in branches
+8. `seat_bookings` - Bookings for regular seats
+9. `meeting_bookings` - Bookings for meeting rooms
+10. `payment_logs` - Records of payments made
+11. `time_slots` - Available time slots for seats
+12. `blacklisted_tokens` - For JWT token invalidation
+13. `password_reset` - For password reset functionality
+14. `reset_token` - For account reset tokens
+15. `support_tickets` - For customer support tickets
+16. `ticket_messages` - Messages related to support tickets
+17. `branch_images` - Images for branches
+18. `customer_coin_transactions` - For tracking customer coin transactions
+
+## Database Indexes
+
+The migration also creates appropriate indexes on all tables to ensure good query performance.
+
+## Model Compatibility
+
+The existing models in the codebase are compatible with this new schema. The migration ensures that all column names match the attribute names in the models. 

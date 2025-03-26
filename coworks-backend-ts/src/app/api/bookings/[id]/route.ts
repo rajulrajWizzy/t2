@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '../../../../models';
-import { verifyToken } from '../../../../config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { BookingStatusEnum } from '../../../../types/booking';
 import { AvailabilityStatusEnum } from '../../../../types/seating';
 
@@ -103,7 +103,7 @@ export async function GET(
     }
     
     // Check if the logged-in user is the owner of the booking
-    if (booking.customer_id !== decoded.id) {
+    if (booking.customer_id !== (typeof decoded.id === 'string' ? parseInt(decoded.id) : decoded.id)) {
       // If not the owner, check if admin (implement admin check if needed)
       // For now, just return unauthorized
       return NextResponse.json(
@@ -188,7 +188,7 @@ export async function PUT(
     }
     
     // Check if the logged-in user is the owner of the booking
-    if (booking.customer_id !== decoded.id) {
+    if (booking.customer_id !== (typeof decoded.id === 'string' ? parseInt(decoded.id) : decoded.id)) {
       // If not the owner, check if admin (implement admin check if needed)
       // For now, just return unauthorized
       return NextResponse.json(
@@ -291,7 +291,7 @@ export async function DELETE(
     }
     
     // Check if the logged-in user is the owner of the booking
-    if (booking.customer_id !== decoded.id) {
+    if (booking.customer_id !== (typeof decoded.id === 'string' ? parseInt(decoded.id) : decoded.id)) {
       // If not the owner, check if admin (implement admin check if needed)
       // For now, just return unauthorized
       return NextResponse.json(

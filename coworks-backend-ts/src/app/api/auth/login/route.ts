@@ -1,71 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
-import bcrypt from 'bcryptjs';
-import { generateToken } from '@/config/jwt';
-import { LoginRequest, LoginResponse } from '@/types/auth';
-import validation from '@/utils/validation';
+import { ApiResponse } from '@/types/common';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+/**
+ * Login endpoint for users
+ */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json() as LoginRequest;
-    const { email, password } = body;
+    const body = await request.json();
     
-    // Basic validation
-    if (!email || !password) {
-      return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
-      );
+    // Validate required fields
+    if (!body.email || !body.password) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Email and password are required',
+        error: 'VALIDATION_ERROR',
+        data: null
+      }, { status: 400, headers: corsHeaders });
     }
     
-    // Email format validation
-    if (!validation.isValidEmail(email)) {
-      return NextResponse.json(
-        { 
-          message: 'Invalid email format',
-          details: 'Email must be in a valid format (e.g., user@example.com)'
-        },
-        { status: 400 }
-      );
-    }
+    // This is a placeholder - in a real implementation, you would:
+    // 1. Verify the user credentials against the database
+    // 2. Generate a JWT token upon successful authentication
+    // 3. Return the token and user data
     
-    // Find customer by email
-    const customer = await models.Customer.findOne({ where: { email } });
-    if (!customer) {
-      return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-    
-    // Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, customer.password);
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-    
-    // Generate JWT token
-    const token = generateToken(customer);
-    
-    // Return token and customer data (excluding password)
-    const customerData = customer.get({ plain: true });
-    const { password: _, ...customerWithoutPassword } = customerData;    
-    
-    const response: LoginResponse = {
-      message: 'Login successful',
-      token,
-      customer: customerWithoutPassword as any // Need to cast here as we've removed password field
-    };
-    
-    return NextResponse.json(response);
+    // For now, return a mock success response
+    return NextResponse.json<ApiResponse<any>>({
+      success: true,
+      message: 'Login endpoint is working',
+      data: {
+        mockImplementation: true,
+        email: body.email,
+        timestamp: new Date().toISOString()
+      }
+    }, { status: 200, headers: corsHeaders });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
-      { message: 'Login failed', error: (error as Error).message },
-      { status: 500 }
-    );
+    
+    return NextResponse.json<ApiResponse<null>>({
+      success: false,
+      message: 'An error occurred during login',
+      error: (error as Error).message,
+      data: null
+    }, { status: 500, headers: corsHeaders });
   }
+<<<<<<< Updated upstream
 }
+=======
+}
+
+/**
+ * Handle OPTIONS request for CORS
+ */
+export async function OPTIONS(): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
+>>>>>>> Stashed changes

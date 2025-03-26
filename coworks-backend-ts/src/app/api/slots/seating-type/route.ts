@@ -14,9 +14,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Validate required filters
     if (!branch_id) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch ID is required'
+        message: 'Branch ID is required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -25,18 +26,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Validate branch_id is a valid number
     const branchIdNum = parseInt(branch_id);
     if (isNaN(branchIdNum)) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch ID must be a valid number'
+        message: 'Branch ID must be a valid number',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
     }
     
     if (!seating_type_code) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Seating type code is required'
+        message: 'Seating type code is required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -45,9 +48,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Find the branch first
     const branch = await models.Branch.findByPk(branchIdNum);
     if (!branch) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: `Branch with ID ${branch_id} not found`
+        message: 'Branch not found',
+        data: null
       };
       
       return NextResponse.json(response, { status: 404 });
@@ -59,9 +63,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
     
     if (!seatingType) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: `Seating type with code ${seating_type_code} not found`
+        message: `Seating type with code ${seating_type_code} not found`,
+        data: null
       };
       
       return NextResponse.json(response, { status: 404 });
@@ -120,40 +125,44 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        seating_type: {
-          id: seatingType.id,
-          name: seatingType.name,
-          short_code: seatingType.short_code
-        },
-        date,
-        branch_id: branchIdNum,
-        total_slots: timeSlots.length,
-        available: {
-          count: availableSlots.length,
-          slots: availableSlots
-        },
-        booked: {
-          count: bookedSlots.length,
-          slots: bookedSlots
-        },
-        maintenance: {
-          count: maintenanceSlots.length,
-          slots: maintenanceSlots
-        }
+    const slotsData = {
+      seating_type: {
+        id: seatingType.id,
+        name: seatingType.name,
+        short_code: seatingType.short_code
+      },
+      date,
+      branch_id: branchIdNum,
+      total_slots: timeSlots.length,
+      available: {
+        count: availableSlots.length,
+        slots: availableSlots
+      },
+      booked: {
+        count: bookedSlots.length,
+        slots: bookedSlots
+      },
+      maintenance: {
+        count: maintenanceSlots.length,
+        slots: maintenanceSlots
       }
+    };
+    
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Slots retrieved successfully',
+      data: slotsData
     };
     
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching time slots by seating type:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
-      message: 'Failed to fetch time slots',
-      error: (error as Error).message
+      message: 'Failed to fetch slots',
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });

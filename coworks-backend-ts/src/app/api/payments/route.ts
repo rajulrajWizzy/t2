@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import { PaymentInput, PaymentStatusEnum, BookingTypeEnum } from '@/types/payment';
 import { BookingStatusEnum } from '@/types/booking';
@@ -11,9 +11,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -24,9 +25,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -62,8 +64,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       order: [['created_at', 'DESC']]
     });
     
-    const response: ApiResponse = {
+    const response: ApiResponse<any[]> = {
       success: true,
+      message: 'Payments retrieved successfully',
       data: payments
     };
     
@@ -71,9 +74,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error fetching payments:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch payments',
+      data: null,
       error: (error as Error).message
     };
     
@@ -87,9 +91,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -100,9 +105,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -120,9 +126,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Basic validation
     if (!booking_id || !booking_type || !amount || !payment_method) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Booking ID, booking type, amount, and payment method are required'
+        message: 'Booking ID, booking type, amount, and payment method are required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -137,22 +144,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     if (!booking) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Booking not found'
+        message: 'Booking not found',
+        data: null
       };
       
       return NextResponse.json(response, { status: 404 });
     }
     
     // Check if the logged-in user is the owner of the booking
-    if (booking.customer_id !== decoded.id) {
+    if (booking.customer_id !== (typeof decoded.id === 'string' ? parseInt(decoded.id) : decoded.id)) {
       // If not the owner, check if admin (implement admin check if needed)
       // For now, just return unauthorized
-      return NextResponse.json(
-        { message: 'Unauthorized to make payments for this booking' },
-        { status: 403 }
-      );
+      const response: ApiResponse<null> = {
+        success: false,
+        message: 'Unauthorized to make payments for this booking',
+        data: null
+      };
+      
+      return NextResponse.json(response, { status: 403 });
     }
     
     // Create the payment
@@ -174,7 +185,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await meetingBooking.update({ status: BookingStatusEnum.CONFIRMED });
     }
     
-    const response: ApiResponse = {
+    const response: ApiResponse<any> = {
       success: true,
       message: 'Payment processed successfully',
       data: payment
@@ -184,9 +195,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error processing payment:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to process payment',
+      data: null,
       error: (error as Error).message
     };
     

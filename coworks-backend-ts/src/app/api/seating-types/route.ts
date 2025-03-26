@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { SeatingTypeInput } from '@/types/seating';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
@@ -29,8 +29,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // No need to add short codes manually as they are now in the database
-    const response: ApiResponse = {
+    const response: ApiResponse<any[]> = {
       success: true,
+      message: 'Seating types retrieved successfully',
       data: seatingTypes
     };
     
@@ -38,10 +39,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error fetching seating types:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch seating types',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });
@@ -54,9 +56,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -67,9 +70,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -81,9 +85,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Validate input
     if (!name) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Name is required'
+        message: 'Name is required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -91,9 +96,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Name validation - check for blank or whitespace-only names
     if (!validation.isValidName(name.toString())) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Name cannot be empty or contain only whitespace'
+        message: 'Name cannot be empty or contain only whitespace',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -102,9 +108,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Check if seating type already exists
     const existingType = await models.SeatingType.findOne({ where: { name } });
     if (existingType) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Seating type already exists'
+        message: 'Seating type already exists',
+        data: null
       };
       
       return NextResponse.json(response, { status: 409 });
@@ -132,7 +139,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       short_code: shortCode
     });
     
-    const response: ApiResponse = {
+    const response: ApiResponse<any> = {
       success: true,
       message: 'Seating type created successfully',
       data: seatingType
@@ -142,10 +149,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error creating seating type:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to create seating type',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });

@@ -1,7 +1,15 @@
+<<<<<<< Updated upstream
 // src/app/api/branches/route.ts
+=======
+// Explicitly set Node.js runtime for this route
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+>>>>>>> Stashed changes
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 import { Op } from 'sequelize';
@@ -132,16 +140,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (branchData.Seats && branchData.Seats.length > 0) {
         branchData.Seats.forEach(seat => {
           if ((seat as any).SeatingType) {
-            const seatingTypeId = (seat as any).SeatingType.id;
-            if (!seatingTypeMap.has(seatingTypeId)) {
-              seatingTypeMap.set(seatingTypeId, {
-                ...(seat as any).SeatingType,
+            const currentSeatingType = (seat as any).SeatingType;
+            const currentSeatingTypeId = currentSeatingType.id.toString();
+            
+            // If seating type filter is applied, only include matching seating type
+            if (seatingTypeId && currentSeatingTypeId !== seatingTypeId.toString()) {
+              return; // Skip this seating type
+            }
+            
+            if (seatingTypeCode && currentSeatingType.short_code !== seatingTypeCode) {
+              return; // Skip this seating type
+            }
+            
+            // Add this seating type to the map
+            if (!seatingTypeMap.has(currentSeatingTypeId)) {
+              seatingTypeMap.set(currentSeatingTypeId, {
+                ...currentSeatingType,
                 seats: [],
                 seat_count: 0
               });
             }
-            seatingTypeMap.get(seatingTypeId).seats.push(seat);
-            seatingTypeMap.get(seatingTypeId).seat_count++;
+            
+            seatingTypeMap.get(currentSeatingTypeId).seats.push(seat);
+            seatingTypeMap.get(currentSeatingTypeId).seat_count++;
           }
         });
       }
@@ -161,8 +182,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const hasPrev = page > 1;
     
     // Return paginated response
-    const response: ApiResponse = {
+    const response = {
       success: true,
+      message: 'Branches retrieved successfully',
       data: processedBranches,
       meta: {
         pagination: {
@@ -287,8 +309,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         
         const totalPages = Math.ceil(count / limit);
         
-        const fallbackResponse: ApiResponse = {
+        const fallbackResponse = {
           success: true,
+          message: 'Branches retrieved successfully',
           data: processedBranches,
           meta: {
             pagination: {
@@ -309,13 +332,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    const response: ApiResponse = {
+    const errorResponse = {
       success: false,
       message: 'Failed to fetch branches',
+      data: null,
       error: (error as Error).message
     };
     
-    return NextResponse.json(response, { status: 500 });
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
@@ -414,7 +438,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Create a new branch
     const branch = await models.Branch.create(branchData);
     
-    const response: ApiResponse = {
+    const response = {
       success: true,
       message: 'Branch created successfully',
       data: branch
@@ -424,9 +448,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error creating branch:', error);
     
-    const response: ApiResponse = {
+    const response = {
       success: false,
       message: 'Failed to create branch',
+      data: null,
       error: (error as Error).message
     };
     

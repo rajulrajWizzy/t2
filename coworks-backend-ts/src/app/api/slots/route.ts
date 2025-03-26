@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { Op } from 'sequelize';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import { TimeSlotGenerationParams } from '@/types/booking';
 import { verifyProfileComplete } from '../middleware/verifyProfileComplete';
@@ -31,11 +31,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json<ApiResponse<null>>({
+      return NextResponse.json({
         success: false,
         message: 'Unauthorized',
         data: null
-      }, { status: 401 });
+      } as ApiResponse<null>, { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -43,11 +43,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      return NextResponse.json<ApiResponse<null>>({
+      return NextResponse.json({
         success: false,
         message: 'Unauthorized',
         data: null
-      }, { status: 401 });
+      } as ApiResponse<null>, { status: 401 });
     }
     
     // Verify profile is complete with required documents
@@ -66,9 +66,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Validate required filters
     if (!branch_id) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch ID is required'
+        message: 'Branch ID is required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -166,8 +167,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     };
     
-    const response: ApiResponse = {
+    const response: ApiResponse<SlotsBranchResponse> = {
       success: true,
+      message: 'Slots retrieved successfully',
       data: responseData
     };
     
@@ -175,10 +177,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error fetching time slots:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch time slots',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });
@@ -191,9 +194,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -204,9 +208,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
       return NextResponse.json(response, { status: 401 });
@@ -218,9 +223,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Validate input
     if (!branch_id || !date) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch ID and date are required'
+        message: 'Branch ID and date are required',
+        data: null
       };
       
       return NextResponse.json(response, { status: 400 });
@@ -229,9 +235,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Check if branch exists
     const branch = await models.Branch.findByPk(branch_id);
     if (!branch) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch not found'
+        message: 'Branch not found',
+        data: null
       };
       
       return NextResponse.json(response, { status: 404 });
@@ -260,7 +267,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (existingSlots > 0 && !regenerate) {
       const generationResponse: SlotGenerationResponse = { count: existingSlots };
       
-      const response: ApiResponse = {
+      const response: ApiResponse<SlotGenerationResponse> = {
         success: false,
         message: 'Time slots already exist for this branch and date. Set regenerate to true to recreate.',
         data: generationResponse
@@ -278,9 +285,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     if (seats.length === 0) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'No available seats found for this branch'
+        message: 'No available seats found for this branch',
+        data: null
       };
       
       return NextResponse.json(response, { status: 404 });
@@ -319,7 +327,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     const generationResponse: SlotGenerationResponse = { count: createdSlots.length };
     
-    const response: ApiResponse = {
+    const response: ApiResponse<SlotGenerationResponse> = {
       success: true,
       message: 'Time slots created successfully',
       data: generationResponse
@@ -329,10 +337,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error creating time slots:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to create time slots',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
     return NextResponse.json(response, { status: 500 });

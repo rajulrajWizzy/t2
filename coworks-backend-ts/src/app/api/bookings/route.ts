@@ -1,7 +1,7 @@
 // src/app/api/bookings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
-import { verifyToken } from '@/config/jwt';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import { Op } from 'sequelize';
 import { SeatingTypeEnum, AvailabilityStatusEnum } from '@/types/seating';
@@ -13,6 +13,7 @@ import {
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
 import { BookingStatusEnum } from '@/types/booking';
 import { verifyProfileComplete } from '../middleware/verifyProfileComplete';
+import { calculateBookingCost, calculateInitialPayment, SEATING_TYPE_CONSTRAINTS } from '@/utils/bookingCalculations';
 
 // POST create a new booking
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -53,10 +54,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       seat_code,
       start_time, 
       end_time, 
-      total_price,
+      total_price: rawTotalPrice,
       quantity = 1,
       seating_type_code
     } = body;
+    
+    // Convert total_price to number to ensure type safety
+    const total_price = typeof rawTotalPrice === 'number' ? rawTotalPrice : 0;
     
     // Validate booking type
     if (!['seat', 'meeting'].includes(type)) {
@@ -96,22 +100,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         success: false,
         message: 'End time must be after start time'
-      }, { status: 400 });
-    }
-    
-    // Validate total price
-    if (!total_price || typeof total_price !== 'number' || total_price <= 0) {
-      return NextResponse.json({
-        success: false,
-        message: 'Valid total price is required'
-      }, { status: 400 });
-    }
-    
-    // Validate quantity
-    if (typeof quantity !== 'number' || quantity < 1) {
-      return NextResponse.json({
-        success: false,
-        message: 'Quantity must be at least 1'
       }, { status: 400 });
     }
     
@@ -193,22 +181,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const durationDays = durationHours / 24;
     const durationMonths = durationDays / 30; // Approximate
     
-    // Validate minimum booking duration based on seating type
-    if (seatingType.name === SeatingTypeEnum.HOT_DESK) {
-      // Hot desk: minimum 1 month and at least 1 seat
-      if (durationMonths < 1) {
+    // Get seating type constraints
+    const constraints = SEATING_TYPE_CONSTRAINTS[seatingType.name as SeatingTypeEnum];
+    
+    // Validate minimum booking duration and seat requirements based on seating type constraints
+    if (constraints) {
+      // Check duration requirements
+      if (constraints.minMonths && durationMonths < constraints.minMonths) {
         return NextResponse.json({
           success: false,
-          message: 'Hot desk requires a minimum booking duration of 1 month'
+          message: `${seatingType.name} requires a minimum booking duration of ${constraints.minMonths} month(s)`
         }, { status: 400 });
       }
       
-      if (quantity < 1) {
+      if (constraints.minHours && durationHours < constraints.minHours) {
         return NextResponse.json({
           success: false,
-          message: 'Hot desk requires at least 1 seat'
+          message: `${seatingType.name} requires a minimum booking duration of ${constraints.minHours} hour(s)`
         }, { status: 400 });
       }
+<<<<<<< Updated upstream
     } 
     else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
       // Dedicated desk: minimum 1 month and at least 1 seat
@@ -216,42 +208,69 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({
           success: false,
           message: 'Dedicated desk requires a minimum booking duration of 1 month'
+=======
+      
+      if (constraints.minDays && durationDays < constraints.minDays) {
+        return NextResponse.json({
+          success: false,
+          message: `${seatingType.name} requires a minimum booking duration of ${constraints.minDays} day(s)`
+>>>>>>> Stashed changes
         }, { status: 400 });
       }
       
-      if (quantity < 1) {
+      // Check seat quantity requirements
+      if (quantity < constraints.minSeats) {
         return NextResponse.json({
           success: false,
-          message: 'Dedicated desk requires a minimum of 1 seat'
+          message: `${seatingType.name} requires a minimum of ${constraints.minSeats} seat(s)`
         }, { status: 400 });
       }
+<<<<<<< Updated upstream
+=======
+    } else {
+      // Fallback to old validation method if constraints are not defined
+      if (seatingType.name === SeatingTypeEnum.HOT_DESK) {
+        // Hot desk: minimum 3 months and at least 1 seat
+        if (durationMonths < 3) {
+          return NextResponse.json({
+            success: false,
+            message: 'Hot desk requires a minimum booking duration of 3 months'
+          }, { status: 400 });
+        }
+        
+        // ... (existing validation for quantity options)
+      } 
+      else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
+        // Dedicated desk: minimum 2 months and at least 10 seats
+        if (durationMonths < 2) {
+          return NextResponse.json({
+            success: false,
+            message: 'Dedicated desk requires a minimum booking duration of 2 months'
+          }, { status: 400 });
+        }
+        
+        if (quantity < 10) {
+          return NextResponse.json({
+            success: false,
+            message: 'Dedicated desk requires a minimum of 10 seats'
+          }, { status: 400 });
+        }
+        
+        // ... (existing validation for quantity options)
+      }
+      // ... (other seating type validations)
+>>>>>>> Stashed changes
     }
-    else if (seatingType.name === SeatingTypeEnum.CUBICLE) {
-      // Cubicle: minimum 1 month
-      if (durationMonths < 1) {
-        return NextResponse.json({
-          success: false,
-          message: 'Cubicle requires a minimum booking duration of 1 month'
-        }, { status: 400 });
-      }
-    }
-    else if (seatingType.name === SeatingTypeEnum.MEETING_ROOM) {
-      // Meeting room: hourly basis with minimum 1 hour
-      if (durationHours < 1) {
-        return NextResponse.json({
-          success: false,
-          message: 'Meeting room requires a minimum booking duration of 1 hour'
-        }, { status: 400 });
-      }
-    }
-    else if (seatingType.name === SeatingTypeEnum.DAILY_PASS) {
-      // Daily pass: minimum 1 day
-      if (durationDays < 1) {
-        return NextResponse.json({
-          success: false,
-          message: 'Daily pass requires a minimum booking duration of 1 day'
-        }, { status: 400 });
-      }
+    
+    // Validate quantity against available quantity options if defined
+    if (seatingType.quantity_options && !seatingType.quantity_options.includes(quantity)) {
+      return NextResponse.json({
+        success: false,
+        message: `Invalid quantity. Available options are: ${seatingType.quantity_options.join(', ')}`,
+        data: {
+          available_quantities: seatingType.quantity_options
+        }
+      }, { status: 400 });
     }
     
     // For Hot Desk, Dedicated Desk and Daily Pass, check seat availability
@@ -316,6 +335,128 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 400 });
     }
     
+<<<<<<< Updated upstream
+=======
+    // Calculate price using pro-rata system if a monthly rate is applicable
+    let calculatedPrice = total_price;
+    let priceBreakdown = null;
+    
+    // Get the rate based on the seating type
+    const rate = seatingType.hourly_rate;
+    
+    // Calculate the booking cost with pro-rata for non-hourly bookings
+    if (!seatingType.is_hourly && 
+        ![SeatingTypeEnum.DAILY_PASS].includes(seatingType.name)) {
+      const bookingCost = calculateBookingCost(
+        startTimeDate,
+        endTimeDate,
+        rate,
+        undefined, // No cancellation date yet
+        seatingType.name
+      );
+      
+      calculatedPrice = bookingCost.totalCost;
+      priceBreakdown = bookingCost.breakdown;
+      
+      // If the client provided a total_price that doesn't match our calculation,
+      // verify it's within a reasonable range (5% difference allowed)
+      const priceDifference = Math.abs(calculatedPrice - total_price);
+      const percentDifference = (priceDifference / calculatedPrice) * 100;
+      
+      if (percentDifference > 5) {
+        return NextResponse.json({
+          success: false,
+          message: 'Total price does not match our calculation',
+          data: {
+            calculated_price: calculatedPrice,
+            provided_price: total_price,
+            price_breakdown: priceBreakdown,
+            difference_percent: percentDifference.toFixed(2) + '%'
+          }
+        }, { status: 400 });
+      }
+    }
+    
+    // For hourly rates like meeting rooms or daily passes, use the provided price
+    // but validate it's close to our expected calculation
+    if (seatingType.is_hourly || seatingType.name === SeatingTypeEnum.DAILY_PASS) {
+      let expectedPrice = 0;
+      if (seatingType.is_hourly) {
+        expectedPrice = rate * durationHours;
+      } else if (seatingType.name === SeatingTypeEnum.DAILY_PASS) {
+        expectedPrice = rate * durationDays;
+      }
+      
+      // Allow 5% tolerance for price differences
+      const hourlyPriceDifference = Math.abs(expectedPrice - total_price);
+      const hourlyPercentDifference = (hourlyPriceDifference / expectedPrice) * 100;
+      
+      if (hourlyPercentDifference > 5) {
+        return NextResponse.json({
+          success: false,
+          message: 'Total price does not match our calculation',
+          data: {
+            calculated_price: expectedPrice,
+            provided_price: total_price,
+            difference_percent: hourlyPercentDifference.toFixed(2) + '%'
+          }
+        }, { status: 400 });
+      }
+      
+      calculatedPrice = expectedPrice;
+    }
+    
+    // Apply cost multiplier based on quantity if applicable
+    let adjustedTotalPrice = calculatedPrice;
+    if (
+      seatingType.cost_multiplier && 
+      (seatingType.name === SeatingTypeEnum.HOT_DESK || seatingType.name === SeatingTypeEnum.DEDICATED_DESK) &&
+      quantity > 1
+    ) {
+      const multiplierKey = quantity.toString();
+      if (seatingType.cost_multiplier[multiplierKey]) {
+        // Apply the multiplier to the total price
+        const basePrice = calculatedPrice / quantity; // Get the price per seat
+        
+        // Handle the multiplier whether it's a string or number
+        let multiplier: number;
+        const rawMultiplier = seatingType.cost_multiplier[multiplierKey];
+        if (typeof rawMultiplier === 'string') {
+          multiplier = parseFloat(rawMultiplier);
+        } else {
+          multiplier = Number(rawMultiplier);
+        }
+        
+        // Make sure multiplier is a valid number
+        if (!isNaN(multiplier)) {
+          adjustedTotalPrice = Math.round(basePrice * quantity * multiplier);
+        }
+      }
+    }
+    
+    // Check if the provided price matches our calculation (with 5% tolerance)
+    if (total_price > 0) {  // Skip validation if total_price is not provided
+      const priceDifference = Math.abs(total_price - adjustedTotalPrice);
+      const toleranceAmount = adjustedTotalPrice * 0.05; // 5% tolerance
+      
+      if (priceDifference > toleranceAmount) {
+        const hourlyPriceDifference = total_price !== adjustedTotalPrice;
+        return NextResponse.json({
+          success: false,
+          message: `Price mismatch. Expected ${adjustedTotalPrice} but got ${total_price}`,
+          data: {
+            provided_price: total_price,
+            calculated_price: adjustedTotalPrice,
+            difference: priceDifference,
+            tolerance: toleranceAmount,
+            hours: durationHours.toFixed(2),
+            hourlyRate: seatingType.hourly_rate
+          }
+        }, { status: 400 });
+      }
+    }
+    
+>>>>>>> Stashed changes
     // For seat types that require multiple seats, we need to book multiple seats
     const bookings = [];
     
@@ -330,7 +471,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           seat_id: seat.id,
           start_time: startTimeDate,
           end_time: endTimeDate,
+<<<<<<< Updated upstream
           total_price,
+=======
+          total_price: Number(adjustedTotalPrice),
+>>>>>>> Stashed changes
           status: BookingStatusEnum.CONFIRMED
         });
         
@@ -377,7 +522,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             seat_id: seatToBook.id,
             start_time: startTimeDate,
             end_time: endTimeDate,
+<<<<<<< Updated upstream
             total_price: total_price / seatsToBook, // Divide total price among seats
+=======
+            total_price: Number(adjustedTotalPrice / seatsToBook), // Ensure this is a number
+>>>>>>> Stashed changes
             status: BookingStatusEnum.CONFIRMED
           });
           
@@ -418,7 +567,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         end_time: endTimeDate,
         num_participants,
         amenities: amenities || null,
+<<<<<<< Updated upstream
         total_price,
+=======
+        total_price: Number(adjustedTotalPrice),
+>>>>>>> Stashed changes
         status: BookingStatusEnum.CONFIRMED
       });
       

@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
+    esmExternals: true,
+    missingSuspenseWithCSRBailout: true,
+    runtime: 'nodejs',
+    disableEdgeRuntime: true,
+  },
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -9,6 +17,7 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   
+<<<<<<< Updated upstream
   // Set api routes as dynamically rendered to avoid static generation errors
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
@@ -20,6 +29,8 @@ const nextConfig = {
     dynamicRoutes: true,
   },
   
+=======
+>>>>>>> Stashed changes
   // Define dynamic routes that should be server rendered
   // These routes use request.headers or request.url which can't be statically generated
   async headers() {
@@ -30,6 +41,18 @@ const nextConfig = {
           {
             key: 'x-nextjs-render',
             value: 'dynamic',
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
           },
         ],
       },

@@ -1,7 +1,7 @@
 /**
  * Generic API response interface for consistent formatting
  */
-export interface ApiResponse<T> {
+export interface ApiResponse<T = any> {
   /**
    * Whether the request was successful
    */
@@ -10,10 +10,10 @@ export interface ApiResponse<T> {
   /**
    * Message to display to the user
    */
-  message: string;
+  message?: string;
   
   /**
-   * Response data (null if error)
+   * Response data (null if error or undefined if no data)
    */
   data: T;
   
