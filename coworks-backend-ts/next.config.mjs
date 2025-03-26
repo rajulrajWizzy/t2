@@ -18,6 +18,7 @@ const nextConfig = {
   poweredByHeader: false,
   
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   // Set api routes as dynamically rendered to avoid static generation errors
   experimental: {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
@@ -29,6 +30,8 @@ const nextConfig = {
     dynamicRoutes: true,
   },
   
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
   // Define dynamic routes that should be server rendered

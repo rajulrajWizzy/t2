@@ -240,8 +240,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 <<<<<<< Updated upstream
 }
+<<<<<<< Updated upstream
 =======
 }
+=======
+>>>>>>> Stashed changes
 
 /**
  * Handle OPTIONS request for CORS
@@ -259,4 +262,7 @@ function handleOptionsRequest(): NextResponse {
     headers: corsHeaders
   });
 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

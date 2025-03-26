@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { NextRequest, NextResponse } from 'next/server';
 import { signToken } from '@/utils/jwt';
 import AdminModel, { AdminRole } from '@/models/admin';
@@ -6,6 +7,8 @@ import { comparePasswords } from '@/utils/password';
 
 // Set up CORS headers for all responses
 =======
+=======
+>>>>>>> Stashed changes
 // Explicitly set Node.js runtime for this route
 export const runtime = "nodejs";
 
@@ -25,6 +28,9 @@ import { ApiResponse } from '@/types/common';
 import { generateAdminToken } from '@/utils/jwt';
 
 // CORS headers
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,6 +39,11 @@ const corsHeaders = {
 };
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+
+>>>>>>> Stashed changes
 =======
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
@@ -144,8 +155,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch (updateError) {
       console.error('[Admin Login] Failed to update last login time:', updateError);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       // Continue with login process even if updating timestamp fails
 =======
+=======
+>>>>>>> Stashed changes
     }
 
     if (!admin.permissions) {
@@ -155,12 +169,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       } catch (permissionError) {
         console.error('[Admin Login] Failed to set default permissions:', permissionError);
       }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
     // Generate JWT token with admin data and is_admin flag
     let token;
     try {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
       token = await signToken({
         id: admin.id,
@@ -171,6 +189,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         branch_id: admin.branch_id,
         is_admin: true
       });
+=======
+      token = await generateAdminToken(admin);
+>>>>>>> Stashed changes
 =======
       token = await generateAdminToken(admin);
 >>>>>>> Stashed changes

@@ -8,6 +8,8 @@ export default function AdminLogin() {
 =======
 export const dynamic = 'force-dynamic'
 
+export const dynamic = 'force-dynamic'
+
 function LoginForm() {
   const { login, error, loading, clearError } = useAuth();
 >>>>>>> Stashed changes

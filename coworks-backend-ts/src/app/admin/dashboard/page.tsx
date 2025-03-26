@@ -32,6 +32,8 @@ interface BookingSummary {
 =======
 export const dynamic = 'force-dynamic'
 
+export const dynamic = 'force-dynamic'
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;

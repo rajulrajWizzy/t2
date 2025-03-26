@@ -5,7 +5,11 @@ import { Customer, CustomerAttributes, UserRole } from '@/types/auth';
 
 // Interface for creation attributes
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'proof_of_identity' | 'proof_of_address' | 'address'> {}
+=======
+interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'proof_of_identity' | 'proof_of_address' | 'address' | 'is_identity_verified' | 'is_address_verified' | 'verification_status' | 'verification_notes' | 'verification_date' | 'verified_by' | 'coins_balance' | 'coins_last_reset' | 'role'> {}
+>>>>>>> Stashed changes
 =======
 interface CustomerCreationAttributes extends Optional<CustomerAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'proof_of_identity' | 'proof_of_address' | 'address' | 'is_identity_verified' | 'is_address_verified' | 'verification_status' | 'verification_notes' | 'verification_date' | 'verified_by' | 'coins_balance' | 'coins_last_reset' | 'role'> {}
 >>>>>>> Stashed changes
@@ -33,6 +37,9 @@ class CustomerModel extends Model<Customer, CustomerCreationAttributes> implemen
   public coins_balance!: number;
   public coins_last_reset!: Date;
   public role!: UserRole;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   public created_at!: Date;
   public updated_at!: Date;
@@ -152,6 +159,9 @@ class CustomerModel extends Model<Customer, CustomerCreationAttributes> implemen
     
     return this.coins_balance;
   }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }
 
@@ -246,6 +256,9 @@ CustomerModel.init(
       defaultValue: UserRole.USER,
       allowNull: false,
     },
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     created_at: {
       type: DataTypes.DATE,

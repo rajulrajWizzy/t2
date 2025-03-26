@@ -1,5 +1,6 @@
 {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     "version": 2,
     "buildCommand": "npm run vercel-build",
     "installCommand": "npm install",
@@ -83,6 +84,27 @@
       "src": "/api/setup/fix-customers-table",
       "dest": "/api/setup/fix-customers-table"
     },
+=======
+  "version": 2,
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/setup/fix-customers-table",
+      "dest": "/api/setup/fix-customers-table"
+    },
+>>>>>>> Stashed changes
     {
       "src": "/(.*)",
       "dest": "/$1"
@@ -110,5 +132,9 @@
       "schedule": "0 */8 * * *"
     }
   ]
+<<<<<<< Updated upstream
+} 
+>>>>>>> Stashed changes
+=======
 } 
 >>>>>>> Stashed changes

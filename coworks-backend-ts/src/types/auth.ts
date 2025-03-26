@@ -30,6 +30,9 @@ export interface Customer {
   coins_balance: number; // Available meeting room coins
   coins_last_reset: Date; // Date when coins were last reset
   role: UserRole; // Add role field for customers
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   created_at: Date;
   updated_at: Date;
@@ -61,6 +64,9 @@ export interface CustomerAttributes extends CustomerInput {
   coins_balance?: number;
   coins_last_reset?: Date;
   role?: UserRole;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   created_at?: Date;
   updated_at?: Date;

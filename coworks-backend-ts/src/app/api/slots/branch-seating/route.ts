@@ -304,6 +304,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     const branchInfo: BranchInfo = {
       id: branch.id,
       name: branch.name,
@@ -311,6 +312,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       address: branch.address
     };
 =======
+=======
+>>>>>>> Stashed changes
     const response: ApiResponse<any> = {
       success: true,
       message: 'Branch seating data retrieved successfully',

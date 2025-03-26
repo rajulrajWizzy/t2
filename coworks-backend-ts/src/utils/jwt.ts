@@ -10,12 +10,16 @@ import { NextResponse } from 'next/server';
 import * as jose from 'jose';
 import { randomBytes } from 'crypto';
 import { UserRole } from '@/types/auth';
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 // Interface for token payload
 export interface JWTPayload {
   id: number;
   email: string;
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
   role?: string;
   name?: string;
@@ -99,6 +103,104 @@ function generateTokenId(): string {
  * Generate a JWT token for a user
  * @param user User data to include in token
  * @returns JWT token
+=======
+  role: UserRole | string;
+  [key: string]: any;
+}
+
+// Interface for admin JWT payload
+export interface AdminJWTPayload extends JWTPayload {
+  username: string;
+  is_admin: boolean;
+  branch_id?: number;
+  permissions?: Record<string, string[]>;
+}
+
+// Interface for token verification result
+export interface VerificationResult {
+  valid: boolean;
+  decoded: JWTPayload | null;
+  role?: string;
+}
+
+// Set a secret key for JWT - in production, use environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d'; // 7 days by default
+
+// Helper function to get the JWT secret key as a Uint8Array
+function getJwtSecretKey(): Uint8Array {
+  return new TextEncoder().encode(JWT_SECRET);
+}
+
+// Generate a unique token ID to prevent token reuse
+function generateTokenId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+/**
+ * Generate a JWT token for a user
+ * @param user User data to include in token
+ * @returns JWT token
+ */
+export async function generateToken(user: any): Promise<string> {
+  const payload: JWTPayload = {
+    id: user.id,
+    email: user.email,
+    role: user.role || UserRole.USER
+  };
+  
+  const secretKey = getJwtSecretKey();
+  return await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(secretKey);
+}
+
+/**
+ * Generate a JWT token specifically for an admin
+ * @param admin Admin data to include in token
+ * @returns JWT token
+ */
+export async function generateAdminToken(admin: any): Promise<string> {
+  const payload: AdminJWTPayload = {
+    id: admin.id,
+    email: admin.email,
+    username: admin.username,
+    role: admin.role,
+    is_admin: true,
+    branch_id: admin.branch_id,
+    permissions: admin.permissions
+  };
+  
+  const secretKey = getJwtSecretKey();
+  return await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(secretKey);
+}
+
+/**
+ * Sign a new JWT token with arbitrary payload
+ * @param payload Data to include in token
+ * @returns Signed JWT token
+ */
+export async function signToken(payload: any): Promise<string> {
+  const secretKey = getJwtSecretKey();
+  return await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(secretKey);
+}
+
+/**
+ * Verify a JWT token
+ * @param token JWT token to verify
+ * @returns Object with valid status, decoded payload, and role
+>>>>>>> Stashed changes
  */
 export async function generateToken(user: any): Promise<string> {
   const payload: JWTPayload = {
@@ -225,6 +327,56 @@ export async function verifyRefreshToken(token: string): Promise<number | null> 
   try {
     const secretKey = getJwtSecretKey();
     const { payload } = await jose.jwtVerify(token, secretKey);
+<<<<<<< Updated upstream
+    return (payload as any).id;
+  } catch (error) {
+    return null;
+=======
+    const decodedPayload = payload as unknown as JWTPayload;
+    
+    return { 
+      valid: true, 
+      decoded: decodedPayload, 
+      role: decodedPayload.role?.toString() || undefined 
+    };
+  } catch (error) {
+    console.error('JWT verification error:', error);
+    return { valid: false, decoded: null };
+>>>>>>> Stashed changes
+  }
+}
+
+/**
+ * Generate a refresh token
+ * @param user User data to include in token
+ * @returns Refresh token
+ */
+export async function generateRefreshToken(user: any): Promise<string> {
+  const payload: JWTPayload = {
+    id: user.id,
+    email: user.email,
+    role: user.role || UserRole.USER,
+    tokenType: 'refresh',
+    tokenId: generateTokenId()
+  };
+  
+  const secretKey = getJwtSecretKey();
+  return await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime(JWT_REFRESH_EXPIRES_IN)
+    .sign(secretKey);
+}
+
+/**
+ * Verify a refresh token
+ * @param token Refresh token to verify
+ * @returns User ID if token is valid, null otherwise
+ */
+export async function verifyRefreshToken(token: string): Promise<number | null> {
+  try {
+    const secretKey = getJwtSecretKey();
+    const { payload } = await jose.jwtVerify(token, secretKey);
     return (payload as any).id;
   } catch (error) {
     return null;
@@ -303,12 +455,36 @@ export async function verifyTokenFromRequest(request: Request): Promise<JWTPaylo
   }
 }
 
+<<<<<<< Updated upstream
 interface DecodedToken {
   id: string;
   email: string;
   role: string;
   iat?: number;
   exp?: number;
+=======
+/**
+ * Verify if a user has the required role
+ * @param token The JWT token
+ * @param requiredRoles Array of allowed roles
+ * @returns Boolean indicating if the user has the required role
+ */
+export async function verifyUserRole(token: string, requiredRoles: string[]): Promise<boolean> {
+  const { valid, decoded } = await verifyToken(token);
+  
+  if (!valid || !decoded) {
+    return false;
+  }
+  
+  return requiredRoles.includes(decoded.role);
+}
+
+/**
+ * Generate a JWT token for an admin user
+ */
+export async function generateJWT(payload: { id: string; email: string; role: string }): Promise<string> {
+  return signToken(payload as unknown as JWTPayload);
+>>>>>>> Stashed changes
 }
 
 /**
@@ -394,4 +570,7 @@ export async function blacklistToken(token: string, userId: number): Promise<voi
     console.error('Error blacklisting token:', error);
   }
 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

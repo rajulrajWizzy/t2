@@ -14,6 +14,7 @@ export interface AdminJWTPayload extends JWTPayload {
  * @returns Decoded token payload or error response
  */
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | NextResponse> {
   // Extract token from Authorization header
   const token = request.headers.get('Authorization')?.replace('Bearer ', '');
@@ -31,6 +32,10 @@ export async function verifyAdmin(request: Request): Promise<AdminJWTPayload | N
 =======
 export async function verifyAdmin(request: Request | NextRequest): Promise<AdminJWTPayload | NextResponse> {
   try {
+=======
+export async function verifyAdmin(request: Request | NextRequest): Promise<AdminJWTPayload | NextResponse> {
+  try {
+>>>>>>> Stashed changes
     // Extract token from Authorization header
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     
@@ -52,6 +57,9 @@ export async function verifyAdmin(request: Request | NextRequest): Promise<Admin
         { status: 401 }
       );
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     
     // Validate required fields
@@ -71,6 +79,7 @@ export async function verifyAdmin(request: Request | NextRequest): Promise<Admin
     }
     
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // Check if admin exists in the database
     const admin = await models.Admin.findByPk(decoded.id);
     if (!admin) {
@@ -82,6 +91,8 @@ export async function verifyAdmin(request: Request | NextRequest): Promise<Admin
     
     return decoded as AdminJWTPayload;
 =======
+=======
+>>>>>>> Stashed changes
     // Try to check database, but don't fail if database is unavailable
     try {
       // Check if token is blacklisted

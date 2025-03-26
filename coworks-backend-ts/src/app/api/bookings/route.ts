@@ -201,6 +201,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }, { status: 400 });
       }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     } 
     else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
       // Dedicated desk: minimum 1 month and at least 1 seat
@@ -209,11 +210,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           success: false,
           message: 'Dedicated desk requires a minimum booking duration of 1 month'
 =======
+=======
+>>>>>>> Stashed changes
       
       if (constraints.minDays && durationDays < constraints.minDays) {
         return NextResponse.json({
           success: false,
           message: `${seatingType.name} requires a minimum booking duration of ${constraints.minDays} day(s)`
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }, { status: 400 });
       }
@@ -226,7 +232,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }, { status: 400 });
       }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
     } else {
       // Fallback to old validation method if constraints are not defined
       if (seatingType.name === SeatingTypeEnum.HOT_DESK) {
@@ -259,6 +268,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         // ... (existing validation for quantity options)
       }
       // ... (other seating type validations)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
     
@@ -336,7 +348,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
     // Calculate price using pro-rata system if a monthly rate is applicable
     let calculatedPrice = total_price;
     let priceBreakdown = null;
@@ -431,6 +446,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (!isNaN(multiplier)) {
           adjustedTotalPrice = Math.round(basePrice * quantity * multiplier);
         }
+<<<<<<< Updated upstream
+=======
+      }
+    }
+    
+    // Check if the provided price matches our calculation (with 5% tolerance)
+    if (total_price > 0) {  // Skip validation if total_price is not provided
+      const priceDifference = Math.abs(total_price - adjustedTotalPrice);
+      const toleranceAmount = adjustedTotalPrice * 0.05; // 5% tolerance
+      
+      if (priceDifference > toleranceAmount) {
+        const hourlyPriceDifference = total_price !== adjustedTotalPrice;
+        return NextResponse.json({
+          success: false,
+          message: `Price mismatch. Expected ${adjustedTotalPrice} but got ${total_price}`,
+          data: {
+            provided_price: total_price,
+            calculated_price: adjustedTotalPrice,
+            difference: priceDifference,
+            tolerance: toleranceAmount,
+            hours: durationHours.toFixed(2),
+            hourlyRate: seatingType.hourly_rate
+          }
+        }, { status: 400 });
+>>>>>>> Stashed changes
       }
     }
     
@@ -472,7 +512,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           start_time: startTimeDate,
           end_time: endTimeDate,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           total_price,
+=======
+          total_price: Number(adjustedTotalPrice),
+>>>>>>> Stashed changes
 =======
           total_price: Number(adjustedTotalPrice),
 >>>>>>> Stashed changes
@@ -523,7 +567,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             start_time: startTimeDate,
             end_time: endTimeDate,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             total_price: total_price / seatsToBook, // Divide total price among seats
+=======
+            total_price: Number(adjustedTotalPrice / seatsToBook), // Ensure this is a number
+>>>>>>> Stashed changes
 =======
             total_price: Number(adjustedTotalPrice / seatsToBook), // Ensure this is a number
 >>>>>>> Stashed changes
@@ -568,7 +616,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         num_participants,
         amenities: amenities || null,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         total_price,
+=======
+        total_price: Number(adjustedTotalPrice),
+>>>>>>> Stashed changes
 =======
         total_price: Number(adjustedTotalPrice),
 >>>>>>> Stashed changes

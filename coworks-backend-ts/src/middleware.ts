@@ -235,6 +235,7 @@ export async function middleware(request: NextRequest) {
     const { valid, decoded, role } = await verifyToken(authHeader.trim());
     
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
@@ -264,6 +265,9 @@ export async function middleware(request: NextRequest) {
       }
       
     } catch (error) {
+=======
+    if (!valid || !decoded) {
+>>>>>>> Stashed changes
 =======
     if (!valid || !decoded) {
 >>>>>>> Stashed changes
