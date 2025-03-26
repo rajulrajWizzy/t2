@@ -37,14 +37,37 @@ This document outlines the changes made to implement branch and seat codes in th
 
 To apply these changes to your environment, follow these steps:
 
-1. **Run Database Migrations**:
-   ```
-   npm run migrate:short-codes
-   npm run migrate:branch-images
-   npm run migrate:branch-amenities
-   npm run migrate:seat-code
-   npm run migrate:user-profiles
-   ```
+### Option 1: Run Complete Database Schema Recreation (Recommended for New Deployments)
+This will completely recreate the database schema from scratch.
+**WARNING: This will drop all existing tables and data.**
+
+```
+npm run migrate:recreate-schema
+```
+
+### Option 2: Run Individual Migrations
+If you need to apply specific changes to an existing database:
+
+```
+# Create a new migration
+npm run create:migration "description-of-migration"
+
+# Create a new seed file
+npm run create:seed "description-of-seed"
+```
+
+The generated migration files will be placed in the `migrations` directory with timestamped filenames.
+
+### Option 3: Legacy Migrations (For Reference Only)
+These were the previous migration commands:
+
+```
+npm run migrate:short-codes
+npm run migrate:branch-images
+npm run migrate:branch-amenities
+npm run migrate:seat-code
+npm run migrate:user-profiles
+```
 
 2. **Test Endpoints**:
    - Test the `/api/branches` endpoint to confirm branches now include short codes
