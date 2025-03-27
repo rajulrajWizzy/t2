@@ -67,6 +67,16 @@ export async function verifyToken(token: string): Promise<{ valid: boolean; deco
 }
 
 /**
+ * Alias for verifyToken - fixes import errors in routes
+ * @param token JWT token to verify
+ * @returns Decoded payload or null if invalid
+ */
+export async function verifyJWT(token: string): Promise<JWTPayload | null> {
+  const result = await verifyToken(token);
+  return result.valid ? result.decoded : null;
+}
+
+/**
  * Verify a token and return the decoded payload or an error response
  * @param request Request object with Authorization header
  * @returns Decoded token payload or error response
