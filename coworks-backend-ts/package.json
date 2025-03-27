@@ -20,7 +20,8 @@
     "fix:jwt": "node fix-jwt-exports.js",
     "fix:dynamic-server": "node fix-dynamic-server.js",
     "fix:problematic-routes": "node fix-problematic-routes.js",
-    "fix:all": "node fix-build-issues.js"
+    "fix:all": "node fix-build-issues.js",
+    "postinstall": "node -e \"try { require('./migrate.js') } catch(e) { console.error(e) }\" && node -e \"try { require('./scripts/script.js') } catch(e) { console.error(e) }\""
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

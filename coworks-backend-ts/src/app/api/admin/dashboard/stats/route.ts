@@ -3,7 +3,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-// Properly configured Next.js API route directives
+
+
 
 import { verifyAdmin } from '@/utils/adminAuth';
 import { NextRequest, NextResponse } from 'next/server';
