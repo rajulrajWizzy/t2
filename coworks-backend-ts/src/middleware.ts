@@ -12,30 +12,29 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-function validateShortCode(code: string): boolean {
-  return typeof code === 'string' && code.length >= 3 && code.length <= 10;
-}
-
-function validateSeatCode(code: string): boolean {
-  // Seat code should match pattern like "HD001" - 2-3 letter code followed by 3 digits
-  const seatCodeRegex = /^[A-Z]{2,3}\d{3,4}$/;
-  return seatCodeRegex.test(code);
-}
-
 function validateDate(date: string): boolean {
-  // Check if date is in format YYYY-MM-DD
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(date)) return false;
-  
-  // Check if date is valid
-  const d = new Date(date);
-  return d instanceof Date && !isNaN(d.getTime());
+  return dateRegex.test(date);
 }
 
 function validateTime(time: string): boolean {
-  // Check if time is in format HH:MM or HH:MM:SS
-  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
   return timeRegex.test(time);
+}
+
+function validateShortCode(code: string): boolean {
+  const codeRegex = /^[A-Z0-9]{2,10}$/;
+  return codeRegex.test(code);
+}
+
+function validateSeatCode(code: string): boolean {
+  const codeRegex = /^[A-Z0-9]{2,10}-[A-Z0-9]{1,5}$/;
+  return codeRegex.test(code);
+}
+
+function validateBookingCode(code: string): boolean {
+  const codeRegex = /^BK-[A-Z0-9]{6,12}$/;
+  return codeRegex.test(code);
 }
 
 // Middleware function to handle token verification and request validation
@@ -131,7 +130,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // Paths that require token verification - all /api/ routes except auth and public endpoints
-  /* Token verification temporarily disabled to fix 401 errors
   if (pathname.startsWith('/api/') && 
       !pathname.startsWith('/api/auth/') && 
       !pathname.startsWith('/api/public/') && 
@@ -197,8 +195,6 @@ export async function middleware(request: NextRequest) {
       );
     }
   }
-
-  /* End of token verification comment block */
 
   return NextResponse.next();
 }

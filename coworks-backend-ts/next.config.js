@@ -16,9 +16,6 @@ const nextConfig = {
     serverComponentsExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'bcryptjs'],
     esmExternals: 'loose',
     missingSuspenseWithCSRBailout: false, // Prevent hydration issues with dynamic content
-    // Ensure all API routes are built as server-side only
-    disableStaticFiles: true,
-    disableOptimizedLoading: true
   },
 
   // Add headers for CORS

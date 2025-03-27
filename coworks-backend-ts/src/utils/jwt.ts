@@ -1,8 +1,9 @@
 // Explicitly set Node.js runtime for this utility
 export const runtime = "nodejs";
 
-import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
+import * as jwt from 'jsonwebtoken';
+import { JWTPayload } from '@/types/jwt';
 
 // Interface for token payload
 export interface JWTPayload {
@@ -30,68 +31,37 @@ export interface VerificationResult {
   decoded: JWTPayload | null;
 }
 
-// Set a secret key for JWT - in production, use environment variables
+// JWT secret key from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d'; // 1 day by default
-
-// Get secret key for JWT
-const getJwtSecretKey = () => {
-  const secret = process.env.JWT_SECRET || JWT_SECRET;
-  return new TextEncoder().encode(secret);
-};
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
 /**
- * Sign a new JWT token
- * @param payload Data to include in the token
- * @returns Signed JWT token
+ * Generate a JWT token for the given user
+ * @param payload User data to include in the token
+ * @returns JWT token
  */
-export async function signToken(payload: JWTPayload): Promise<string> {
-  try {
-    const secretKey = getJwtSecretKey();
-    
-    // Parse expiration time - convert days or hours to seconds
-    let expiresInSeconds = 86400; // Default 1 day
-    
-    if (typeof JWT_EXPIRES_IN === 'string') {
-      if (JWT_EXPIRES_IN.endsWith('d')) {
-        const days = parseInt(JWT_EXPIRES_IN.slice(0, -1));
-        expiresInSeconds = days * 24 * 60 * 60;
-      } else if (JWT_EXPIRES_IN.endsWith('h')) {
-        const hours = parseInt(JWT_EXPIRES_IN.slice(0, -1));
-        expiresInSeconds = hours * 60 * 60;
-      } else if (JWT_EXPIRES_IN.endsWith('m')) {
-        const minutes = parseInt(JWT_EXPIRES_IN.slice(0, -1));
-        expiresInSeconds = minutes * 60;
-      } else if (JWT_EXPIRES_IN.endsWith('s')) {
-        expiresInSeconds = parseInt(JWT_EXPIRES_IN.slice(0, -1));
-      }
-    }
-    
-    const token = await new SignJWT({...payload})
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
-      .sign(secretKey);
-    
-    return token;
-  } catch (error) {
-    console.error('Error signing token:', error);
-    throw error;
-  }
+export function generateToken(payload: any): string {
+  return jwt.sign(
+    { 
+      id: payload.id,
+      email: payload.email,
+      name: payload.name
+    },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
 }
 
 /**
- * Verify and decode a JWT token without checking blacklist
+ * Verify a JWT token and return the decoded payload
  * @param token JWT token to verify
- * @returns Object with validity status and decoded payload
+ * @returns Object with verification result and decoded payload
  */
-export async function verifyToken(token: string): Promise<VerificationResult> {
+export async function verifyToken(token: string): Promise<{ valid: boolean; decoded: JWTPayload | null }> {
   try {
-    const secretKey = getJwtSecretKey();
-    const { payload } = await jwtVerify(token, secretKey);
-    return { valid: true, decoded: payload as unknown as JWTPayload };
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return { valid: true, decoded };
   } catch (error) {
-    console.error('Token verification error:', error);
     return { valid: false, decoded: null };
   }
 }
@@ -103,17 +73,6 @@ export async function verifyToken(token: string): Promise<VerificationResult> {
  */
 export async function verifyTokenFromRequest(request: Request): Promise<JWTPayload | NextResponse> {
   try {
-    // TEMPORARY FIX: Always return a mock payload to bypass authentication
-    // Remove this after fixing the issue
-    return {
-      id: 1,
-      email: 'temp@example.com',
-      name: 'Temporary User',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 3600
-    };
-    
-    /* Original code - commented out temporarily
     // Extract token from Authorization header
     const authHeader = request.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -136,26 +95,13 @@ export async function verifyTokenFromRequest(request: Request): Promise<JWTPaylo
     }
     
     return verificationResult.decoded;
-    */
   } catch (error) {
     console.error('Token verification error:', error);
-    
-    // TEMPORARY FIX: Return mock payload even on error
-    return {
-      id: 1,
-      email: 'temp@example.com',
-      name: 'Temporary User',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 3600
-    };
+    return NextResponse.json(
+      { success: false, message: 'Token verification failed' },
+      { status: 401 }
+    );
   }
-}
-
-/**
- * Generate a JWT token for an admin user
- */
-export async function generateJWT(payload: { id: string; email: string; role: string }): Promise<string> {
-  return signToken(payload as unknown as JWTPayload);
 }
 
 /**
@@ -165,15 +111,6 @@ export async function generateJWT(payload: { id: string; email: string; role: st
  */
 export async function verifyAuth(request: Request): Promise<JWTPayload | NextResponse> {
   return verifyTokenFromRequest(request);
-}
-
-/**
- * Alias for verifyToken - fixes import errors in routes
- * @param token JWT token to verify
- * @returns Object with validity status and decoded payload
- */
-export async function verifyJWT(token: string): Promise<VerificationResult> {
-  return verifyToken(token);
 }
 
 /**
@@ -207,10 +144,10 @@ export async function blacklistToken(token: string, userId: number): Promise<voi
   // Only run in Node.js environment, not Edge
   if (typeof window === 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
     try {
-      const secretKey = getJwtSecretKey();
+      const secretKey = process.env.JWT_SECRET || JWT_SECRET;
       // Verify token to get expiry
-      const { payload } = await jwtVerify(token, secretKey);
-      const expiresAt = payload.exp ? new Date(payload.exp * 1000) : new Date();
+      const decoded = jwt.decode(token);
+      const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000) : new Date();
       
       // Dynamically import models
       const { default: models } = await import('@/models');

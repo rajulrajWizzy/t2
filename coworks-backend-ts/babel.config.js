@@ -1,12 +1,5 @@
 module.exports = {
-  presets: [
-    ["next/babel", {
-      "preset-env": {},
-      "transform-runtime": {},
-      "styled-jsx": {},
-      "class-properties": {}
-    }]
-  ],
+  presets: ["next/babel"],
   plugins: [
     ["@babel/plugin-transform-typescript", {
       "allowDeclareFields": true
