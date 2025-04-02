@@ -1,0 +1,268 @@
+{
+  "passed": 0,
+  "failed": 29,
+  "total": 29,
+  "details": [
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/auth/login",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/auth/register",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/auth/forgot-password",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/auth/reset-password",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/auth/logout",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/branches",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/branches/{id}",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/branches/{id}/seats",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/branches/stats",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/slots",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/slots/available",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/slots/categorized",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/slots/branch-seating",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/slots/seating-type",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/bookings",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/bookings/{id}",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/bookings",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/profile",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/profile/upload",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/profile/verification-status",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/auth/login",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/dashboard/stats",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/users",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/users/create",
+      "method": "POST",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/users/{id}",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/profile",
+      "method": "GET",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    },
+    {
+      "endpoint": "/api/admin/profile/update",
+      "method": "PUT",
+      "status": 404,
+      "success": false,
+      "response": {
+        "error": "Could not parse response as JSON"
+      }
+    }
+  ]
+}

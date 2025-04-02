@@ -1,0 +1,199 @@
+#!/usr/bin/env node
+
+/**
+ * Runtime Fix Script
+ * 
+ * This script handles runtime configuration for API routes:
+ * 1. Adds 'export const runtime = "nodejs"' to all API route files that don't have a runtime directive
+ * 2. Replaces 'export const runtime = "edge"' with Node.js runtime to ensure compatibility with Sequelize
+ * 3. Updates middleware.ts if needed
+ * 4. Updates next.config.js with appropriate settings
+ * 5. Fixes conflict between transpilePackages and serverComponentsExternalPackages
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+const glob = require('glob');
+
+console.log('\x1b[33m%s\x1b[0m', '🔧 Fixing runtime configuration for API routes...');
+
+// Find all route files in the project
+function findRouteFiles() {
+  try {
+    const routeFiles = glob.sync('src/app/api/**/route.{ts,tsx,js,jsx}', { nodir: true });
+    console.log(`Found ${routeFiles.length} route files.`);
+    return routeFiles;
+  } catch (error) {
+    console.error(`Error finding route files: ${error.message}`);
+    return [];
+  }
+}
+
+// Add or update the runtime directive in a file
+function processRuntimeDirective(filePath) {
+  try {
+    let content = fs.readFileSync(filePath, 'utf8');
+    const originalContent = content;
+    
+    // Check if runtime directive already exists
+    const hasRuntimeDirective = content.includes('export const runtime');
+    
+    if (hasRuntimeDirective) {
+      // Replace any existing edge runtime with nodejs runtime
+      if (content.includes('export const runtime = "edge"') || content.includes("export const runtime = 'edge'")) {
+        content = content.replace(/export const runtime = ["']edge["']/g, 'export const runtime = "nodejs"');
+        console.log(`Updated runtime to nodejs in: ${filePath}`);
+      } else {
+        console.log(`File already has correct runtime directive: ${filePath}`);
+      }
+    } else {
+      // Add runtime directive to the top of the file (after imports)
+      const lines = content.split('\n');
+      let lastImportIndex = -1;
+
+      // Find the last import statement
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim().startsWith('import ')) {
+          lastImportIndex = i;
+        }
+      }
+
+      // Insert the runtime directive after imports or at the beginning
+      const insertPosition = lastImportIndex !== -1 ? lastImportIndex + 1 : 0;
+      lines.splice(insertPosition, 0, '', '// Explicitly set Node.js runtime for this route', 'export const runtime = "nodejs";', '');
+      content = lines.join('\n');
+      console.log(`Added runtime directive to: ${filePath}`);
+    }
+
+    // Write back if content changed
+    if (originalContent !== content) {
+      fs.writeFileSync(filePath, content, 'utf8');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error processing runtime directive in ${filePath}: ${error.message}`);
+    return false;
+  }
+}
+
+// Ensure middleware.ts has the correct runtime
+function processMiddlewareFile() {
+  const middlewarePath = 'src/middleware.ts';
+  if (fs.existsSync(middlewarePath)) {
+    try {
+      const content = fs.readFileSync(middlewarePath, 'utf8');
+      
+      if (content.includes('export const runtime = "edge"')) {
+        console.log(`WARNING: Middleware is using Edge runtime which may cause compatibility issues.`);
+      } else if (content.includes('export const runtime = "nodejs"')) {
+        console.log(`Middleware is already using Node.js runtime. No changes needed.`);
+      } else {
+        console.log(`Middleware doesn't have a runtime directive. This is OK for compatibility.`);
+      }
+    } catch (error) {
+      console.error(`Error processing middleware file: ${error.message}`);
+    }
+  } else {
+    console.log(`No middleware file found at ${middlewarePath}`);
+  }
+}
+
+// Process next.config.js to ensure proper runtime settings
+function processNextConfig() {
+  const configPath = 'next.config.js';
+  if (!fs.existsSync(configPath)) {
+    console.log(`${configPath} not found. No changes needed.`);
+    return false;
+  }
+
+  try {
+    let content = fs.readFileSync(configPath, 'utf8');
+    const originalContent = content;
+    
+    // Check for experimental section
+    if (!content.includes('experimental: {')) {
+      // Add experimental section if it doesn't exist
+      if (content.includes('module.exports = {')) {
+        content = content.replace('module.exports = {', 'module.exports = {\n  experimental: {\n    serverComponentsExternalPackages: ["sequelize", "pg", "pg-hstore"],\n  },');
+        console.log(`Added experimental settings to ${configPath}`);
+      } else {
+        console.log(`Could not find module.exports in ${configPath}. Skipping.`);
+      }
+    } else {
+      // Check for serverComponentsExternalPackages
+      if (!content.includes('serverComponentsExternalPackages')) {
+        // Add serverComponentsExternalPackages to existing experimental section
+        content = content.replace('experimental: {', 'experimental: {\n    serverComponentsExternalPackages: ["sequelize", "pg", "pg-hstore"],');
+        console.log(`Added serverComponentsExternalPackages to experimental settings in ${configPath}`);
+      } else {
+        // Check if sequelize is in the serverComponentsExternalPackages
+        const match = content.match(/serverComponentsExternalPackages:\s*\[(.*?)\]/s);
+        if (match && !match[1].includes('sequelize')) {
+          // Add sequelize to existing serverComponentsExternalPackages
+          content = content.replace(/serverComponentsExternalPackages:\s*\[(.*?)\]/s, (match, packages) => {
+            const newPackages = packages.trim().endsWith(',') 
+              ? `${packages} "sequelize", "pg", "pg-hstore"`
+              : `${packages}, "sequelize", "pg", "pg-hstore"`;
+            return `serverComponentsExternalPackages: [${newPackages}]`;
+          });
+          console.log(`Added sequelize to serverComponentsExternalPackages in ${configPath}`);
+        } else {
+          console.log(`serverComponentsExternalPackages already has sequelize in ${configPath}`);
+        }
+      }
+    }
+
+    // Check for conflicts between transpilePackages and serverComponentsExternalPackages
+    if (content.includes('transpilePackages') && content.includes('serverComponentsExternalPackages')) {
+      console.log(`WARNING: Both transpilePackages and serverComponentsExternalPackages are defined in ${configPath}.`);
+      console.log(`This may cause conflicts. Consider moving packages from transpilePackages to serverComponentsExternalPackages.`);
+    }
+
+    // Write back if content changed
+    if (originalContent !== content) {
+      fs.writeFileSync(configPath, content, 'utf8');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error processing ${configPath}: ${error.message}`);
+    return false;
+  }
+}
+
+// Main function
+async function main() {
+  console.log('Starting runtime fixes...');
+  
+  let modifiedFiles = 0;
+  
+  // Process all route files
+  const routeFiles = findRouteFiles();
+  for (const file of routeFiles) {
+    if (processRuntimeDirective(file)) {
+      modifiedFiles++;
+    }
+  }
+  
+  // Process middleware file
+  processMiddlewareFile();
+  
+  // Process next.config.js
+  if (processNextConfig()) {
+    modifiedFiles++;
+  }
+  
+  console.log(`Runtime fixes completed. Modified ${modifiedFiles} files.`);
+  console.log('You may need to restart your development server for changes to take effect.');
+}
+
+// Execute the main function
+main().catch(error => {
+  console.error(`Error: ${error.message}`);
+  process.exit(1);
+}); 
+} 

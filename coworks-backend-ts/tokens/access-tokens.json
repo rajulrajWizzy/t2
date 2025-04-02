@@ -1,0 +1,51 @@
+{
+  "user": {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "Regular User",
+      "role": "user",
+      "branch_id": null
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwibmFtZSI6IlJlZ3VsYXIgVXNlciIsInJvbGUiOiJ1c2VyIiwiYnJhbmNoX2lkIjpudWxsLCJpYXQiOjE3NDI3MDgyNzYsImV4cCI6MTc0Mjc5NDY3Nn0.JlBZywHRhQml8KFBbpCl-UFk2j-M3HDWLRkG-m9r-2Q"
+  },
+  "branch_admin": {
+    "user": {
+      "id": 2,
+      "email": "branchadmin@coworks.com",
+      "name": "Branch Admin",
+      "role": "branch_admin",
+      "branch_id": 1,
+      "is_admin": true,
+      "permissions": {
+        "seats": [
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "bookings": [
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "users": [
+          "read"
+        ]
+      }
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJicmFuY2hhZG1pbkBjb3dvcmtzLmNvbSIsIm5hbWUiOiJCcmFuY2ggQWRtaW4iLCJyb2xlIjoiYnJhbmNoX2FkbWluIiwiYnJhbmNoX2lkIjoxLCJpc19hZG1pbiI6dHJ1ZSwicGVybWlzc2lvbnMiOnsic2VhdHMiOlsicmVhZCIsImNyZWF0ZSIsInVwZGF0ZSIsImRlbGV0ZSJdLCJib29raW5ncyI6WyJyZWFkIiwiY3JlYXRlIiwidXBkYXRlIiwiZGVsZXRlIl0sInVzZXJzIjpbInJlYWQiXX0sImlhdCI6MTc0MjcwODI3NiwiZXhwIjoxNzQyNzk0Njc2fQ.BSCpElyMjLH_9wdnFY7e0z8yPXz4d2792QB6oP3sl_Y"
+  },
+  "super_admin": {
+    "user": {
+      "id": 3,
+      "email": "superadmin@coworks.com",
+      "name": "Super Admin",
+      "role": "super_admin",
+      "branch_id": null,
+      "is_admin": true
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJzdXBlcmFkbWluQGNvd29ya3MuY29tIiwibmFtZSI6IlN1cGVyIEFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwiYnJhbmNoX2lkIjpudWxsLCJpc19hZG1pbiI6dHJ1ZSwiaWF0IjoxNzQyNzA4Mjc2LCJleHAiOjE3NDI3OTQ2NzZ9.uZ-yDOsP8hBpYzXTuKMwvyee3Dq0pSGgxDZ833bSI1I"
+  }
+}
