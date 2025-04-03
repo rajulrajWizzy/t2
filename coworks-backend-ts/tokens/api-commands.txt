@@ -1,0 +1,38 @@
+# CoWorks API Test Commands
+
+## Regular User API Commands
+
+export USER_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwibmFtZSI6IlJlZ3VsYXIgVXNlciIsInJvbGUiOiJ1c2VyIiwiYnJhbmNoX2lkIjpudWxsLCJpYXQiOjE3NDI3MDgyNzYsImV4cCI6MTc0Mjc5NDY3Nn0.JlBZywHRhQml8KFBbpCl-UFk2j-M3HDWLRkG-m9r-2Q"
+
+# Get user profile
+curl -X GET "http://localhost:3000/api/profile" -H "Authorization: Bearer $USER_TOKEN"
+
+# Create booking
+curl -X POST "http://localhost:3000/api/bookings" \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"branch_id": 1, "seating_type_id": 1, "date": "2023-10-15", "start_time": "09:00", "end_time": "17:00"}'
+
+## Branch Admin API Commands
+
+export BRANCH_ADMIN_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJicmFuY2hhZG1pbkBjb3dvcmtzLmNvbSIsIm5hbWUiOiJCcmFuY2ggQWRtaW4iLCJyb2xlIjoiYnJhbmNoX2FkbWluIiwiYnJhbmNoX2lkIjoxLCJpc19hZG1pbiI6dHJ1ZSwicGVybWlzc2lvbnMiOnsic2VhdHMiOlsicmVhZCIsImNyZWF0ZSIsInVwZGF0ZSIsImRlbGV0ZSJdLCJib29raW5ncyI6WyJyZWFkIiwiY3JlYXRlIiwidXBkYXRlIiwiZGVsZXRlIl0sInVzZXJzIjpbInJlYWQiXX0sImlhdCI6MTc0MjcwODI3NiwiZXhwIjoxNzQyNzk0Njc2fQ.BSCpElyMjLH_9wdnFY7e0z8yPXz4d2792QB6oP3sl_Y"
+
+# Get admin profile
+curl -X GET "http://localhost:3000/api/admin/profile" -H "Authorization: Bearer $BRANCH_ADMIN_TOKEN"
+
+# List users
+curl -X GET "http://localhost:3000/api/admin/users" -H "Authorization: Bearer $BRANCH_ADMIN_TOKEN"
+
+## Super Admin API Commands
+
+export SUPER_ADMIN_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJzdXBlcmFkbWluQGNvd29ya3MuY29tIiwibmFtZSI6IlN1cGVyIEFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwiYnJhbmNoX2lkIjpudWxsLCJpc19hZG1pbiI6dHJ1ZSwiaWF0IjoxNzQyNzA4Mjc2LCJleHAiOjE3NDI3OTQ2NzZ9.uZ-yDOsP8hBpYzXTuKMwvyee3Dq0pSGgxDZ833bSI1I"
+
+# Get super admin dashboard stats
+curl -X GET "http://localhost:3000/api/admin/super/stats" -H "Authorization: Bearer $SUPER_ADMIN_TOKEN"
+
+# Create admin user
+curl -X POST "http://localhost:3000/api/admin/users/create" \
+  -H "Authorization: Bearer $SUPER_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "New Admin", "email": "newadmin@example.com", "password": "SecurePass123", "role": "branch_admin", "branchId": 1}'
+

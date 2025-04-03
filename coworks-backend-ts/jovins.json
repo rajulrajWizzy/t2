@@ -1,0 +1,240 @@
+{
+  "baseUrl": "https://api.coworks.com",
+  "version": "1.0.0",
+  "authentication": {
+    "user": {
+      "type": "Bearer",
+      "tokenFormat": "JWT",
+      "header": "Authorization: Bearer <token>"
+    },
+    "admin": {
+      "type": "Bearer",
+      "tokenFormat": "JWT",
+      "header": "Authorization: Bearer <token>"
+    }
+  },
+  "endpoints": {
+    "auth": {
+      "login": {
+        "path": "/api/auth/login",
+        "method": "POST",
+        "auth": false,
+        "body": {
+          "email": "string",
+          "password": "string"
+        },
+        "response": {
+          "token": "string",
+          "user": "object"
+        }
+      },
+      "register": {
+        "path": "/api/auth/register",
+        "method": "POST",
+        "auth": false,
+        "body": {
+          "email": "string",
+          "password": "string",
+          "name": "string",
+          "phone": "string"
+        }
+      },
+      "resetPassword": {
+        "path": "/api/auth/reset-password",
+        "method": "POST",
+        "auth": false,
+        "body": {
+          "email": "string"
+        }
+      }
+    },
+    "user": {
+      "profile": {
+        "path": "/api/user/profile",
+        "method": "GET",
+        "auth": "user"
+      },
+      "updateProfile": {
+        "path": "/api/user/profile",
+        "method": "PUT",
+        "auth": "user",
+        "body": {
+          "name": "string",
+          "phone": "string",
+          "company": "string"
+        }
+      },
+      "coins": {
+        "getBalance": {
+          "path": "/api/user/coins",
+          "method": "GET",
+          "auth": "user"
+        },
+        "useCoins": {
+          "path": "/api/user/coins/use",
+          "method": "POST",
+          "auth": "user",
+          "body": {
+            "amount": "number",
+            "bookingType": "string"
+          }
+        }
+      }
+    },
+    "bookings": {
+      "create": {
+        "path": "/api/bookings",
+        "method": "POST",
+        "auth": "user",
+        "body": {
+          "startDate": "string (ISO date)",
+          "endDate": "string (ISO date)",
+          "seatId": "number",
+          "bookingType": "string",
+          "totalPrice": "number"
+        }
+      },
+      "list": {
+        "path": "/api/bookings",
+        "method": "GET",
+        "auth": "user",
+        "query": {
+          "status": "string (optional)",
+          "from": "string (ISO date, optional)",
+          "to": "string (ISO date, optional)"
+        }
+      },
+      "cancel": {
+        "path": "/api/bookings/:id/cancel",
+        "method": "POST",
+        "auth": "user"
+      }
+    },
+    "admin": {
+      "auth": {
+        "login": {
+          "path": "/api/admin/login",
+          "method": "POST",
+          "auth": false,
+          "body": {
+            "email": "string",
+            "password": "string"
+          }
+        }
+      },
+      "users": {
+        "list": {
+          "path": "/api/admin/users",
+          "method": "GET",
+          "auth": "admin",
+          "query": {
+            "page": "number",
+            "limit": "number",
+            "search": "string"
+          }
+        },
+        "create": {
+          "path": "/api/admin/users/create",
+          "method": "POST",
+          "auth": "superAdmin",
+          "body": {
+            "email": "string",
+            "password": "string",
+            "name": "string",
+            "role": "string"
+          }
+        }
+      },
+      "bookings": {
+        "list": {
+          "path": "/api/admin/bookings",
+          "method": "GET",
+          "auth": "admin",
+          "query": {
+            "status": "string",
+            "from": "string (ISO date)",
+            "to": "string (ISO date)",
+            "page": "number",
+            "limit": "number"
+          }
+        },
+        "update": {
+          "path": "/api/admin/bookings/:id",
+          "method": "PUT",
+          "auth": "admin",
+          "body": {
+            "status": "string",
+            "notes": "string"
+          }
+        }
+      },
+      "seats": {
+        "list": {
+          "path": "/api/admin/seats",
+          "method": "GET",
+          "auth": "admin"
+        },
+        "create": {
+          "path": "/api/admin/seats",
+          "method": "POST",
+          "auth": "admin",
+          "body": {
+            "code": "string",
+            "type": "string",
+            "capacity": "number",
+            "price": "number",
+            "branchId": "number"
+          }
+        },
+        "update": {
+          "path": "/api/admin/seats/:id",
+          "method": "PUT",
+          "auth": "admin",
+          "body": {
+            "code": "string",
+            "type": "string",
+            "capacity": "number",
+            "price": "number",
+            "status": "string"
+          }
+        }
+      },
+      "support": {
+        "tickets": {
+          "list": {
+            "path": "/api/admin/support/tickets",
+            "method": "GET",
+            "auth": "admin"
+          },
+          "view": {
+            "path": "/api/admin/support/tickets/:ticket_id",
+            "method": "GET",
+            "auth": "admin"
+          },
+          "update": {
+            "path": "/api/admin/support/tickets/:ticket_id",
+            "method": "PUT",
+            "auth": "admin",
+            "body": {
+              "status": "string",
+              "assignedTo": "number"
+            }
+          },
+          "reply": {
+            "path": "/api/admin/support/tickets/:ticket_id/messages",
+            "method": "POST",
+            "auth": "admin",
+            "body": {
+              "message": "string"
+            }
+          }
+        }
+      },
+      "stats": {
+        "path": "/api/admin/super/stats",
+        "method": "GET",
+        "auth": "superAdmin"
+      }
+    }
+  }
+}

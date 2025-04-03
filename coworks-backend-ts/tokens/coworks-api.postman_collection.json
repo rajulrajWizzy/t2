@@ -1,0 +1,156 @@
+{
+  "info": {
+    "name": "CoWorks API Collection",
+    "description": "API collection for CoWorks backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"User123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/admin/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@coworks.com\",\n  \"password\": \"SuperAdmin123!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User API",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/profile",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwibmFtZSI6IlJlZ3VsYXIgVXNlciIsInJvbGUiOiJ1c2VyIiwiYnJhbmNoX2lkIjpudWxsLCJpYXQiOjE3NDI3MDgyNzYsImV4cCI6MTc0Mjc5NDY3Nn0.JlBZywHRhQml8KFBbpCl-UFk2j-M3HDWLRkG-m9r-2Q"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Bookings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/bookings",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwibmFtZSI6IlJlZ3VsYXIgVXNlciIsInJvbGUiOiJ1c2VyIiwiYnJhbmNoX2lkIjpudWxsLCJpYXQiOjE3NDI3MDgyNzYsImV4cCI6MTc0Mjc5NDY3Nn0.JlBZywHRhQml8KFBbpCl-UFk2j-M3HDWLRkG-m9r-2Q"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin API",
+      "item": [
+        {
+          "name": "Get Admin Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/profile",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJicmFuY2hhZG1pbkBjb3dvcmtzLmNvbSIsIm5hbWUiOiJCcmFuY2ggQWRtaW4iLCJyb2xlIjoiYnJhbmNoX2FkbWluIiwiYnJhbmNoX2lkIjoxLCJpc19hZG1pbiI6dHJ1ZSwicGVybWlzc2lvbnMiOnsic2VhdHMiOlsicmVhZCIsImNyZWF0ZSIsInVwZGF0ZSIsImRlbGV0ZSJdLCJib29raW5ncyI6WyJyZWFkIiwiY3JlYXRlIiwidXBkYXRlIiwiZGVsZXRlIl0sInVzZXJzIjpbInJlYWQiXX0sImlhdCI6MTc0MjcwODI3NiwiZXhwIjoxNzQyNzk0Njc2fQ.BSCpElyMjLH_9wdnFY7e0z8yPXz4d2792QB6oP3sl_Y"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/users",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJicmFuY2hhZG1pbkBjb3dvcmtzLmNvbSIsIm5hbWUiOiJCcmFuY2ggQWRtaW4iLCJyb2xlIjoiYnJhbmNoX2FkbWluIiwiYnJhbmNoX2lkIjoxLCJpc19hZG1pbiI6dHJ1ZSwicGVybWlzc2lvbnMiOnsic2VhdHMiOlsicmVhZCIsImNyZWF0ZSIsInVwZGF0ZSIsImRlbGV0ZSJdLCJib29raW5ncyI6WyJyZWFkIiwiY3JlYXRlIiwidXBkYXRlIiwiZGVsZXRlIl0sInVzZXJzIjpbInJlYWQiXX0sImlhdCI6MTc0MjcwODI3NiwiZXhwIjoxNzQyNzk0Njc2fQ.BSCpElyMjLH_9wdnFY7e0z8yPXz4d2792QB6oP3sl_Y"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Super Admin API",
+      "item": [
+        {
+          "name": "Get Super Admin Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/super/stats",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJzdXBlcmFkbWluQGNvd29ya3MuY29tIiwibmFtZSI6IlN1cGVyIEFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwiYnJhbmNoX2lkIjpudWxsLCJpc19hZG1pbiI6dHJ1ZSwiaWF0IjoxNzQyNzA4Mjc2LCJleHAiOjE3NDI3OTQ2NzZ9.uZ-yDOsP8hBpYzXTuKMwvyee3Dq0pSGgxDZ833bSI1I"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Create Admin User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/admin/users/create",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJzdXBlcmFkbWluQGNvd29ya3MuY29tIiwibmFtZSI6IlN1cGVyIEFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwiYnJhbmNoX2lkIjpudWxsLCJpc19hZG1pbiI6dHJ1ZSwiaWF0IjoxNzQyNzA4Mjc2LCJleHAiOjE3NDI3OTQ2NzZ9.uZ-yDOsP8hBpYzXTuKMwvyee3Dq0pSGgxDZ833bSI1I"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Admin\",\n  \"email\": \"newadmin@example.com\",\n  \"password\": \"SecurePass123\",\n  \"role\": \"branch_admin\",\n  \"branchId\": 1\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
