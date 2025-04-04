@@ -68,73 +68,73 @@ async function findFiles(dir, extensions, excludeDirs = []) {
 /**
  * Fixes API routes to use Node.js runtime
  */
-async function fixApiRoutes() {
-  console.log(`\n${colors.cyan}Fixing API routes to use Node.js runtime...${colors.reset}`);
+// async function fixApiRoutes() {
+//   console.log(`\n${colors.cyan}Fixing API routes to use Node.js runtime...${colors.reset}`);
   
-  try {
-    // Find all API route files
-    const apiRoutes = await findFiles(
-      path.join(process.cwd(), 'src', 'app', 'api'),
-      ['.js', '.ts', '.tsx'],
-      ['node_modules', '.next', 'public']
-    );
+//   try {
+//     // Find all API route files
+//     const apiRoutes = await findFiles(
+//       path.join(process.cwd(), 'src', 'app', 'api'),
+//       ['.js', '.ts', '.tsx'],
+//       ['node_modules', '.next', 'public']
+//     );
     
-    console.log(`${colors.blue}Found ${apiRoutes.length} API route files${colors.reset}`);
+//     console.log(`${colors.blue}Found ${apiRoutes.length} API route files${colors.reset}`);
     
-    for (const filePath of apiRoutes) {
-      let content = await readFile(filePath, 'utf8');
-      let modified = false;
+//     for (const filePath of apiRoutes) {
+//       let content = await readFile(filePath, 'utf8');
+//       let modified = false;
       
-      // Check if Edge Runtime directive exists and replace it
-      if (content.includes('export const runtime = "edge"') || content.includes("export const runtime = 'edge'")) {
-        console.log(`${colors.yellow}Replacing Edge Runtime with Node.js runtime in ${filePath}${colors.reset}`);
+//       // Check if Edge Runtime directive exists and replace it
+//       if (content.includes('export const runtime = "edge"') || content.includes("export const runtime = 'edge'")) {
+//         console.log(`${colors.yellow}Replacing Edge Runtime with Node.js runtime in ${filePath}${colors.reset}`);
         
-        // Replace Edge Runtime with Node.js runtime
-        content = content.replace(
-          /export\s+const\s+runtime\s*=\s*["']edge["'];?/g,
-          '// Edge Runtime disabled for better compatibility with Sequelize\nexport const runtime = "nodejs";'
-        );
-        modified = true;
-      }
+//         // Replace Edge Runtime with Node.js runtime
+//         content = content.replace(
+//           /export\s+const\s+runtime\s*=\s*["']edge["'];?/g,
+//           '// Edge Runtime disabled for better compatibility with Sequelize\nexport const runtime = "nodejs";'
+//         );
+//         modified = true;
+//       }
       
-      // Ensure Node.js runtime directive exists
-      if (!content.includes('export const runtime = "nodejs"') && !content.includes("export const runtime = 'nodejs'")) {
-        console.log(`${colors.green}Adding Node.js runtime directive to ${filePath}${colors.reset}`);
+//       // Ensure Node.js runtime directive exists
+//       if (!content.includes('export const runtime = "nodejs"') && !content.includes("export const runtime = 'nodejs'")) {
+//         console.log(`${colors.green}Adding Node.js runtime directive to ${filePath}${colors.reset}`);
         
-        // Add the runtime directive at the top of the file
-        content = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\n\n' + content;
-        modified = true;
-      }
+//         // Add the runtime directive at the top of the file
+//         content = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\n\n' + content;
+//         modified = true;
+//       }
       
-      // Ensure dynamic directive exists
-      if (!content.includes('export const dynamic')) {
-        const dynamicDirective = '\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n';
+//       // Ensure dynamic directive exists
+//       if (!content.includes('export const dynamic')) {
+//         const dynamicDirective = '\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n';
         
-        // Position after the runtime directive if it exists
-        if (content.includes('export const runtime')) {
-          content = content.replace(
-            /(export const runtime.+?;)/,
-            '$1' + dynamicDirective
-          );
-        } else {
-          // Otherwise add at the top
-          content = dynamicDirective + content;
-        }
+//         // Position after the runtime directive if it exists
+//         if (content.includes('export const runtime')) {
+//           content = content.replace(
+//             /(export const runtime.+?;)/,
+//             '$1' + dynamicDirective
+//           );
+//         } else {
+//           // Otherwise add at the top
+//           content = dynamicDirective + content;
+//         }
         
-        modified = true;
-      }
+//         modified = true;
+//       }
       
-      if (modified) {
-        await writeFile(filePath, content, 'utf8');
-        modifiedFiles++;
-      }
-    }
+//       if (modified) {
+//         await writeFile(filePath, content, 'utf8');
+//         modifiedFiles++;
+//       }
+//     }
     
-    console.log(`${colors.green}Fixed ${modifiedFiles} API route files${colors.reset}`);
-  } catch (error) {
-    console.error(`${colors.red}Error fixing API routes:${colors.reset}`, error);
-  }
-}
+//     console.log(`${colors.green}Fixed ${modifiedFiles} API route files${colors.reset}`);
+//   } catch (error) {
+//     console.error(`${colors.red}Error fixing API routes:${colors.reset}`, error);
+//   }
+// }
 
 /**
  * Updates middleware to use Node.js runtime

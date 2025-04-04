@@ -27,51 +27,51 @@ const PROBLEMATIC_ROUTES = [
   'slots/seating-type'
 ];
 
-// Process a file to add the runtime directive
-function processFile(filePath) {
-  try {
-    console.log(`Processing ${filePath}`);
+// // Process a file to add the runtime directive
+// function processFile(filePath) {
+//   try {
+//     console.log(`Processing ${filePath}`);
     
-    // Read the file content
-    let content = fs.readFileSync(filePath, 'utf8');
+//     // Read the file content
+//     let content = fs.readFileSync(filePath, 'utf8');
     
-    // First, completely remove all export declarations and their comments
-    // More aggressive approach to ensure no duplicates remain
+//     // First, completely remove all export declarations and their comments
+//     // More aggressive approach to ensure no duplicates remain
     
-    // Remove any comment lines containing "runtime", "dynamic", etc.
-    content = content.replace(/\/\/.*?(runtime|Node\.js|dynamic|Explicitly|fetchCache).*?\n/g, '');
+//     // Remove any comment lines containing "runtime", "dynamic", etc.
+//     content = content.replace(/\/\/.*?(runtime|Node\.js|dynamic|Explicitly|fetchCache).*?\n/g, '');
     
-    // Remove the export declarations
-    content = content.replace(/export\s+const\s+runtime\s*=.*?\n/g, '');
-    content = content.replace(/export\s+const\s+dynamic\s*=.*?\n/g, '');
-    content = content.replace(/export\s+const\s+fetchCache\s*=.*?\n/g, '');
+//     // Remove the export declarations
+//     content = content.replace(/export\s+const\s+runtime\s*=.*?\n/g, '');
+//     content = content.replace(/export\s+const\s+dynamic\s*=.*?\n/g, '');
+//     content = content.replace(/export\s+const\s+fetchCache\s*=.*?\n/g, '');
     
-    // Clean up any consecutive blank lines that might have been created
-    while (content.includes('\n\n\n')) {
-      content = content.replace(/\n\n\n/g, '\n\n');
-    }
+//     // Clean up any consecutive blank lines that might have been created
+//     while (content.includes('\n\n\n')) {
+//       content = content.replace(/\n\n\n/g, '\n\n');
+//     }
     
-    // Clean up any blank lines at the top of the file
-    while (content.startsWith('\n')) {
-      content = content.substring(1);
-    }
+//     // Clean up any blank lines at the top of the file
+//     while (content.startsWith('\n')) {
+//       content = content.substring(1);
+//     }
     
-    // Add fresh directives at the top of the file
-    const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
+//     // Add fresh directives at the top of the file
+//     const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
     
-    // Add directives at the top of the file
-    content = directives + content;
+//     // Add directives at the top of the file
+//     content = directives + content;
     
-    // Write back to the file
-    fs.writeFileSync(filePath, content);
+//     // Write back to the file
+//     fs.writeFileSync(filePath, content);
     
-    console.log(`✅ Updated directives in ${filePath}`);
-    return true;
-  } catch (error) {
-    console.error(`Error processing file ${filePath}:`, error);
-    return false;
-  }
-}
+//     console.log(`✅ Updated directives in ${filePath}`);
+//     return true;
+//   } catch (error) {
+//     console.error(`Error processing file ${filePath}:`, error);
+//     return false;
+//   }
+// }
 
 // Recursively find route files that match problematic patterns
 function findProblematicRoutes(dir, problematicFiles = []) {

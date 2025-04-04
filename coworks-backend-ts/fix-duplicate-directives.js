@@ -48,21 +48,21 @@ routeFiles.forEach(filePath => {
         continue;
       }
       
-      if (line.includes('export const dynamic')) {
-        if (!addedDynamic) {
-          processedLines.push('export const dynamic = "force-dynamic";');
-          addedDynamic = true;
-        }
-        continue;
-      }
+      // if (line.includes('export const dynamic')) {
+      //   if (!addedDynamic) {
+      //     processedLines.push('export const dynamic = "force-dynamic";');
+      //     addedDynamic = true;
+      //   }
+      //   continue;
+      // }
       
-      if (line.includes('export const fetchCache')) {
-        if (!addedFetchCache) {
-          processedLines.push('export const fetchCache = "force-no-store";');
-          addedFetchCache = true;
-        }
-        continue;
-      }
+      // if (line.includes('export const fetchCache')) {
+      //   if (!addedFetchCache) {
+      //     processedLines.push('export const fetchCache = "force-no-store";');
+      //     addedFetchCache = true;
+      //   }
+      //   continue;
+      // }
       
       // Skip comment lines for directives
       if (line.includes('// Explicitly set Node.js runtime') || 

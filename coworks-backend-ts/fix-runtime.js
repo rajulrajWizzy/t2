@@ -277,65 +277,65 @@ export default safeModels;`;
 }
 
 // Fix files with duplicate runtime directives
-function fixDuplicates() {
-  const apiDir = path.join('src', 'app', 'api');
-  if (fs.existsSync(apiDir)) {
-    const routeFiles = findRouteFiles(apiDir);
-    let fixedCount = 0;
+// function fixDuplicates() {
+//   const apiDir = path.join('src', 'app', 'api');
+//   if (fs.existsSync(apiDir)) {
+//     const routeFiles = findRouteFiles(apiDir);
+//     let fixedCount = 0;
     
-    for (const filePath of routeFiles) {
-      try {
-        let content = fs.readFileSync(filePath, 'utf8');
+//     for (const filePath of routeFiles) {
+//       try {
+//         let content = fs.readFileSync(filePath, 'utf8');
         
-        // Check for multiple runtime directives
-        const runtimeDirectiveMatches = content.match(/export const runtime\s*=/g);
-        const dynamicDirectiveMatches = content.match(/export const dynamic\s*=/g);
-        const fetchCacheDirectiveMatches = content.match(/export const fetchCache\s*=/g);
+//         // Check for multiple runtime directives
+//         const runtimeDirectiveMatches = content.match(/export const runtime\s*=/g);
+//         const dynamicDirectiveMatches = content.match(/export const dynamic\s*=/g);
+//         const fetchCacheDirectiveMatches = content.match(/export const fetchCache\s*=/g);
         
-        // If we have multiple of any directive, completely clean up and rewrite
-        if ((runtimeDirectiveMatches && runtimeDirectiveMatches.length > 1) ||
-            (dynamicDirectiveMatches && dynamicDirectiveMatches.length > 1) ||
-            (fetchCacheDirectiveMatches && fetchCacheDirectiveMatches.length > 1)) {
+//         // If we have multiple of any directive, completely clean up and rewrite
+//         if ((runtimeDirectiveMatches && runtimeDirectiveMatches.length > 1) ||
+//             (dynamicDirectiveMatches && dynamicDirectiveMatches.length > 1) ||
+//             (fetchCacheDirectiveMatches && fetchCacheDirectiveMatches.length > 1)) {
           
-          console.log(`🔍 Found duplicate runtime directives in ${filePath}`);
+//           console.log(`🔍 Found duplicate runtime directives in ${filePath}`);
           
-          // Remove all comment lines with these keywords
-          content = content.replace(/\/\/.*?(runtime|Node\.js|dynamic|Explicitly|fetchCache).*?\n/g, '');
+//           // Remove all comment lines with these keywords
+//           content = content.replace(/\/\/.*?(runtime|Node\.js|dynamic|Explicitly|fetchCache).*?\n/g, '');
           
-          // Remove all export declarations
-          content = content.replace(/export\s+const\s+runtime\s*=.*?\n/g, '');
-          content = content.replace(/export\s+const\s+dynamic\s*=.*?\n/g, '');
-          content = content.replace(/export\s+const\s+fetchCache\s*=.*?\n/g, '');
+//           // Remove all export declarations
+//           content = content.replace(/export\s+const\s+runtime\s*=.*?\n/g, '');
+//           content = content.replace(/export\s+const\s+dynamic\s*=.*?\n/g, '');
+//           content = content.replace(/export\s+const\s+fetchCache\s*=.*?\n/g, '');
           
-          // Clean up any consecutive blank lines that might have been created
-          while (content.includes('\n\n\n')) {
-            content = content.replace(/\n\n\n/g, '\n\n');
-          }
+//           // Clean up any consecutive blank lines that might have been created
+//           while (content.includes('\n\n\n')) {
+//             content = content.replace(/\n\n\n/g, '\n\n');
+//           }
           
-          // Clean up any blank lines at the top of the file
-          while (content.startsWith('\n')) {
-            content = content.substring(1);
-          }
+//           // Clean up any blank lines at the top of the file
+//         //   while (content.startsWith('\n')) {
+//         //     content = content.substring(1);
+//         //   }
           
-          // Add fresh directives at the top of the file
-          const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
+//         //   // Add fresh directives at the top of the file
+//         //   const directives = '// Explicitly set Node.js runtime for this route\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\nexport const fetchCache = "force-no-store";\n\n';
           
-          // Add directives at the top of the file
-          content = directives + content;
+//         //    //Add directives at the top of the file
+//         //   content = directives + content;
           
-          fs.writeFileSync(filePath, content);
-          fixedCount++;
-        }
-      } catch (error) {
-        console.error(`Error checking for duplicates in ${filePath}:`, error);
-      }
-    }
+//         //   fs.writeFileSync(filePath, content);
+//         //   fixedCount++;
+//         // }
+//       } catch (error) {
+//         console.error(`Error checking for duplicates in ${filePath}:`, error);
+//       }
+//     }
     
-    console.log(`✅ Fixed ${fixedCount} files with duplicate runtime directives`);
-    return fixedCount;
-  }
-  return 0;
-}
+//     console.log(`✅ Fixed ${fixedCount} files with duplicate runtime directives`);
+//     return fixedCount;
+//   }
+//   return 0;
+// }
 
 // Fix JWT utilities
 function fixJWTUtilities() {
