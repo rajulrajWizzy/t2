@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import * as jwt from 'jsonwebtoken';
 import { ApiResponse } from '@/types/api';
-
+//fix logout
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Get token from the authorization header

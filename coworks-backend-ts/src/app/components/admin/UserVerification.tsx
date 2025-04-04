@@ -180,13 +180,15 @@ const UserVerification: React.FC = () => {
       const token = localStorage.getItem('adminToken');
       console.log(`Verifying ${documentType} document for user ${userId}, approve: ${approve}`);
       
-      // Use the new API endpoint with proper URL format
-      const response = await axios.patch(
-        `/api/users/${userId}?action=verify-document`,
+      // Use the admin verification endpoint
+      const response = await axios.post(
+        `/api/admin/customers/verify`,
         {
-          documentType,
-          approve,
-          rejectionReason: approve ? '' : rejectionReason
+          customer_id: userId,
+          verification_status: approve ? 'APPROVED' : 'REJECTED',
+          is_identity_verified: documentType === 'identity' ? approve : undefined,
+          is_address_verified: documentType === 'address' ? approve : undefined,
+          verification_notes: approve ? '' : rejectionReason
         },
         {
           headers: {

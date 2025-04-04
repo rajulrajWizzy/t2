@@ -1,16 +1,16 @@
-// Explicitly set Node.js runtime for this route
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
-
-
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { Op } from 'sequelize';
-import { verifyToken , corsHeaders } from '@/utils/jwt-wrapper';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import { SeatingTypeEnum } from '@/types/seating';
+
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
 
 // Define interfaces for the response structure
 interface SlotCategory {
@@ -54,30 +54,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Check authentication
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { success: false, message: 'Unauthorized' },
+        { status: 401, headers: corsHeaders }
+      );
     }
     
     const token = authHeader.split(' ')[1];
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
       return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { success: false, message: 'Unauthorized' },
+        { status: 401, headers: corsHeaders }
+      );
     }
     
     // First, get all active seating types
     const seatingTypes = await models.SeatingType.findAll();
     
     if (!seatingTypes || seatingTypes.length === 0) {
-      return NextResponse.json(
-      {
+      return NextResponse.json({
         success: false,
         message: 'No seating types found'
-      }, { status: 404 }
-    , { headers: corsHeaders });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Prepare branch conditions
@@ -87,16 +85,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const branches = await models.Branch.findAll({
       where: branchConditions,
       attributes: ['id', 'name', 'short_code', 'location', 'address']
-    }
-    , { headers: corsHeaders });
+    });
     
     if (!branches || branches.length === 0) {
-      return NextResponse.json(
-      {
+      return NextResponse.json({
         success: false,
         message: branch_id ? 'Branch not found' : 'No branches found'
-      }, { status: 404 }
-    , { headers: corsHeaders });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Create result structure
@@ -187,8 +182,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               count: maintenanceSlots.length,
               slots: maintenanceSlots
             }
-          }
-    , { headers: corsHeaders });
+          });
         }
       }
       
@@ -198,31 +192,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    const response: ApiResponse = {
+    const response: ApiResponse<CategorizedResult> = {
       success: true,
+      message: 'Slots categorized successfully',
       data: result
     };
     
-    return NextResponse.json(response);
+    return NextResponse.json(response, { headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching categorized time slots:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch categorized time slots',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
-    return NextResponse.json(response, { status: 500 }
-    , { headers: corsHeaders });
+    return NextResponse.json(response, { status: 500, headers: corsHeaders });
   }
-} 
+}
 
-// OPTIONS handler for CORS
-export async function OPTIONS(request) {
+// Handle OPTIONS request for CORS
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
   return new NextResponse(null, {
-    status: 200,
+    status: 204,
     headers: corsHeaders
-  }
-    , { headers: corsHeaders });
+  });
 }

@@ -11,7 +11,7 @@ export enum BookingStatusEnum {
     seat_id: number;
     start_time: Date;
     end_time: Date;
-    total_price: number;
+    total_amount: number;
     status: BookingStatusEnum;
     created_at: Date;
     updated_at: Date;
@@ -22,7 +22,7 @@ export enum BookingStatusEnum {
     seat_id: number;
     start_time: Date;
     end_time: Date;
-    total_price: number;
+    total_amount: number;
     status?: BookingStatusEnum;
   }
   
@@ -40,7 +40,7 @@ export enum BookingStatusEnum {
     end_time: Date;
     num_participants: number;
     amenities?: any;
-    total_price: number;
+    total_amount: number;
     status: BookingStatusEnum;
     created_at: Date;
     updated_at: Date;
@@ -53,7 +53,7 @@ export enum BookingStatusEnum {
     end_time: Date;
     num_participants: number;
     amenities?: any;
-    total_price: number;
+    total_amount: number;
     status?: BookingStatusEnum;
   }
   

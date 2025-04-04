@@ -65,7 +65,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       seat_code,
       start_time, 
       end_time, 
-      total_price,
+      total_amount,
       quantity = 1,
       seating_type_code
     } = body;
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     // Validate total price
-    if (!total_price || typeof total_price !== 'number' || total_price <= 0) {
+    if (!total_amount || typeof total_amount !== 'number' || total_amount <= 0) {
       return NextResponse.json(
       {
         success: false,
@@ -364,42 +364,67 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     
     // Check if the time slot is available
-    const existingBookings = await models.SeatBooking.findAll({
-      where: {
-        seat_id: seat.id,
-        [Op.or]: [
-          {
-            start_time: {
-              [Op.lt]: endTimeDate
-            },
-            end_time: {
-              [Op.gt]: startTimeDate
+    try {
+      const existingBookings = await models.SeatBooking.findAll({
+        where: {
+          seat_id: seat.id,
+          [Op.or]: [
+            {
+              [Op.and]: [
+                {
+                  start_time: {
+                    [Op.lt]: endTimeDate
+                  }
+                },
+                {
+                  end_time: {
+                    [Op.gt]: startTimeDate
+                  }
+                }
+              ]
             }
+          ],
+          status: {
+            [Op.notIn]: [BookingStatusEnum.CANCELLED, BookingStatusEnum.COMPLETED]
           }
-        ],
-        status: {
-          [Op.notIn]: ['CANCELLED', 'COMPLETED']
         }
+      });
+
+      if (existingBookings.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'The selected time slot is not available',
+            conflicts: existingBookings.map(booking => ({
+              start_time: booking.start_time,
+              end_time: booking.end_time,
+              status: booking.status
+            })),
+            debug: {
+              requested_start: startTimeDate,
+              requested_end: endTimeDate,
+              seat_id: seat.id
+            }
+          }, 
+          { status: 409 },
+          { headers: corsHeaders }
+        );
       }
-    }
-    , { headers: corsHeaders });
-    
-    if (existingBookings.length > 0) {
+    } catch (error) {
+      console.error('Error checking time slot availability:', error);
       return NextResponse.json(
-      {
-        success: false,
-        message: 'The selected time slot is not available',
-        conflicts: existingBookings.map(booking => ({
-          start_time: booking.start_time,
-          end_time: booking.end_time,
-          status: booking.status
-        }))
-      }, { status: 400 }
-    , { headers: corsHeaders });
+        {
+          success: false,
+          message: 'Error checking time slot availability',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        },
+        { status: 500 },
+        { headers: corsHeaders }
+      );
     }
     
     // Apply cost multiplier based on quantity if applicable
-    let adjustedTotalPrice = total_price;
+    let adjustedTotalPrice = total_amount;
     if (
       seatingType.cost_multiplier && 
       (seatingType.name === SeatingTypeEnum.HOT_DESK || seatingType.name === SeatingTypeEnum.DEDICATED_DESK) &&
@@ -408,7 +433,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const multiplierKey = quantity.toString();
       if (seatingType.cost_multiplier[multiplierKey]) {
         // Apply the multiplier to the total price
-        const basePrice = total_price / quantity; // Get the price per seat
+        const basePrice = total_amount / quantity; // Get the price per seat
         adjustedTotalPrice = basePrice * quantity * seatingType.cost_multiplier[multiplierKey];
       }
     }
@@ -427,7 +452,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           seat_id: seat.id,
           start_time: startTimeDate,
           end_time: endTimeDate,
-          total_price: adjustedTotalPrice,
+          total_amount: adjustedTotalPrice,
           status: BookingStatusEnum.CONFIRMED
         }
     , { headers: corsHeaders });
@@ -479,7 +504,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             seat_id: seatToBook.id,
             start_time: startTimeDate,
             end_time: endTimeDate,
-            total_price: adjustedTotalPrice / seatsToBook, // Divide total price among seats
+            total_amount: adjustedTotalPrice / seatsToBook, // Divide total price among seats
             status: BookingStatusEnum.CONFIRMED
           }
     , { headers: corsHeaders });
@@ -524,7 +549,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         end_time: endTimeDate,
         num_participants,
         amenities: amenities || null,
-        total_price: adjustedTotalPrice,
+        total_amount: adjustedTotalPrice,
         status: BookingStatusEnum.CONFIRMED
       }
     , { headers: corsHeaders });
@@ -546,7 +571,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             id: booking.id,
             start_time: booking.start_time,
             end_time: booking.end_time,
-            total_price: booking.total_price,
+            total_amount: booking.total_amount,
             status: booking.status
           };
           
@@ -585,15 +610,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           quantity: seatsToBook,
           start_time: startTimeDate,
           end_time: endTimeDate,
-          original_price: total_price,
+          original_price: total_amount,
           adjusted_price: adjustedTotalPrice,
-          discount_applied: adjustedTotalPrice < total_price,
+          discount_applied: adjustedTotalPrice < total_amount,
           duration: {
             hours: durationHours,
             days: durationDays,
             months: durationMonths
           },
-          total_price: adjustedTotalPrice
+          total_amount: adjustedTotalPrice
         }
       }
     };
@@ -863,7 +888,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         seat_id: isSeatBooking ? booking.seat_id : booking.meeting_room_id,
         start_time: booking.start_time,
         end_time: booking.end_time,
-        total_price: booking.total_price,
+        total_amount: booking.total_amount,
         status: calculatedStatus,
         booking_status: booking.status, // Original status from database
         is_active: calculatedStatus === BookingStatusEnum.CONFIRMED && 

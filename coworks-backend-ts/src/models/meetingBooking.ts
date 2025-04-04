@@ -14,7 +14,7 @@ class MeetingBookingModel extends Model<MeetingBooking, MeetingBookingCreationAt
   declare end_time: Date;
   declare num_participants: number;
   declare amenities: any;
-  declare total_price: number;
+  declare total_amount: number;
   declare status: BookingStatusEnum;
   declare created_at: Date;
   declare updated_at: Date;
@@ -61,7 +61,7 @@ MeetingBookingModel.init(
       type: DataTypes.JSON,
       allowNull: true,
     },
-    total_price: {
+    total_amount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },

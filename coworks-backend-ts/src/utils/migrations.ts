@@ -194,7 +194,7 @@ async function up(): Promise<void> {
         seat_id INTEGER NOT NULL REFERENCES seats(id),
         start_time TIMESTAMP WITH TIME ZONE NOT NULL,
         end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-        total_price DECIMAL(10, 2) NOT NULL,
+        total_amount DECIMAL(10, 2) NOT NULL,
         status booking_status_enum DEFAULT 'PENDING',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -211,7 +211,7 @@ async function up(): Promise<void> {
         end_time TIMESTAMP WITH TIME ZONE NOT NULL,
         num_participants INTEGER NOT NULL,
         amenities JSONB,
-        total_price DECIMAL(10, 2) NOT NULL,
+        total_amount DECIMAL(10, 2) NOT NULL,
         status booking_status_enum DEFAULT 'PENDING',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

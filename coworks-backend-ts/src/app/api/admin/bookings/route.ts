@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
         seat: bookingData.seat,
         start_time: bookingData.start_time,
         end_time: bookingData.end_time,
-        total_price: bookingData.total_price,
+        total_amount: bookingData.total_amount,
         status: calculatedStatus,
         is_active: calculatedStatus === BookingStatusEnum.CONFIRMED && startTime <= now && endTime > now,
         is_upcoming: calculatedStatus === BookingStatusEnum.CONFIRMED && startTime > now,
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       customer_id,
       start_time,
       end_time,
-      total_price,
+      total_amount,
       quantity = 1,
       seating_type_code
     } = data;
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
         seat_id: seat.id,
         start_time,
         end_time,
-        total_price,
+        total_amount,
         status: BookingStatusEnum.CONFIRMED
       });
 
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
         start_time,
         end_time,
         num_participants: quantity,
-        total_price,
+        total_amount,
         status: BookingStatusEnum.CONFIRMED
       });
 

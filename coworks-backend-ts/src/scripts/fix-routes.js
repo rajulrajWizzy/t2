@@ -20,8 +20,7 @@ function fixRouteFile(routePath) {
     .replace(/\/\/.*\s+/g, '') // Remove other comments that might be before directives
     // Ensure we have only one of each directive
     .replace(/export const runtime = "nodejs";\s+/g, '')
-    .replace(/export const dynamic = "force-dynamic";\s+/g, '')
-    .replace(/export const fetchCache = "force-no-store";\s+/g, '');
+    ;
   
   // Add clean directives at the top
   const cleanDirectives = `// Properly configured Next.js API route directives

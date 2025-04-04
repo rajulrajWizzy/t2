@@ -197,27 +197,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 404 });
     }
     
-    // Check if customer has uploaded necessary documents
+    // Allow manual verification regardless of document status
+    // Just log a warning if documents are missing
     if (!customer.proof_of_identity || !customer.proof_of_address || !customer.address) {
-      return NextResponse.json<ApiResponse<null>>({
-        success: false,
-        message: 'Customer profile is incomplete and cannot be verified. Required documents are missing.',
-        data: null,
-        error: JSON.stringify({
-          proof_of_identity: !customer.proof_of_identity ? 'Proof of identity document is missing' : null,
-          proof_of_address: !customer.proof_of_address ? 'Proof of address document is missing' : null,
-          address: !customer.address ? 'Address information is missing' : null
-        })
-      }, { status: 400 });
-    }
-    
-    // If verifying with APPROVED status, ensure all required fields are present
-    if (verification_status === 'APPROVED' && (!customer.proof_of_identity || !customer.proof_of_address || !customer.address)) {
-      return NextResponse.json<ApiResponse<null>>({
-        success: false,
-        message: 'Cannot approve customer account without all required verification documents',
-        data: null
-      }, { status: 400 });
+      console.warn(`Manual verification requested for customer ${customer_id} with missing documents:`, {
+        address: !customer.address,
+        proof_of_identity: !customer.proof_of_identity,
+        proof_of_address: !customer.proof_of_address
+      });
     }
     
     // Update verification status
@@ -256,4 +243,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       error: (error as Error).message
     }, { status: 500 });
   }
-} 
+}

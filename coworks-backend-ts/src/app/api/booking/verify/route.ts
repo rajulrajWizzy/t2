@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/utils/auth';
-import { Seat, SeatBooking } from '@/models';
+import { verifyToken } from '@/utils/jwt-wrapper';
+import { models } from '@/models';
 import { Op } from 'sequelize';
+import { BookingStatusEnum } from '@/types/booking';
+import { AvailabilityStatusEnum } from '@/types/seating';
 
 interface VerifyBookingRequest {
   seatTypeId: string;
@@ -49,15 +51,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check seat availability
-    const availableSeats = await Seat.findAll({
+    const availableSeats = await models.Seat.findAll({
       where: {
-        type_id: seatTypeId,
-        status: 'available'
+        seating_type_id: seatTypeId,
+        availability_status: AvailabilityStatusEnum.AVAILABLE
       }
     });
 
     // Check existing bookings for the time period
-    const existingBookings = await SeatBooking.findAll({
+    const existingBookings = await models.SeatBooking.findAll({
       where: {
         seat_id: {
           [Op.in]: availableSeats.map(seat => seat.id)
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
           [Op.gt]: new Date(startTime)
         },
         status: {
-          [Op.in]: ['pending', 'confirmed']
+          [Op.in]: [BookingStatusEnum.PENDING, BookingStatusEnum.CONFIRMED]
         }
       }
     });
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
     const availableSeatCount = actuallyAvailableSeats.length;
 
     // Get base price and calculate total
-    const seatType = await SeatingType.findByPk(seatTypeId);
+    const seatType = await models.SeatingType.findByPk(seatTypeId);
     if (!seatType) {
       return NextResponse.json({ 
         success: false, 

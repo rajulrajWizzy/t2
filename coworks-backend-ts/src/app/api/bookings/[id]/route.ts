@@ -1,10 +1,6 @@
 // Explicitly set Node.js runtime for this route
 export const runtime = "nodejs";
 
-// Explicitly set Node.js runtime for this route
-
-// Explicitly set Node.js runtime for this route
-
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
@@ -25,27 +21,18 @@ export async function GET(
     if (isNaN(bookingId)) {
       return NextResponse.json(
         { success: false, message: 'Invalid booking ID' },
-        { status: 400, headers: corsHeaders }
+        { status: 400}
       );
     }
     const { id } = params;
 
-    // Validate booking ID
-    const bookingId = parseInt(id);
-    if (isNaN(bookingId)) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid booking ID' },
-        { status: 400, headers: corsHeaders }
-      );
-    }
     
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
       { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -55,8 +42,7 @@ export async function GET(
     if (!valid || !decoded) {
       return NextResponse.json(
       { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { status: 401 });
     }
     
     // Try to find as seat booking first
@@ -86,7 +72,7 @@ export async function GET(
         }
       ]
     }
-    , { headers: corsHeaders });
+    );
     
     let meetingBooking = null;
     
@@ -118,7 +104,7 @@ export async function GET(
           }
         ]
       }
-    , { headers: corsHeaders });
+    );
     }
     
     // Use a common booking variable
@@ -127,8 +113,7 @@ export async function GET(
     if (!booking) {
       return NextResponse.json(
       { message: 'Booking not found' },
-        { status: 404 }
-    , { headers: corsHeaders });
+        { status: 404  });
     }
     
     // Check if the logged-in user is the owner of the booking
@@ -137,8 +122,7 @@ export async function GET(
       // For now, just return unauthorized
       return NextResponse.json(
       { message: 'Unauthorized to view this booking' },
-        { status: 403 }
-    , { headers: corsHeaders });
+        { status: 403  });
     }
     
     // Get associated payments
@@ -148,7 +132,7 @@ export async function GET(
         booking_type: bookingType
       }
     }
-    , { headers: corsHeaders });
+    );
     
     return NextResponse.json(
       {
@@ -161,8 +145,7 @@ export async function GET(
     console.error('Error fetching booking:', error);
     return NextResponse.json(
       { message: 'Failed to fetch booking', error: (error as Error).message },
-      { status: 500 }
-    , { headers: corsHeaders });
+      { status: 500  });
   }
 }
 
@@ -172,21 +155,21 @@ export async function PUT(
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    // Validate seat ID or seat code
-    const { seat_id, seat_code } = await request.json();
-    if (!seat_id && !seat_code) {
-      return NextResponse.json(
-        { success: false, message: 'Valid seat ID or seat code is required' },
-        { status: 400, headers: corsHeaders }
-      );
-    }
     const { id } = params;
-
     // Validate booking ID
     const bookingId = parseInt(id);
     if (isNaN(bookingId)) {
       return NextResponse.json(
         { success: false, message: 'Invalid booking ID' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Parse request body
+    const body = await request.json().catch(() => ({}));
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { success: false, message: 'Invalid request body' },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -196,8 +179,7 @@ export async function PUT(
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
       { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { status: 401 });
     }
     
     const token = authHeader.split(' ')[1];
@@ -207,33 +189,34 @@ export async function PUT(
     if (!valid || !decoded) {
       return NextResponse.json(
       { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { status: 401 });
     }
     
     // Parse the request body
-    const body = await request.json();
     const { status } = body;
     
-    // Try to find as seat booking first
-    let bookingType = 'seat';
-    let seatBooking = await models.SeatBooking.findByPk(parseInt(id));
-    let meetingBooking = null;
+    // Start a transaction
+    const transaction = await models.sequelize.transaction();
     
-    // If not found, try as meeting booking
-    if (!seatBooking) {
-      bookingType = 'meeting';
-      meetingBooking = await models.MeetingBooking.findByPk(parseInt(id));
-    }
-    
+    try {
+      // Try to find as seat booking first
+      let bookingType = 'seat';
+      let seatBooking = await models.SeatBooking.findByPk(parseInt(id), { transaction });
+      let meetingBooking = null;
+      
+      // If not found, try as meeting booking
+      if (!seatBooking) {
+        bookingType = 'meeting';
+        meetingBooking = await models.MeetingBooking.findByPk(parseInt(id), { transaction });
+      }
+  
     // Use a common booking variable
     const booking = seatBooking || meetingBooking;
-    
+  
     if (!booking) {
       return NextResponse.json(
       { message: 'Booking not found' },
-        { status: 404 }
-    , { headers: corsHeaders });
+        { status: 404 });
     }
     
     // Check if the logged-in user is the owner of the booking
@@ -242,19 +225,16 @@ export async function PUT(
       // For now, just return unauthorized
       return NextResponse.json(
       { message: 'Unauthorized to update this booking' },
-        { status: 403 }
-    , { headers: corsHeaders });
+        { status: 403 });
     }
     
     // Update booking status
     if (status && Object.values(BookingStatusEnum).includes(status as BookingStatusEnum)) {
       // Handle each booking type separately
       if (seatBooking) {
-        await seatBooking.update({ status }
-    , { headers: corsHeaders });
+        await seatBooking.update({ status }, { transaction });
       } else if (meetingBooking) {
-        await meetingBooking.update({ status }
-    , { headers: corsHeaders });
+        await meetingBooking.update({ status }, { transaction });
       }
       
       // If cancelled or completed, release the seat
@@ -262,36 +242,55 @@ export async function PUT(
         const seatId = bookingType === 'seat' 
           ? (seatBooking?.seat_id as number) 
           : (meetingBooking?.meeting_room_id as number);
-        
-        const seat = await models.Seat.findByPk(seatId);
+      
+        const seat = await models.Seat.findByPk(seatId, { transaction });
         
         if (seat) {
-          await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE }
-    , { headers: corsHeaders });
+          await seat.update(
+            { availability_status: AvailabilityStatusEnum.AVAILABLE },
+            { transaction }
+          );
         }
         
         // Release time slots if they exist
         if (bookingType === 'seat') {
           await models.TimeSlot.update(
             { is_available: true, booking_id: null },
-            { where: { booking_id: parseInt(id) } }
-    , { headers: corsHeaders });
+            { where: { booking_id: parseInt(id) }, transaction }
+          );
         }
       }
+      
+      await transaction.commit();
+      
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Booking updated successfully',
+          data: { booking }
+        },
+        { headers: corsHeaders }
+      );
+    } else {
+      await transaction.rollback();
+      return NextResponse.json(
+        { success: false, message: 'Invalid booking status' },
+        { status: 400, headers: corsHeaders }
+      );
     }
-    
-    return NextResponse.json(
-      {
-      message: 'Booking updated successfully',
-      booking
-    }
-    , { headers: corsHeaders });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
   } catch (error) {
     console.error('Error updating booking:', error);
     return NextResponse.json(
-      { message: 'Failed to update booking', error: (error as Error).message },
-      { status: 500 }
-    , { headers: corsHeaders });
+      { 
+        success: false,
+        message: 'Failed to update booking',
+        error: (error as Error).message 
+      },
+      { status: 500, headers: corsHeaders });
   }
 }
 
@@ -317,8 +316,7 @@ export async function DELETE(
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
       { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { status: 401  });
     }
     
     const token = authHeader.split(' ')[1];
@@ -328,30 +326,34 @@ export async function DELETE(
     if (!valid || !decoded) {
       return NextResponse.json(
       { success: false, message: 'Unauthorized' },
-        { status: 401 }
-    , { headers: corsHeaders });
+        { status: 401  });
     }
     
-    // Try to find as seat booking first
-    let bookingType = 'seat';
-    let seatBooking = await models.SeatBooking.findByPk(parseInt(id));
-    let meetingBooking = null;
+    // Start a transaction
+    const transaction = await models.sequelize.transaction();
     
-    // If not found, try as meeting booking
-    if (!seatBooking) {
-      bookingType = 'meeting';
-      meetingBooking = await models.MeetingBooking.findByPk(parseInt(id));
-    }
-    
-    // Use a common booking variable
-    const booking = seatBooking || meetingBooking;
-    
-    if (!booking) {
-      return NextResponse.json(
-      { message: 'Booking not found' },
-        { status: 404 }
-    , { headers: corsHeaders });
-    }
+    try {
+      // Try to find as seat booking first
+      let bookingType = 'seat';
+      let seatBooking = await models.SeatBooking.findByPk(parseInt(id), { transaction });
+      let meetingBooking = null;
+      
+      // If not found, try as meeting booking
+      if (!seatBooking) {
+        bookingType = 'meeting';
+        meetingBooking = await models.MeetingBooking.findByPk(parseInt(id), { transaction });
+      }
+      
+      // Use a common booking variable
+      const booking = seatBooking || meetingBooking;
+      
+      if (!booking) {
+        await transaction.rollback();
+        return NextResponse.json(
+          { success: false, message: 'Booking not found' },
+          { status: 404, headers: corsHeaders }
+        );
+      }
     
     // Check if the logged-in user is the owner of the booking
     if (booking.customer_id !== decoded.id) {
@@ -359,25 +361,29 @@ export async function DELETE(
       // For now, just return unauthorized
       return NextResponse.json(
       { message: 'Unauthorized to cancel this booking' },
-        { status: 403 }
-    , { headers: corsHeaders });
+        { status: 403   });
     }
     
     // Check if booking can be cancelled
     if (booking.status === BookingStatusEnum.COMPLETED) {
+      await transaction.rollback();
       return NextResponse.json(
-      { message: 'Cannot cancel a completed booking' },
-        { status: 400 }
-    , { headers: corsHeaders });
+        { success: false, message: 'Cannot cancel a completed booking' },
+        { status: 400, headers: corsHeaders }
+      );
     }
     
     // Update booking status to cancelled
     if (seatBooking) {
-      await seatBooking.update({ status: BookingStatusEnum.CANCELLED }
-    , { headers: corsHeaders });
+      await seatBooking.update(
+        { status: BookingStatusEnum.CANCELLED },
+        { transaction }
+      );
     } else if (meetingBooking) {
-      await meetingBooking.update({ status: BookingStatusEnum.CANCELLED }
-    , { headers: corsHeaders });
+      await meetingBooking.update(
+        { status: BookingStatusEnum.CANCELLED },
+        { transaction }
+      );
     }
     
     // Release the seat
@@ -385,39 +391,52 @@ export async function DELETE(
       ? (seatBooking?.seat_id as number) 
       : (meetingBooking?.meeting_room_id as number);
     
-    const seat = await models.Seat.findByPk(seatId);
+    const seat = await models.Seat.findByPk(seatId, { transaction });
     
     if (seat) {
-      await seat.update({ availability_status: AvailabilityStatusEnum.AVAILABLE }
-    , { headers: corsHeaders });
+      await seat.update(
+        { availability_status: AvailabilityStatusEnum.AVAILABLE },
+        { transaction }
+      );
     }
     
     // Release time slots if they exist
     if (bookingType === 'seat') {
       await models.TimeSlot.update(
         { is_available: true, booking_id: null },
-        { where: { booking_id: parseInt(id) } }
-    , { headers: corsHeaders });
+        { where: { booking_id: parseInt(id) }, transaction }
+      );
     }
-    
+
+    await transaction.commit();
+  
     return NextResponse.json(
       {
-      message: 'Booking cancelled successfully'
+        success: true,
+        message: 'Booking cancelled successfully'
+      },
+      { headers: corsHeaders }
+    );
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-    , { headers: corsHeaders });
   } catch (error) {
     console.error('Error cancelling booking:', error);
     return NextResponse.json(
-      { message: 'Failed to cancel booking', error: (error as Error).message },
-      { status: 500 }
-    , { headers: corsHeaders });
+      { 
+        success: false,
+        message: 'Failed to cancel booking',
+        error: (error as Error).message 
+      },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
 // OPTIONS handler for CORS
-export async function OPTIONS(request) {
+export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: corsHeaders
-  }
-    , { headers: corsHeaders });
+  });
 }

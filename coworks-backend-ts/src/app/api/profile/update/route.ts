@@ -90,7 +90,14 @@ export async function PUT(request: NextRequest) {
         }, { status: 400, headers: corsHeaders });
       }
     }
-    
+    catch (error) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        message: 'Error processing request data',
+        data: null,
+        error: (error as Error).message
+      }, { status: 400, headers: corsHeaders });
+    }
     // Extract fields from parsed data
     const { name, email, phone, company_name, address, current_password, new_password } = requestData;
     

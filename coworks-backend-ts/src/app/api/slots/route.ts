@@ -1,20 +1,17 @@
-// Explicitly set Node.js runtime for this route
-export const runtime = "nodejs";
-
-// Explicitly set Node.js runtime for this route
-
-// Explicitly set Node.js runtime for this route
-
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { Op } from 'sequelize';
-import { verifyToken  } from '@/utils/jwt-wrapper';
+import { verifyToken } from '@/utils/jwt';
 import { ApiResponse } from '@/types/common';
 import { TimeSlotGenerationParams } from '@/types/booking';
 import { verifyProfileComplete } from '../middleware/verifyProfileComplete';
+
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
 
 // Define interfaces for our response structure
 interface SlotCategory {
@@ -41,12 +38,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json<ApiResponse<null>>({
+      return NextResponse.json({
         success: false,
         message: 'Unauthorized',
         data: null
-      }, { status: 401 }
-    , { headers: corsHeaders });
+      } as ApiResponse<null>, { status: 401, headers: corsHeaders });
     }
     
     const token = authHeader.split(' ')[1];
@@ -54,12 +50,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      return NextResponse.json<ApiResponse<null>>({
+      return NextResponse.json({
         success: false,
         message: 'Unauthorized',
         data: null
-      }, { status: 401 }
-    , { headers: corsHeaders });
+      } as ApiResponse<null>, { status: 401, headers: corsHeaders });
     }
     
     // Verify profile is complete with required documents
@@ -78,13 +73,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Validate required filters
     if (!branch_id) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch ID is required'
+        message: 'Branch ID is required',
+        data: null
       };
       
-      return NextResponse.json(response, { status: 400 }
-    , { headers: corsHeaders });
+      return NextResponse.json(response, { status: 400, headers: corsHeaders });
     }
     
     // Prepare filter conditions
@@ -179,23 +174,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     };
     
-    const response: ApiResponse = {
+    const response: ApiResponse<SlotsBranchResponse> = {
       success: true,
+      message: 'Slots retrieved successfully',
       data: responseData
     };
     
-    return NextResponse.json(response);
+    return NextResponse.json(response, { headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching time slots:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch time slots',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
-    return NextResponse.json(response, { status: 500 }
-    , { headers: corsHeaders });
+    return NextResponse.json(response, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -205,13 +201,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get token from the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
-      return NextResponse.json(response, { status: 401 }
-    , { headers: corsHeaders });
+      return NextResponse.json(response, { status: 401, headers: corsHeaders });
     }
     
     const token = authHeader.split(' ')[1];
@@ -219,13 +215,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the token
     const { valid, decoded } = await verifyToken(token);
     if (!valid || !decoded) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
+        data: null
       };
       
-      return NextResponse.json(response, { status: 401 }
-    , { headers: corsHeaders });
+      return NextResponse.json(response, { status: 401, headers: corsHeaders });
     }
     
     // Parse the request body
@@ -234,25 +230,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Validate input
     if (!branch_id || !date) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch ID and date are required'
+        message: 'Branch ID and date are required',
+        data: null
       };
       
-      return NextResponse.json(response, { status: 400 }
-    , { headers: corsHeaders });
+      return NextResponse.json(response, { status: 400, headers: corsHeaders });
     }
     
     // Check if branch exists
     const branch = await models.Branch.findByPk(branch_id);
     if (!branch) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'Branch not found'
+        message: 'Branch not found',
+        data: null
       };
       
-      return NextResponse.json(response, { status: 404 }
-    , { headers: corsHeaders });
+      return NextResponse.json(response, { status: 404, headers: corsHeaders });
     }
     
     // If regenerate is true, delete existing slots for this branch and date
@@ -264,8 +260,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           is_available: true, // Only delete available slots
           booking_id: null    // Don't delete booked slots
         }
-      }
-    , { headers: corsHeaders });
+      });
     }
     
     // Check if slots already exist
@@ -274,19 +269,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         branch_id,
         date
       }
-    }
-    , { headers: corsHeaders });
+    });
     
     if (existingSlots > 0 && !regenerate) {
       const generationResponse: SlotGenerationResponse = { count: existingSlots };
       
-      const response: ApiResponse = {
+      const response: ApiResponse<SlotGenerationResponse> = {
         success: false,
         message: 'Time slots already exist for this branch and date. Set regenerate to true to recreate.',
         data: generationResponse
       };
       
-      return NextResponse.json(response);
+      return NextResponse.json(response, { headers: corsHeaders });
     }
     
     // Get all seats for this branch
@@ -295,17 +289,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         branch_id,
         availability_status: 'AVAILABLE'
       }
-    }
-    , { headers: corsHeaders });
+    });
     
     if (seats.length === 0) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
-        message: 'No available seats found for this branch'
+        message: 'No available seats found for this branch',
+        data: null
       };
       
-      return NextResponse.json(response, { status: 404 }
-    , { headers: corsHeaders });
+      return NextResponse.json(response, { status: 404, headers: corsHeaders });
     }
     
     // Parse branch opening and closing hours
@@ -315,27 +308,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const startHour = parseInt(opening[0]);
     const endHour = parseInt(closing[0]);
     
-    // Get seating type information for the seats
-    const seatingTypes = await models.SeatingType.findAll({
-      where: {
-        id: seats.map(seat => seat.seating_type_id)
-      },
-      attributes: ['id', 'is_hourly', 'hourly_rate']
-    });
-
-    const seatingTypeMap = new Map(seatingTypes.map(st => [st.id, st]));
-    
-    // Create slots based on seating type (hourly for meeting rooms, 2-hour intervals for others)
+    // Create slots (2-hour intervals from opening to closing)
     const newSlots = [];
     
     for (const seat of seats) {
-      const seatingType = seatingTypeMap.get(seat.seating_type_id);
-      const interval = seatingType?.is_hourly ? 1 : 2; // 1 hour for meeting rooms, 2 hours for others
-      
-      for (let hour = startHour; hour < endHour; hour += interval) {
+      for (let hour = startHour; hour < endHour; hour += 2) {
         // Create time strings (HH:00:00 format)
         const startTime = `${hour.toString().padStart(2, '0')}:00:00`;
-        const endTime = `${(hour + interval).toString().padStart(2, '0')}:00:00`;
+        const endTime = `${(hour + 2).toString().padStart(2, '0')}:00:00`;
         
         newSlots.push({
           branch_id,
@@ -344,10 +324,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           start_time: startTime,
           end_time: endTime,
           is_available: true,
-          booking_id: null,
-          hourly_rate: seatingType?.is_hourly ? seatingType.hourly_rate : null
-        }
-    , { headers: corsHeaders });
+          booking_id: null
+        });
       }
     }
     
@@ -356,32 +334,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     const generationResponse: SlotGenerationResponse = { count: createdSlots.length };
     
-    const response: ApiResponse = {
+    const response: ApiResponse<SlotGenerationResponse> = {
       success: true,
       message: 'Time slots created successfully',
       data: generationResponse
     };
     
-    return NextResponse.json(response);
+    return NextResponse.json(response, { headers: corsHeaders });
   } catch (error) {
     console.error('Error creating time slots:', error);
     
-    const response: ApiResponse = {
+    const response: ApiResponse<null> = {
       success: false,
       message: 'Failed to create time slots',
-      error: (error as Error).message
+      error: (error as Error).message,
+      data: null
     };
     
-    return NextResponse.json(response, { status: 500 }
-    , { headers: corsHeaders });
+    return NextResponse.json(response, { status: 500, headers: corsHeaders });
   }
 }
 
-// OPTIONS handler for CORS
-export async function OPTIONS(request) {
+// Handle OPTIONS request for CORS
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
   return new NextResponse(null, {
-    status: 200,
+    status: 204,
     headers: corsHeaders
-  }
-    , { headers: corsHeaders });
+  });
 }
