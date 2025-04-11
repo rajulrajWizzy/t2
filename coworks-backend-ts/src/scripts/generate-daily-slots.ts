@@ -32,20 +32,14 @@ export async function generateDailySlots() {
 
     // Process each branch
     for (const branch of branches) {
-      // Parse branch opening and closing hours
-      const opening = branch.opening_time.split(':');
-      const closing = branch.closing_time.split(':');
-      const startHour = parseInt(opening[0]);
-      const endHour = parseInt(closing[0]);
-
       const newSlots = [];
 
       // Generate slots for each meeting room
       for (const seat of branch.Seats) {
-        // Generate hourly slots
-        for (let hour = startHour; hour < endHour; hour++) {
+        // Generate 24 hourly slots (one for each hour of the day)
+        for (let hour = 0; hour < 24; hour++) {
           const startTime = `${hour.toString().padStart(2, '0')}:00:00`;
-          const endTime = `${(hour + 1).toString().padStart(2, '0')}:00:00`;
+          const endTime = `${((hour + 1) % 24).toString().padStart(2, '0')}:00:00`;
 
           newSlots.push({
             branch_id: branch.id,

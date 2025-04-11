@@ -17,34 +17,23 @@ export async function GET(
     const id = params.id;
     console.log(`Seat API GET by ID: ${id}`);
 
-    // DEVELOPMENT ONLY: Bypass authentication for testing
-    const bypassAuth = true; // Set to false in production
+    // Use Sequelize model instead of raw SQL queries
+    const seat = await models.Seat.findByPk(Number(id), {
+      include: [
+        {
+          model: models.Branch,
+          as: 'Branch',
+          attributes: ['id', 'name', 'short_code', 'address']
+        },
+        {
+          model: models.SeatingType,
+          as: 'SeatingType',
+          attributes: ['id', 'name', 'short_code', 'description', 'hourly_rate', 'is_hourly', 'min_booking_duration']
+        }
+      ]
+    });
     
-    // Execute the raw query to get the seat by ID
-    const query = `
-      SELECT 
-        s.id, s.branch_id, s.seating_type_id, s.name, s.seat_number, 
-        s.price, s.capacity, s.is_configurable, s.availability_status, 
-        s.created_at, s.updated_at, s.seat_code,
-        b.name as branch_name, b.short_code as branch_short_code,
-        st.name as seating_type_name, st.short_code as seating_type_code
-      FROM 
-        excel_coworks_schema.seats s
-      JOIN
-        excel_coworks_schema.branches b ON s.branch_id = b.id
-      JOIN
-        excel_coworks_schema.seating_types st ON s.seating_type_id = st.id
-      WHERE 
-        s.id = ${id}
-      LIMIT 1
-    `;
-    
-    console.log('Seat SQL Query:', query);
-    
-    const [seats] = await models.sequelize.query(query);
-    console.log(`Seat query result:`, seats);
-    
-    if (!seats || seats.length === 0) {
+    if (!seat) {
       return NextResponse.json(
         { 
           success: false, 
@@ -53,8 +42,6 @@ export async function GET(
         { status: 404, headers: corsHeaders }
       );
     }
-    
-    const seat = seats[0];
     
     // Return with success response
     return NextResponse.json(
@@ -69,7 +56,11 @@ export async function GET(
   } catch (error) {
     console.error(`Error fetching seat:`, error);
     return NextResponse.json(
-      { success: false, message: 'Failed to retrieve seat' },
+      { 
+        success: false, 
+        message: 'Failed to retrieve seat',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500, headers: corsHeaders }
     );
   }

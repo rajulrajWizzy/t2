@@ -3,11 +3,12 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { NextRequest } from 'next/server';
 
-// Define file upload directories
+// Define file upload directories in public folder
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 const PROFILE_PICTURES_DIR = path.join(UPLOAD_DIR, 'profile-pictures');
 const PROOF_OF_IDENTITY_DIR = path.join(UPLOAD_DIR, 'proof-of-identity');
 const PROOF_OF_ADDRESS_DIR = path.join(UPLOAD_DIR, 'proof-of-address');
+const BRANCH_IMAGES_DIR = path.join(UPLOAD_DIR, 'branch-images');
 
 // Ensure directories exist
 const ensureDirectoriesExist = () => {
@@ -22,6 +23,9 @@ const ensureDirectoriesExist = () => {
   }
   if (!fs.existsSync(PROOF_OF_ADDRESS_DIR)) {
     fs.mkdirSync(PROOF_OF_ADDRESS_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(BRANCH_IMAGES_DIR)) {
+    fs.mkdirSync(BRANCH_IMAGES_DIR, { recursive: true });
   }
 };
 
@@ -88,6 +92,13 @@ export async function processMultipartFormData(request: NextRequest): Promise<{ 
             allowedTypes: ALLOWED_DOCUMENT_TYPES,
             maxSize: MAX_DOCUMENT_SIZE,
             directory: PROOF_OF_ADDRESS_DIR
+          };
+          break;
+        case 'branch_image':
+          uploadOptions = {
+            allowedTypes: ALLOWED_IMAGE_TYPES,
+            maxSize: MAX_IMAGE_SIZE,
+            directory: BRANCH_IMAGES_DIR
           };
           break;
         default:

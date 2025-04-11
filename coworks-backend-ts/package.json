@@ -6,9 +6,9 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev ",
+    "dev": "npm run setup-uploads && next dev",
     "build": "next build",
-    "start": "next start ",
+    "start": "node .next/standalone/server.js",
     "lint": "next lint",
     "migrate": "node migrations/run-migrations.js",
     "migrate:up": "sequelize-cli db:migrate",
@@ -38,11 +38,13 @@
     "create:verify-migration": "node src/scripts/run-verification-migration.ts",
     "migration:run": "node migrations/run-migration.js",
     "migration:specific": "node migrations/run-specific-migrations.js",
-    "postinstall": "node migrations/run-migrations.js"
+    "postinstall": "node migrations/run-migrations.js",
+    "setup-uploads": "node scripts/ensure-uploads-dir.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@headlessui/react": "^2.2.1",
     "@mui/icons-material": "^6.4.8",
     "@mui/material": "^6.4.8",
     "@mui/x-date-pickers": "^7.28.0",
@@ -65,6 +67,7 @@
     "jose": "^5.2.0",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0",
     "multer": "^1.4.5-lts.2",
     "next": "^14.2.24",
     "nodemailer": "^6.9.12",
@@ -87,6 +90,7 @@
     "@types/google-cloud__storage": "^2.3.1",
     "@types/js-cookie": "^3.0.6",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^1.4.12",
     "@types/nodemailer": "6.4.17",
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",

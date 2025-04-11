@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyJWT } from '@/utils/jwt';
 import { verifyAdmin } from '@/utils/adminAuth';
 import models from '@/models';
-import { QueryTypes } from 'sequelize';
+import { corsHeaders } from '@/utils/jwt-wrapper';
 
 export async function POST(
   request: NextRequest,
@@ -24,7 +24,7 @@ export async function POST(
       return NextResponse.json({
         success: false,
         message: 'Resubmission reason is required'
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Verify admin authentication
@@ -39,71 +39,61 @@ export async function POST(
       throw new Error('Database connection failed: ' + (dbConnectionError as Error).message);
     }
     
-    // Find the user
-    const user = await models.sequelize.query(
-      `SELECT * FROM excel_coworks_schema.users WHERE id = :userId`,
-      {
-        replacements: { userId },
-        type: QueryTypes.SELECT
-      }
-    );
+    // Find the user using the Customer model
+    const user = await models.Customer.findByPk(userId);
     
-    if (!user || user.length === 0) {
+    if (!user) {
       return NextResponse.json({
         success: false,
         message: `User with ID ${userId} not found`
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Update user verification status
-    await models.sequelize.query(
-      `UPDATE excel_coworks_schema.users 
-       SET verification_status = 'RESUBMIT', updated_at = NOW() 
-       WHERE id = :userId`,
-      {
-        replacements: { userId },
-        type: QueryTypes.UPDATE
-      }
-    );
+    await user.update({
+      verification_status: 'RESUBMIT',
+      updated_at: new Date()
+    });
     
-    // Create a notification for the user
+    // Create a notification for the user if Notification model exists
     try {
-      await models.sequelize.query(
-        `INSERT INTO excel_coworks_schema.notifications
-         (user_id, title, message, type, is_read, created_at)
-         VALUES (:userId, 'Document Resubmission Required', :message, 'VERIFICATION', false, NOW())`,
-        {
-          replacements: { 
-            userId,
-            message: `Please resubmit your verification documents. Reason: ${reason}`
-          },
-          type: QueryTypes.INSERT
-        }
-      );
+      // Check if we have a Notification model
+      if (models.Notification) {
+        await models.Notification.create({
+          user_id: userId,
+          title: 'Document Resubmission Required',
+          message: `Please resubmit your verification documents. Reason: ${reason}`,
+          type: 'VERIFICATION',
+          is_read: false,
+          created_at: new Date()
+        });
+      } else {
+        console.log('Notification model not found, skipping notification creation');
+      }
     } catch (err) {
       console.error('Error creating notification:', err);
       // Continue even if notification creation fails
     }
     
-    // Log the resubmission request
+    // Log the resubmission request if AdminLog model exists
     try {
-      await models.sequelize.query(
-        `INSERT INTO excel_coworks_schema.admin_logs
-         (admin_id, action, target_type, target_id, details, created_at)
-         VALUES (:adminId, 'REQUEST_RESUBMISSION', 'USER', :userId, :details, NOW())`,
-        {
-          replacements: { 
-            adminId: auth.id,
-            userId,
-            details: JSON.stringify({
-              user_id: userId,
-              user_email: user[0]?.email,
-              reason: reason
-            })
-          },
-          type: QueryTypes.INSERT
-        }
-      );
+      // Check if we have an AdminLog model
+      if (models.AdminLog) {
+        await models.AdminLog.create({
+          admin_id: auth.id,
+          action: 'REQUEST_RESUBMISSION',
+          target_type: 'USER',
+          target_id: userId,
+          details: JSON.stringify({
+            user_id: userId,
+            user_email: user.email,
+            reason: reason
+          }),
+          created_at: new Date()
+        });
+      } else {
+        console.log('AdminLog model not found, skipping log creation');
+      }
     } catch (err) {
       console.error('Error logging resubmission request:', err);
       // Continue even if logging fails
@@ -113,13 +103,13 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: 'Resubmission request sent successfully'
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error requesting document resubmission:', error);
     
     return NextResponse.json({
       success: false,
       message: 'Failed to request document resubmission: ' + (error as Error).message
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }

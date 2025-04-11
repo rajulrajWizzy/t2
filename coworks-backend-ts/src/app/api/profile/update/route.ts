@@ -15,6 +15,7 @@ import path from 'path';
 import fs from 'fs';
 import { uploadMiddleware } from '@/utils/uploadMiddleware';
 import { ProfileUpdateData } from '@/types/upload';
+import { v4 as uuidv4 } from 'uuid';
 
 // Add CORS headers
 const corsHeaders = {
@@ -165,20 +166,38 @@ export async function PUT(request: NextRequest) {
     }
     
     // Handle profile picture upload
-    if (profilePicture && profilePicture.success) {
-      // Delete old profile picture if exists
-      if (user.profile_picture) {
-        const oldPath = getFullPathFromUrl(user.profile_picture);
-        deleteFile(oldPath);
+    if (files.profile_picture && files.profile_picture.success) {
+      // Make sure the directory exists
+      const userId = user.id.toString();
+      const profilePictureDir = path.join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId);
+      
+      if (!fs.existsSync(profilePictureDir)) {
+        fs.mkdirSync(profilePictureDir, { recursive: true });
       }
-      updateData.profile_picture = profilePicture.fileUrl;
+      
+      // Generate a unique filename
+      const fileExtension = path.extname(files.profile_picture.fileName);
+      const uniqueFileName = `${uuidv4()}${fileExtension}`;
+      
+      // Create full file path
+      const fullFilePath = path.join(profilePictureDir, uniqueFileName);
+      
+      // Copy the file from temporary location to the permanent location
+      fs.copyFileSync(files.profile_picture.filePath, fullFilePath);
+      
+      // Set the relative file path in the database
+      const relativeFilePath = `profile-pictures/${userId}/${uniqueFileName}`;
+      updateData.profile_picture = relativeFilePath;
+      
+      console.log(`Profile picture saved to: ${fullFilePath}`);
+      console.log(`Path stored in database: ${relativeFilePath}`);
     }
     
     // Handle proof of identity upload
     if (proofOfIdentity && proofOfIdentity.success) {
       // Delete old file if exists
       if (user.proof_of_identity) {
-        const oldPath = getFullPathFromUrl(user.proof_of_identity);
+        const oldPath = path.join(process.cwd(), 'public', 'uploads', user.proof_of_identity);
         deleteFile(oldPath);
       }
       updateData.proof_of_identity = proofOfIdentity.fileUrl;
@@ -190,7 +209,7 @@ export async function PUT(request: NextRequest) {
     if (proofOfAddress && proofOfAddress.success) {
       // Delete old file if exists
       if (user.proof_of_address) {
-        const oldPath = getFullPathFromUrl(user.proof_of_address);
+        const oldPath = path.join(process.cwd(), 'public', 'uploads', user.proof_of_address);
         deleteFile(oldPath);
       }
       updateData.proof_of_address = proofOfAddress.fileUrl;

@@ -1,295 +1,483 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
-  Container, 
-  Typography, 
-  Tabs, 
-  Tab, 
+  Grid, 
   Paper, 
-  Alert, 
-  AlertTitle,
-  Button, 
+  Typography, 
+  Divider, 
   CircularProgress, 
-  Divider 
+  Card, 
+  CardContent,
+  Button, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow,
+  Chip,
+  Stack,
+  Alert,
+  Tabs,
+  Tab
 } from '@mui/material';
-import DashboardStats from '@/app/components/admin/DashboardStats';
-import SeatingTypeManager from '@/app/components/admin/SeatingTypeManager';
-import BranchManager from '@/app/components/admin/BranchManager';
-import UserManager from '@/app/components/admin/UserManager';
-import BookingManager from '@/app/components/admin/BookingManager';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell 
+} from 'recharts';
+import {
+  AttachMoney as MoneyIcon,
+  Person as CustomerIcon,
+  EventSeat as BookingIcon,
+  Business as BranchIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
+import { dashboardApi, bookingsApi, paymentsApi } from '@/utils/admin-api';
+import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { apiService } from '@/utils/api-service';
+import { ApiResponse, Admin, DashboardStats } from '@/utils/admin-api';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-    
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`dashboard-tabpanel-${index}`}
-      aria-labelledby={`dashboard-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
-
-function a11yProps(index: number) {
-  return {
-    id: `dashboard-tab-${index}`,
-    'aria-controls': `dashboard-tabpanel-${index}`,
-  };
-}
-
-function AdminDashboardContent() {
-  const [tabValue, setTabValue] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [activeChartTab, setActiveChartTab] = useState(0);
+  const [occupancyData, setOccupancyData] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [adminData, setAdminData] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
+  const isSessionVerified = useRef(false);
   const router = useRouter();
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    
-    try {
-      // Get the current origin to handle port changes
-      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-      const verifyUrl = `${currentOrigin}/api/users/verify`;
-      
-      const token = localStorage.getItem('adminToken');
-      if (!token) {
-        setLocalError("No authentication token found. Please log in.");
-        setRefreshing(false);
-        return;
-      }
-      
-      const response = await axios.post(verifyUrl, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
-      if (response.data.success) {
-        setLocalError(null);
-        setUserData(response.data.data.user);
-        console.log('[AdminDashboard] Session refreshed successfully');
-      } else {
-        setLocalError("Failed to refresh authentication. Please try logging in again.");
-      }
-    } catch (error) {
-      console.error('[AdminDashboard] Error refreshing session:', error);
-      setLocalError("Error refreshing session. Please try logging in again.");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  // Check authentication status once when component mounts
+  // Set client-side flag
   useEffect(() => {
-    const checkAuth = async () => {
+    setIsClient(true);
+  }, []);
+
+  // Load dashboard data
+  useEffect(() => {
+    const loadData = async () => {
+      // Only run on client side and if session not already verified
+      if (!isClient || isSessionVerified.current) return;
+
       try {
-        console.log('[AdminDashboard] Checking authentication status');
-        
-        // Check if token exists
-        const token = localStorage.getItem('adminToken');
-        const userStr = localStorage.getItem('adminUser');
-        
-        if (!token) {
-          console.log('[AdminDashboard] No token found, not authenticated');
-          setAuthChecked(true);
-          setLocalError('No authentication token found. Please log in.');
-          return;
+        // Verify session first
+        const sessionResponse = await apiService.verifySession();
+        isSessionVerified.current = true;
+
+        if (!sessionResponse.authenticated) {
+          throw new Error('Session expired. Please log in again.');
         }
-        
-        // Try to parse user data from localStorage
-        if (userStr) {
-          try {
-            const parsedUser = JSON.parse(userStr);
-            setUserData(parsedUser);
-          } catch (parseError) {
-            console.error('[AdminDashboard] Error parsing user data:', parseError);
-          }
+
+        // Load admin profile
+        const adminResponse = await apiService.get<ApiResponse<Admin>>('/admin/profile');
+        if (adminResponse.success) {
+          setAdminData(adminResponse.data);
+          await loadDashboardData();
+        } else {
+          throw new Error(adminResponse.message || 'Failed to load admin profile');
         }
-        
-        // Verify token in the background
-        try {
-          const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-          const verifyUrl = `${currentOrigin}/api/users/verify`;
-          
-          const response = await axios.post(verifyUrl, {}, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-          
-          if (response.data.success) {
-            setUserData(response.data.data.user);
-            setLocalError(null);
-          }
-        } catch (verifyError) {
-          console.error('[AdminDashboard] Error verifying token:', verifyError);
-          // Don't set error here to prevent redirect loops
-          // Just use the user data from localStorage
-        }
-        
-        setAuthChecked(true);
-      } catch (error) {
-        console.error('[AdminDashboard] Error checking auth:', error);
-        setAuthChecked(true);
-        // Don't set error here to prevent redirect loops
+      } catch (err: any) {
+        console.error('Error loading dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data');
+        setFallbackData();
       }
     };
 
-    checkAuth();
-  }, []);
+    loadData();
 
-  // Display loading indicator while checking auth
-  if (!authChecked) {
+    // Cleanup function
+    return () => {
+      isSessionVerified.current = false;
+    };
+  }, [isClient]); // Removed router from dependencies as it's not needed
+
+  // Load dashboard data
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      let hasBackendError = false;
+      
+      try {
+        // Load stats
+        const statsData = await dashboardApi.getStats();
+        setStats(statsData.data);
+      } catch (statsError) {
+        console.warn('Error loading stats:', statsError);
+        hasBackendError = true;
+      }
+      
+      try {
+        // Load recent bookings
+        const bookingsData = await dashboardApi.getRecentBookings();
+        setRecentBookings(bookingsData.data || []);
+      } catch (bookingsError) {
+        console.warn('Error loading bookings:', bookingsError);
+        hasBackendError = true;
+      }
+      
+      try {
+        // Load recent payments
+        const paymentsData = await dashboardApi.getRecentPayments();
+        setRecentPayments(paymentsData.data || []);
+      } catch (paymentsError) {
+        console.warn('Error loading payments:', paymentsError);
+        hasBackendError = true;
+      }
+      
+      try {
+        // Load occupancy chart data
+        const occupancy = await dashboardApi.getOccupancyChart();
+        setOccupancyData(occupancy.data || []);
+      } catch (occupancyError) {
+        console.warn('Error loading occupancy data:', occupancyError);
+        hasBackendError = true;
+      }
+      
+      try {
+        // Load revenue chart data
+        const revenue = await dashboardApi.getRevenueChart();
+        setRevenueData(revenue.data || []);
+      } catch (revenueError) {
+        console.warn('Error loading revenue data:', revenueError);
+        hasBackendError = true;
+      }
+      
+      // If any backend errors occurred, use fallback data
+      if (hasBackendError) {
+        setFallbackData();
+        setError("Some data couldn't be loaded from the server. Showing fallback data for demonstration.");
+      }
+    } catch (err: any) {
+      console.error('Error loading dashboard data:', err);
+      setError(err.message || 'Failed to load dashboard data');
+      setFallbackData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Set fallback data when API calls fail
+  const setFallbackData = () => {
+    console.log('Using fallback dashboard data');
+    
+    // Set minimal stats to show something
+    setStats({
+      total_customers: 0,
+      total_seats: 0,
+      total_bookings: 0,
+      active_bookings: 0,
+      branches: 0,
+      revenue: {
+        today: 0,
+        week: 0,
+        month: 0
+      }
+    });
+    
+    setRecentBookings([]);
+    setRecentPayments([]);
+    setOccupancyData([]);
+    setRevenueData([]);
+    
+    setLoading(false);
+  };
+
+  // Handle refresh button click
+  const handleRefresh = () => {
+    loadDashboardData();
+  };
+
+  // Handle chart tab change
+  const handleChartTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveChartTab(newValue);
+  };
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  // Get status color for chips
+  const getStatusColor = (status: string) => {
+    status = status.toLowerCase();
+    if (status === 'active' || status === 'completed') return 'success';
+    if (status === 'pending') return 'warning';
+    if (status === 'cancelled' || status === 'failed') return 'error';
+    return 'default';
+  };
+
+  // Render status chip
+  const renderStatusChip = (status: string) => (
+    <Chip 
+      label={status.toUpperCase()} 
+      size="small" 
+      color={getStatusColor(status) as any}
+      sx={{ minWidth: 80 }}
+    />
+  );
+
+  // Show loading state during SSR
+  if (!isClient) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
       </Box>
     );
   }
 
-  // Show a warning if there's an auth error, but don't redirect
-  if (localError) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Alert 
-          severity="warning" 
-          action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh Session'}
-            </Button>
-          }
-          sx={{ mb: 2 }}
-        >
-          <AlertTitle>Authentication Issue</AlertTitle>
-          {localError}
-        </Alert>
-        
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Access Restricted
-          </Typography>
-          <Typography variant="body2" color="text.secondary" paragraph>
-            Please log in to access the admin dashboard.
-          </Typography>
-        </Box>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="xl" sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ my: 4, flexGrow: 0 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h3" component="h1">
-            Admin Dashboard
-          </Typography>
-          <Box>
+    <Box sx={{ flexGrow: 1, p: 3 }}>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+          <Button 
+            sx={{ ml: 2 }} 
+            variant="outlined" 
+            size="small" 
+            onClick={() => loadDashboardData()}
+          >
+            Retry
+          </Button>
+        </Alert>
+      ) : (
+        <Box>
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Dashboard Overview
+            </Typography>
             <Button 
-              variant="outlined" 
-              onClick={handleRefresh} 
-              disabled={refreshing}
-              sx={{ mr: 1 }}
+              startIcon={<RefreshIcon />} 
+              onClick={() => loadDashboardData()}
+              variant="outlined"
             >
-              {refreshing ? <CircularProgress size={24} /> : 'Refresh Session'}
+              Refresh
             </Button>
           </Box>
-        </Box>
-        
-        <Box mb={2}>
-          <Alert severity="info">
-            Welcome, {userData?.name || 'Admin'}! You are logged in as {userData?.role || 'admin'}.
-          </Alert>
-        </Box>
-      </Box>
-        
-      <Paper sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label="dashboard tabs"
-          sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
-        >
-          <Tab label="Statistics" {...a11yProps(0)} />
-          <Tab label="Seating Types" {...a11yProps(1)} />
-          <Tab label="Branches" {...a11yProps(2)} />
-          <Tab label="Users" {...a11yProps(3)} />
-          <Tab label="Bookings" {...a11yProps(4)} />
-          <Tab label="Settings" {...a11yProps(5)} />
-        </Tabs>
-        
-        <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-          <TabPanel value={tabValue} index={0}>
-            <DashboardStats />
-          </TabPanel>
-          
-          <TabPanel value={tabValue} index={1}>
-            <SeatingTypeManager />
-          </TabPanel>
-          
-          <TabPanel value={tabValue} index={2}>
-            <BranchManager />
-          </TabPanel>
-          
-          <TabPanel value={tabValue} index={3}>
-            <UserManager />
-          </TabPanel>
-          
-          <TabPanel value={tabValue} index={4}>
-            <BookingManager />
-          </TabPanel>
-          
-          <TabPanel value={tabValue} index={5}>
-            <Box sx={{ height: '100%', overflow: 'auto' }}>
-              <iframe 
-                src="/admin/settings" 
-                style={{ 
-                  width: '100%', 
-                  height: 'calc(100vh - 250px)', 
-                  border: 'none' 
-                }}
-                title="Settings"
-              />
-            </Box>
-          </TabPanel>
-        </Box>
-      </Paper>
-    </Container>
-  );
-}
 
-export default function AdminDashboardPage() {
-  return <AdminDashboardContent />;
-}
+          {/* Stats Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <MoneyIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography variant="h6" component="div">
+                      Total Revenue
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                    {formatCurrency(stats?.totalRevenue || 0)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <CustomerIcon sx={{ mr: 1, color: 'secondary.main' }} />
+                    <Typography variant="h6" component="div">
+                      Customers
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                    {stats?.totalCustomers || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <BookingIcon sx={{ mr: 1, color: 'success.main' }} />
+                    <Typography variant="h6" component="div">
+                      Active Bookings
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                    {stats?.activeBookings || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <BranchIcon sx={{ mr: 1, color: 'warning.main' }} />
+                    <Typography variant="h6" component="div">
+                      Branches
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                    {stats?.totalBranches || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Charts */}
+          <Paper sx={{ p: 2, mb: 4 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+              <Tabs value={activeChartTab} onChange={handleChartTabChange}>
+                <Tab label="Occupancy" />
+                <Tab label="Revenue" />
+              </Tabs>
+            </Box>
+            
+            <Box sx={{ height: 400 }}>
+              {activeChartTab === 0 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={occupancyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="hotDesk" name="Hot Desk" fill="#8884d8" />
+                    <Bar dataKey="dedicatedDesk" name="Dedicated Desk" fill="#82ca9d" />
+                    <Bar dataKey="privateOffice" name="Private Office" fill="#ffc658" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+              
+              {activeChartTab === 1 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [formatCurrency(value as number), 'Revenue']} />
+                    <Legend />
+                    <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </Box>
+          </Paper>
+
+          {/* Recent Activity */}
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" component="h2" gutterBottom>
+                  Recent Bookings
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Seat</TableCell>
+                        <TableCell>Customer</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell align="right">Amount</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {recentBookings.length > 0 ? (
+                        recentBookings.map((booking) => (
+                          <TableRow key={booking.id} hover>
+                            <TableCell>{booking.seat_number}</TableCell>
+                            <TableCell>{booking.customer_name}</TableCell>
+                            <TableCell>{formatDate(booking.start_time)}</TableCell>
+                            <TableCell>{renderStatusChip(booking.status)}</TableCell>
+                            <TableCell align="right">{formatCurrency(booking.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">No recent bookings</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" component="h2" gutterBottom>
+                  Recent Payments
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Payment ID</TableCell>
+                        <TableCell>Customer</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell align="right">Amount</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {recentPayments.length > 0 ? (
+                        recentPayments.map((payment) => (
+                          <TableRow key={payment.id} hover>
+                            <TableCell>{payment.id.substring(0, 8)}</TableCell>
+                            <TableCell>{payment.customer_name}</TableCell>
+                            <TableCell>{formatDate(payment.created_at)}</TableCell>
+                            <TableCell>{renderStatusChip(payment.status)}</TableCell>
+                            <TableCell align="right">{formatCurrency(payment.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">No recent payments</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Box>
+      )}
+    </Box>
+  );
+} 

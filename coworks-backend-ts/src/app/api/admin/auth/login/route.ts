@@ -3,99 +3,111 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { NextRequest, NextResponse } from 'next/server';
-import models from '@/models';
-import jwt from 'jsonwebtoken';
-import { corsHeaders } from '@/utils/jwt-wrapper';
-import bcrypt from 'bcryptjs';
-import { AdminRole } from '@/models/admin';
+import { Admin } from '@/models/admin';
+import { compare } from 'bcryptjs';
+import { sign } from 'jsonwebtoken';
+import { db } from '@/lib/db';
+
+// Add CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
 
 /**
- * POST /api/admin/auth/login - Admin authentication endpoint
+ * Admin login endpoint
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // Parse request body
-    const body = await request.json();
-    const { email, password } = body;
+    // Check database connection
+    try {
+      await db.authenticate();
+      console.log('Database connection established');
+    } catch (dbError) {
+      console.error('Database connection error:', dbError);
+      return NextResponse.json(
+        { message: 'Database connection error' },
+        { status: 500 }
+      );
+    }
 
-    // Validate required fields
+    const { email, password } = await request.json();
+    console.log('Login attempt for email:', email);
+
     if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: 'Email and password are required' },
-        { status: 400, headers: corsHeaders }
+        { message: 'Email and password are required' },
+        { status: 400 }
       );
     }
 
-    // Find admin by email
-    const admin = await models.Admin.findOne({
-      where: { email: email.toLowerCase() },
-      attributes: ['id', 'email', 'password', 'name', 'role', 'branch_id', 'is_active', 'permissions']
-    });
+    const admin = await Admin.findOne({ where: { email } });
 
-    // Check if admin exists and is active
-    if (!admin || !admin.get('is_active')) {
+    if (!admin) {
+      console.log('No admin found with email:', email);
       return NextResponse.json(
-        { success: false, message: 'Invalid credentials' },
-        { status: 401, headers: corsHeaders }
+        { message: 'Invalid credentials' },
+        { status: 401 }
       );
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, admin.get('password'));
+    const isValidPassword = await compare(password, admin.password);
+
     if (!isValidPassword) {
+      console.log('Invalid password for email:', email);
       return NextResponse.json(
-        { success: false, message: 'Invalid credentials' },
-        { status: 401, headers: corsHeaders }
+        { message: 'Invalid credentials' },
+        { status: 401 }
       );
     }
 
-    // Get admin role and permissions
-    const role = admin.get('role') as AdminRole;
-    const permissions = admin.get('permissions') || models.Admin.getDefaultPermissions(role);
-
-    // Create JWT token with role and permissions
-    const token = jwt.sign(
-      {
-        id: admin.get('id'),
-        email: admin.get('email'),
-        name: admin.get('name'),
-        role,
-        branch_id: admin.get('branch_id'),
-        permissions,
+    const token = sign(
+      { 
+        id: admin.id, 
+        email: admin.email, 
+        role: admin.role || 'admin',
+        name: admin.name,
+        branch_id: admin.branch_id,
+        permissions: admin.permissions,
         is_admin: true
       },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET!,
+      { expiresIn: '72h' }
     );
 
-    // Update last login
-    await admin.update({ last_login: new Date() });
-
-    // Return success response with admin data and token
-    return NextResponse.json(
-      {
+    const response = NextResponse.json(
+      { 
         success: true,
-        message: 'Login successful',
         data: {
           token,
           admin: {
-            id: admin.get('id'),
-            email: admin.get('email'),
-            name: admin.get('name'),
-            role,
-            branch_id: admin.get('branch_id'),
-            permissions
+            id: admin.id,
+            email: admin.email,
+            name: admin.name,
+            role: admin.role,
+            branch_id: admin.branch_id,
+            permissions: admin.permissions
           }
         }
       },
-      { status: 200, headers: corsHeaders }
+      { status: 200 }
     );
 
+    response.cookies.set('adminToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 72 * 60 * 60, // 72 hours to match refresh token
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
-    console.error('[Admin Login API] Error:', error);
+    console.error('Login error:', error);
     return NextResponse.json(
-      { success: false, message: 'Authentication failed' },
-      { status: 500, headers: corsHeaders }
+      { message: 'Internal server error', error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
     );
   }
 }

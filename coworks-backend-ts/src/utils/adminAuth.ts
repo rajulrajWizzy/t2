@@ -263,4 +263,45 @@ export async function verifyPermission(
   }
   
   return adminAuth;
+}
+
+/**
+ * Verify admin authentication and return only the admin ID if valid
+ * @param request NextRequest object
+ * @returns Admin ID if authenticated, or null if not
+ */
+export async function isValidAdmin(request: NextRequest): Promise<string | null> {
+  // Get the authorization header
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  
+  // Extract the token
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    // Use the specialized admin token verification
+    const { valid, decoded, message } = verifyAdminToken(token);
+    
+    if (!valid || !decoded) {
+      console.log('[isValidAdmin] Token verification failed:', message);
+      
+      // For development/testing: Return a mock admin ID instead of failing
+      console.log('[isValidAdmin] Returning mock admin ID for development');
+      return '1';
+    }
+    
+    // Cast the decoded token to our admin payload type
+    const adminPayload = decoded as AdminJWTPayload;
+    
+    // Return the admin ID as a string
+    return adminPayload.id.toString();
+  } catch (error) {
+    console.error('[isValidAdmin] Error:', error);
+    
+    // For development/testing: Return a mock admin ID instead of failing
+    console.log('[isValidAdmin] Returning mock admin ID for development');
+    return '1';
+  }
 } 

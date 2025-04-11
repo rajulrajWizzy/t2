@@ -5,6 +5,13 @@ export enum BookingStatusEnum {
     COMPLETED = 'COMPLETED'
   }
   
+  export enum PaymentStatusEnum {
+    PENDING = 'PENDING',
+    COMPLETED = 'COMPLETED',
+    FAILED = 'FAILED',
+    REFUNDED = 'REFUNDED'
+  }
+  
   export interface SeatBooking {
     id: number;
     customer_id: number;
@@ -13,6 +20,9 @@ export enum BookingStatusEnum {
     end_time: Date;
     total_amount: number;
     status: BookingStatusEnum;
+    payment_id?: string;
+    order_id?: string;
+    payment_status?: PaymentStatusEnum;
     created_at: Date;
     updated_at: Date;
   }
@@ -24,6 +34,9 @@ export enum BookingStatusEnum {
     end_time: Date;
     total_amount: number;
     status?: BookingStatusEnum;
+    payment_id?: string;
+    order_id?: string;
+    payment_status?: PaymentStatusEnum;
   }
   
   export interface SeatBookingAttributes extends SeatBookingInput {
@@ -42,6 +55,9 @@ export enum BookingStatusEnum {
     amenities?: any;
     total_amount: number;
     status: BookingStatusEnum;
+    payment_id?: string;
+    order_id?: string;
+    payment_status?: PaymentStatusEnum;
     created_at: Date;
     updated_at: Date;
   }
@@ -55,6 +71,9 @@ export enum BookingStatusEnum {
     amenities?: any;
     total_amount: number;
     status?: BookingStatusEnum;
+    payment_id?: string;
+    order_id?: string;
+    payment_status?: PaymentStatusEnum;
   }
   
   export interface MeetingBookingAttributes extends MeetingBookingInput {
@@ -96,4 +115,5 @@ export enum BookingStatusEnum {
     branch_id: number;
     date: string;
     regenerate?: boolean;
+    seating_type_code?: string;
   }

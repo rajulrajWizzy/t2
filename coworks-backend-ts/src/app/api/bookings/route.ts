@@ -23,6 +23,7 @@ import {
 import { parseUrlParams, addBranchShortCode, addSeatingTypeShortCode } from '@/utils/apiHelpers';
 import { BookingStatusEnum } from '@/types/booking';
 import { verifyProfileComplete } from '../middleware/verifyProfileComplete';
+import { validateAuthToken } from '@/utils/auth-helper';
 
 // POST create a new booking
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -34,8 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         success: false,
         message: 'Unauthorized',
         data: null
-      }, { status: 401 }
-    , { headers: corsHeaders });
+      }, { status: 401, headers: corsHeaders });
     }
     
     const token = authHeader.split(' ')[1];
@@ -47,8 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         success: false,
         message: 'Unauthorized',
         data: null
-      }, { status: 401 }
-    , { headers: corsHeaders });
+      }, { status: 401, headers: corsHeaders });
     }
     
     // Verify profile is complete with required documents
@@ -67,7 +66,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       end_time, 
       total_amount,
       quantity = 1,
-      seating_type_code
+      seating_type_code,
+      payment_method = 'standard' // New parameter: 'standard' or 'coins'
     } = body;
     
     // Validate booking type
@@ -76,8 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Invalid booking type. Must be either "seat" or "meeting"'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Need either seat_id or seat_code
@@ -86,8 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Valid seat ID or seat code is required'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Validate dates
@@ -96,8 +94,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Start time and end time are required'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     const startTimeDate = new Date(start_time);
@@ -108,8 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Invalid date format'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     if (startTimeDate >= endTimeDate) {
@@ -117,8 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'End time must be after start time'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Validate total price
@@ -127,8 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Valid total price is required'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Validate quantity
@@ -137,8 +131,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Quantity must be at least 1'
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Use the decoded ID from JWT token
@@ -152,8 +145,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         success: false,
         message: 'Customer not found. Please register first.',
         debug: { customerId: customer_id }
-      }, { status: 404 }
-    , { headers: corsHeaders });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Look up seat by ID or code
@@ -186,8 +178,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: `Seat ${seat_id ? `#${seat_id}` : `with code ${seat_code}`} not found`
-      }, { status: 404 }
-    , { headers: corsHeaders });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Get the seating type
@@ -197,8 +188,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         success: false,
         message: 'Seating type not found'
-      }, { status: 404 }
-    , { headers: corsHeaders });
+      }, { status: 404, headers: corsHeaders });
+    }
+    
+    // Validate that for meeting room bookings, the seat is actually a meeting room
+    if (type === 'meeting' && seatingType.name !== SeatingTypeEnum.MEETING_ROOM) {
+      return NextResponse.json(
+      {
+        success: false,
+        message: `Cannot create a meeting room booking for a seat of type ${seatingType.name}. Please select a meeting room.`,
+        data: {
+          seat_id: seat.id,
+          seat_number: seat.seat_number,
+          seat_code: seat.seat_code,
+          actual_seating_type: {
+            name: seatingType.name,
+            short_code: seatingType.short_code,
+            description: seatingType.description
+          }
+        }
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Validate seating type matches the request if provided
@@ -217,8 +226,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             description: seatingType.description
           }
         }
-      }, { status: 400 }
-    , { headers: corsHeaders });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Calculate booking duration in days or hours
@@ -235,8 +243,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Hot desk requires a minimum booking duration of 1 month'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
       
       if (quantity < 1) {
@@ -244,8 +251,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Hot desk requires at least 1 seat'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
       
       // Validate quantity against available quantity options
@@ -257,8 +263,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           data: {
             available_quantities: seatingType.quantity_options
           }
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
     } 
     else if (seatingType.name === SeatingTypeEnum.DEDICATED_DESK) {
@@ -268,8 +273,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Dedicated desk requires a minimum booking duration of 1 month'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
       
       if (quantity < 1) {
@@ -277,8 +281,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Dedicated desk requires a minimum of 1 seat'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
       
       // Validate quantity against available quantity options
@@ -290,8 +293,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           data: {
             available_quantities: seatingType.quantity_options
           }
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
     }
     else if (seatingType.name === SeatingTypeEnum.CUBICLE) {
@@ -301,8 +303,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Cubicle requires a minimum booking duration of 1 month'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
     }
     else if (seatingType.name === SeatingTypeEnum.MEETING_ROOM) {
@@ -312,8 +313,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Meeting room requires a minimum booking duration of 1 hour'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
+      }
+      
+      // If payment method is coins, check coin balance
+      if (payment_method === 'coins') {
+        // Calculate required coins (100 coins per hour)
+        const coinsRequired = Math.ceil(durationHours) * 100;
+        
+        // Check if user has enough coins
+        const coinRecord = await models.CustomerCoin.findOne({
+          where: { customer_id }
+        });
+        
+        if (!coinRecord) {
+          return NextResponse.json({
+            success: false,
+            message: 'No coin balance found for this user. Please implement coins first.',
+            redirect_to: '/api/coins/implement'
+          }, { status: 400, headers: corsHeaders });
+        }
+        
+        if (coinRecord.balance < coinsRequired) {
+          return NextResponse.json({
+            success: false,
+            message: 'Insufficient coins for this booking',
+            data: {
+              required: coinsRequired,
+              available: coinRecord.balance,
+              shortfall: coinsRequired - coinRecord.balance
+            }
+          }, { status: 400, headers: corsHeaders });
+        }
       }
     }
     else if (seatingType.name === SeatingTypeEnum.DAILY_PASS) {
@@ -323,8 +354,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Daily pass requires a minimum booking duration of 1 day'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
     }
     
@@ -340,53 +370,62 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           seating_type_id: seat.seating_type_id,
           availability_status: AvailabilityStatusEnum.AVAILABLE
         }
-      }
-    , { headers: corsHeaders });
+      }, { headers: corsHeaders });
       
       if (availableSeats < quantity) {
         return NextResponse.json(
       {
           success: false,
           message: `Not enough seats available. Only ${availableSeats} ${seatingType.name.toLowerCase()} seats available.`
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
     }
     
-    // Check if the seat is available
-    if (seat.availability_status !== AvailabilityStatusEnum.AVAILABLE) {
-      return NextResponse.json(
-      {
-        success: false,
-        message: 'Seat is not available'
-      }, { status: 400 }
-    , { headers: corsHeaders });
-    }
-    
-    // Check if the time slot is available
+    // Check if the seat is available and the time slot is free
     try {
+      // First check if seat is marked as unavailable
+      if (seat.availability_status === AvailabilityStatusEnum.MAINTENANCE || 
+          seat.availability_status === AvailabilityStatusEnum.OUT_OF_SERVICE) {
+        return NextResponse.json({
+          success: false,
+          message: `Seat is currently ${seat.availability_status.toLowerCase()}`
+        }, { status: 400, headers: corsHeaders });
+      }
+
+      // Then check for overlapping bookings
       const existingBookings = await models.SeatBooking.findAll({
         where: {
           seat_id: seat.id,
-          [Op.or]: [
+          [Op.and]: [
             {
-              [Op.and]: [
+              status: {
+                [Op.notIn]: [BookingStatusEnum.CANCELLED, BookingStatusEnum.COMPLETED]
+              }
+            },
+            {
+              [Op.or]: [
                 {
+                  // Booking starts during another booking
                   start_time: {
-                    [Op.lt]: endTimeDate
+                    [Op.between]: [startTimeDate, endTimeDate]
                   }
                 },
                 {
+                  // Booking ends during another booking
                   end_time: {
-                    [Op.gt]: startTimeDate
+                    [Op.between]: [startTimeDate, endTimeDate]
                   }
+                },
+                {
+                  // Booking encompasses another booking
+                  [Op.and]: [
+                    { start_time: { [Op.lte]: startTimeDate } },
+                    { end_time: { [Op.gte]: endTimeDate } }
+                  ]
                 }
               ]
             }
-          ],
-          status: {
-            [Op.notIn]: [BookingStatusEnum.CANCELLED, BookingStatusEnum.COMPLETED]
-          }
+          ]
         }
       });
 
@@ -406,8 +445,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               seat_id: seat.id
             }
           }, 
-          { status: 409 },
-          { headers: corsHeaders }
+          { status: 409, headers: corsHeaders }
         );
       }
     } catch (error) {
@@ -418,8 +456,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           message: 'Error checking time slot availability',
           error: error instanceof Error ? error.message : 'Unknown error'
         },
-        { status: 500 },
-        { headers: corsHeaders }
+        { status: 500, headers: corsHeaders }
       );
     }
     
@@ -454,14 +491,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           end_time: endTimeDate,
           total_amount: adjustedTotalPrice,
           status: BookingStatusEnum.CONFIRMED
-        }
-    , { headers: corsHeaders });
+        }, { headers: corsHeaders });
         
         bookings.push(booking);
         
         // Update the seat availability
-        await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED }
-    , { headers: corsHeaders });
+        await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED }, { headers: corsHeaders });
         
         // Update time slots if they exist
         await models.TimeSlot.update(
@@ -473,8 +508,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               start_time: startTimeDate.toTimeString().split(' ')[0],
               end_time: endTimeDate.toTimeString().split(' ')[0]
             } 
-          }
-    , { headers: corsHeaders });
+          }, { headers: corsHeaders }
+        );
       } else {
         // Multiple seat booking (for dedicated desk or bulk hot desk)
         // Find available seats of the same type in the same branch
@@ -485,16 +520,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             availability_status: AvailabilityStatusEnum.AVAILABLE
           },
           limit: seatsToBook
-        }
-    , { headers: corsHeaders });
+        }, { headers: corsHeaders });
         
         if (availableSeats.length < seatsToBook) {
           return NextResponse.json(
       {
             success: false,
             message: `Not enough seats available. Only ${availableSeats.length} seats available.`
-          }, { status: 400 }
-    , { headers: corsHeaders });
+          }, { status: 400, headers: corsHeaders });
         }
         
         // Book all seats
@@ -506,14 +539,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             end_time: endTimeDate,
             total_amount: adjustedTotalPrice / seatsToBook, // Divide total price among seats
             status: BookingStatusEnum.CONFIRMED
-          }
-    , { headers: corsHeaders });
+          }, { headers: corsHeaders });
           
           bookings.push(booking);
           
           // Update the seat availability
-          await seatToBook.update({ availability_status: AvailabilityStatusEnum.BOOKED }
-    , { headers: corsHeaders });
+          await seatToBook.update({ availability_status: AvailabilityStatusEnum.BOOKED }, { headers: corsHeaders });
           
           // Update time slots if they exist
           await models.TimeSlot.update(
@@ -525,8 +556,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                 start_time: startTimeDate.toTimeString().split(' ')[0],
                 end_time: endTimeDate.toTimeString().split(' ')[0]
               } 
-            }
-    , { headers: corsHeaders });
+            }, { headers: corsHeaders }
+          );
         }
       }
     } else if (type === 'meeting') {
@@ -538,27 +569,85 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
           success: false,
           message: 'Valid number of participants is required for meeting bookings'
-        }, { status: 400 }
-    , { headers: corsHeaders });
+        }, { status: 400, headers: corsHeaders });
       }
       
-      const booking = await models.MeetingBooking.create({
-        customer_id,
-        meeting_room_id: seat.id,
-        start_time: startTimeDate,
-        end_time: endTimeDate,
-        num_participants,
-        amenities: amenities || null,
-        total_amount: adjustedTotalPrice,
-        status: BookingStatusEnum.CONFIRMED
+      // For meeting room bookings paid with coins, use a database transaction
+      if (payment_method === 'coins') {
+        // Calculate required coins (100 coins per hour)
+        const coinsRequired = Math.ceil(durationHours) * 100;
+        
+        // Start a transaction
+        const transaction = await models.sequelize.transaction();
+        
+        try {
+          // Create the booking
+          const booking = await models.MeetingBooking.create({
+            customer_id,
+            meeting_room_id: seat.id,
+            start_time: startTimeDate,
+            end_time: endTimeDate,
+            num_participants,
+            amenities: amenities || null,
+            total_amount: adjustedTotalPrice,
+            status: BookingStatusEnum.CONFIRMED,
+            payment_method: 'coins'
+          }, { transaction });
+          
+          bookings.push(booking);
+          
+          // Deduct coins from user's balance
+          const coinRecord = await models.CustomerCoin.findOne({
+            where: { customer_id },
+            transaction
+          });
+          
+          await coinRecord.update({
+            balance: coinRecord.balance - coinsRequired,
+            last_updated: new Date()
+          }, { transaction });
+          
+          // Create coin transaction record
+          await models.CoinTransaction.create({
+            customer_id,
+            amount: coinsRequired,
+            transaction_type: 'PURCHASE',
+            description: `Meeting room booking #${booking.id}`,
+            reference_id: booking.id.toString(),
+            created_at: new Date()
+          }, { transaction });
+          
+          // Update the seat availability
+          await seat.update({ 
+            availability_status: AvailabilityStatusEnum.BOOKED 
+          }, { transaction });
+          
+          // Commit the transaction
+          await transaction.commit();
+        } catch (error) {
+          // Rollback the transaction if there's an error
+          await transaction.rollback();
+          throw error;
+        }
+      } else if (payment_method === 'standard') {
+        // Standard payment method for meeting room (existing code)
+        const booking = await models.MeetingBooking.create({
+          customer_id,
+          meeting_room_id: seat.id,
+          start_time: startTimeDate,
+          end_time: endTimeDate,
+          num_participants,
+          amenities: amenities || null,
+          total_amount: adjustedTotalPrice,
+          status: BookingStatusEnum.CONFIRMED,
+          payment_method: 'standard'
+        }, { headers: corsHeaders });
+        
+        bookings.push(booking);
+        
+        // Update the seat availability
+        await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED }, { headers: corsHeaders });
       }
-    , { headers: corsHeaders });
-      
-      bookings.push(booking);
-      
-      // Update the seat availability
-      await seat.update({ availability_status: AvailabilityStatusEnum.BOOKED }
-    , { headers: corsHeaders });
     }
     
     // Return seating type information in the response
@@ -623,6 +712,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     };
     
+    // If coins were used for payment, include that information in the response
+    if (type === 'meeting' && payment_method === 'coins') {
+      const coinsUsed = Math.ceil(durationHours) * 100;
+      
+      // Get updated coin balance
+      const coinRecord = await models.CustomerCoin.findOne({
+        where: { customer_id }
+      });
+      
+      response.data.payment_details = {
+        payment_method: 'coins',
+        coins_used: coinsUsed,
+        remaining_balance: coinRecord ? coinRecord.balance : 0,
+        coins_per_hour: 100
+      };
+    }
+    
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error creating booking:', error);
@@ -632,35 +738,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       success: false,
       message: 'Failed to create booking',
       error: (error as Error).message
-    }, { status: 500 }
-    , { headers: corsHeaders });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
 // GET bookings with optional filtering by branch and seating type short codes
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json<ApiResponse<null>>({
-        success: false,
-        message: 'Unauthorized',
-        data: null
-      }, { status: 401 }
-    , { headers: corsHeaders });
+    // Use the updated auth helper instead of direct token verification
+    const authResult = await validateAuthToken(req);
+    
+    if (!authResult.isValid || !authResult.decoded) {
+      return authResult.errorResponse as NextResponse;
     }
     
-    const token = authHeader.split(' ')[1];
-    const { valid, decoded } = await verifyToken(token);
-    
-    if (!valid || !decoded) {
-      return NextResponse.json<ApiResponse<null>>({
-        success: false,
-        message: 'Unauthorized',
-        data: null
-      }, { status: 401 }
-    , { headers: corsHeaders });
-    }
+    const decoded = authResult.decoded;
     
     // Verify profile is complete with required documents
     const profileVerificationResponse = await verifyProfileComplete(req);
@@ -680,16 +772,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const branch = await models.Branch.findOne({
         where: { short_code: branchCode },
         attributes: ['id']
-      }
-    , { headers: corsHeaders });
+      }, { headers: corsHeaders });
 
       if (!branch) {
         return NextResponse.json<ApiResponse<null>>({
           success: false,
           message: `Branch with code ${branchCode} does not exist`,
           data: null
-        }, { status: 404 }
-    , { headers: corsHeaders });
+        }, { status: 404, headers: corsHeaders });
       }
     }
 
@@ -704,16 +794,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const hotDeskExists = await models.SeatingType.findOne({
           where: { name: SeatingTypeEnum.HOT_DESK },
           attributes: ['id']
-        }
-    , { headers: corsHeaders });
+        }, { headers: corsHeaders });
         
         if (!hotDeskExists) {
           return NextResponse.json<ApiResponse<null>>({
             success: false,
             message: `Seating type HOT_DESK does not exist`,
             data: null
-          }, { status: 404 }
-    , { headers: corsHeaders });
+          }, { status: 404, headers: corsHeaders });
         }
       } else {
         seatingTypeWhere = { short_code: seatingTypeCode };
@@ -722,16 +810,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const seatingType = await models.SeatingType.findOne({
           where: { short_code: seatingTypeCode },
           attributes: ['id']
-        }
-    , { headers: corsHeaders });
+        }, { headers: corsHeaders });
         
         if (!seatingType) {
           return NextResponse.json<ApiResponse<null>>({
             success: false,
             message: `Seating type with code ${seatingTypeCode} does not exist`,
             data: null
-          }, { status: 404 }
-    , { headers: corsHeaders });
+          }, { status: 404, headers: corsHeaders });
         }
       }
     }
@@ -950,8 +1036,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       success: true,
       message: 'Bookings fetched successfully',
       data: bookings
-    }
-    , { headers: corsHeaders });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching bookings:', error);
     return NextResponse.json<ApiResponse<null>>({
@@ -959,8 +1044,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       message: 'Failed to fetch bookings',
       error: (error as Error).message,
       data: null
-    }, { status: 500 }
-    , { headers: corsHeaders });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -970,11 +1054,10 @@ function getBookingApiUrl(branch: string, seatingType: any): string {
   return `/api/bookings?branch=${branch}&type=${seatingType}`;
 }
 
-// OPTIONS handler for CORS
-export async function OPTIONS(request) {
+// Handle OPTIONS requests (for CORS)
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: corsHeaders
-  }
-    , { headers: corsHeaders });
+  });
 }

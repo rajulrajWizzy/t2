@@ -26,10 +26,6 @@ import {
   verifyAdminToken
 } from '../config/jwt';
 
-// Use a consistent JWT implementation - prioritize the config/jwt.ts implementation
-// as it handles blacklisted tokens correctly
-export const verifyToken = configVerifyToken;
-
 // Function to wrap the config verifyToken to match the signature expected by routes
 export async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
@@ -67,6 +63,9 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
     return null;
   }
 }
+
+// Export the verifyJWT function as verifyToken for consistency
+export const verifyToken = verifyJWT;
 
 // Re-export everything with clear naming
 export {

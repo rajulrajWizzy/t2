@@ -31,23 +31,37 @@ interface AuthResult {
  * @returns An object with validation result and decoded token or error response
  */
 export async function validateAuthToken(request: NextRequest): Promise<AuthResult> {
-  // Get the authorization header
+  let token = null;
+  
+  // 1. Try getting token from Authorization header
   const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('[validateAuthToken] No valid authorization header');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+    console.log('[validateAuthToken] Found token in Authorization header');
+  }
+  
+  // 2. If not found in header, try getting it from cookies
+  if (!token) {
+    const cookieToken = request.cookies.get('adminToken')?.value;
+    if (cookieToken) {
+      token = cookieToken;
+      console.log('[validateAuthToken] Found token in cookies');
+    }
+  }
+  
+  // 3. Return error if no token found in either place
+  if (!token) {
+    console.log('[validateAuthToken] No token found in headers or cookies');
     const errorResponse = NextResponse.json(
       { 
         success: false, 
-        message: 'Authorization header is required',
+        message: 'Authorization token is required',
         data: null 
       } as ApiResponse<null>,
       { status: 401, headers: corsHeaders }
     );
     return { isValid: false, errorResponse, decoded: null };
   }
-
-  // Extract the token
-  const token = authHeader.split(' ')[1];
   
   try {
     // Verify the token with proper error handling
@@ -99,9 +113,73 @@ export async function validateAuthToken(request: NextRequest): Promise<AuthResul
  * @returns An object with validation result or error response
  */
 export async function validateAdminAccess(request: NextRequest): Promise<AuthResult> {
+  // Check both Authorization header and cookies
   const authHeader = request.headers.get('authorization');
-  console.log('[validateAdminAccess] Auth header:', authHeader ? 'Present' : 'Missing');
+  const cookieToken = request.cookies.get('adminToken')?.value;
   
+  console.log('[validateAdminAccess] Auth sources available:', {
+    headerPresent: !!authHeader,
+    cookiePresent: !!cookieToken
+  });
+  
+  // Modified to handle cookies directly if header not present
+  if (!authHeader && cookieToken) {
+    // Instead of creating a new request, add token directly to validateAuthToken
+    console.log('[validateAdminAccess] Using cookie token directly');
+    
+    try {
+      // Verify the token with proper error handling
+      const decoded = await verifyJWT(cookieToken);
+      
+      if (!decoded) {
+        console.log('[validateAdminAccess] Cookie token verification failed');
+        const errorResponse = NextResponse.json(
+          { 
+            success: false, 
+            message: 'Invalid authorization token',
+            data: null 
+          } as ApiResponse<null>,
+          { status: 401, headers: corsHeaders }
+        );
+        return { isValid: false, errorResponse, decoded: null };
+      }
+      
+      console.log('[validateAdminAccess] Cookie token verified successfully');
+      
+      // Check for admin role in token
+      const isAdmin = decoded.is_admin === true || 
+                     decoded.role === 'admin' || 
+                     decoded.role === 'super_admin';
+      
+      if (!isAdmin) {
+        console.log('[validateAdminAccess] Cookie token lacks admin privileges');
+        const errorResponse = NextResponse.json(
+          {
+            success: false,
+            message: 'Admin privileges required',
+            data: null
+          } as ApiResponse<null>,
+          { status: 403, headers: corsHeaders }
+        );
+        return { isValid: false, errorResponse, decoded: null };
+      }
+      
+      return { isValid: true, errorResponse: null, decoded };
+    } catch (error: unknown) {
+      console.error('[validateAdminAccess] Error validating cookie token:', error);
+      const errorResponse = NextResponse.json(
+        { 
+          success: false, 
+          message: error instanceof Error ? error.message : 'Error validating token',
+          data: null 
+        } as ApiResponse<null>,
+        { status: 401, headers: corsHeaders }
+      );
+      return { isValid: false, errorResponse, decoded: null };
+    }
+  }
+  
+  // Regular flow using Authorization header
   const authResult = await validateAuthToken(request);
   
   if (!authResult.isValid || !authResult.decoded) {
@@ -116,10 +194,23 @@ export async function validateAdminAccess(request: NextRequest): Promise<AuthRes
     role: authResult.decoded.role
   }));
   
-  // IMPORTANT: Skip admin role check to prevent false negatives
-  // This allows any authenticated user with a valid token to access admin features
-  // We'll rely on the token's is_admin flag or role property being set correctly
-  console.log('[validateAdminAccess] Skipping strict admin role check to prevent false negatives');
+  // Check for admin role in token
+  const isAdmin = authResult.decoded.is_admin === true || 
+                 authResult.decoded.role === 'admin' || 
+                 authResult.decoded.role === 'super_admin';
+  
+  if (!isAdmin) {
+    console.log('[validateAdminAccess] Token lacks admin privileges');
+    const errorResponse = NextResponse.json(
+      {
+        success: false,
+        message: 'Admin privileges required',
+        data: null
+      } as ApiResponse<null>,
+      { status: 403, headers: corsHeaders }
+    );
+    return { isValid: false, errorResponse, decoded: null };
+  }
   
   // Consider any user with a valid token as having admin access
   // This is a temporary fix to prevent dashboard redirects

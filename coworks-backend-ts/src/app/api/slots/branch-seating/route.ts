@@ -226,7 +226,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const branchImages = await models.BranchImage.findAll({
         where: { 
           branch_id: branch.id,
-          ...(Object.keys(seatingTypeWhere).length > 0 ? { seating_type_id: seatingTypes.map(st => st.id) } : {})
+          ...(Object.keys(seatingTypeWhere).length > 0 && seating_type_code ? { seating_type: seating_type_code } : {})
         }
       });
       
@@ -235,10 +235,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const imagesBySeatingType = new Map();
         
         branchImages.forEach(img => {
-          if (!imagesBySeatingType.has(img.seating_type_id)) {
-            imagesBySeatingType.set(img.seating_type_id, []);
+          // Find the seating type ID based on seating type code
+          const seatingType = seatingTypes.find(st => st.short_code === img.seating_type);
+          if (seatingType) {
+            if (!imagesBySeatingType.has(seatingType.id)) {
+              imagesBySeatingType.set(seatingType.id, []);
+            }
+            imagesBySeatingType.get(seatingType.id).push(img.image_url);
           }
-          imagesBySeatingType.get(img.seating_type_id).push(img.image_url);
         });
         
         // Add images to each seating type

@@ -1,0 +1,29 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "rajul",
+    "database": "coworks_db",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "schema": "excel_coworks_schema"
+  },
+  "test": {
+    "username": "postgres",
+    "password": "rajul",
+    "database": "coworks_db",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "schema": "excel_coworks_schema"
+  },
+  "production": {
+    "username": "postgres",
+    "password": "rajul",
+    "database": "coworks_db",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "schema": "excel_coworks_schema"
+  }
+} 

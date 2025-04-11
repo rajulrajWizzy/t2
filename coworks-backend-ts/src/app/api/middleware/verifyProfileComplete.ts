@@ -25,7 +25,8 @@ export async function verifyProfileComplete(request: NextRequest): Promise<NextR
       }, { status: 401 });
     }
     
-    const token = authHeader.split(' ')[1];
+    // Ensure we're properly extracting the token
+    const token = authHeader.substring(7).trim();
     
     // Verify the token
     const { valid, decoded } = await verifyToken(token);

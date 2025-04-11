@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/utils/jwt-wrapper';
-import { models } from '@/models';
+import models from '@/models';
 import { Op } from 'sequelize';
 import { BookingStatusEnum } from '@/types/booking';
 import { AvailabilityStatusEnum } from '@/types/seating';

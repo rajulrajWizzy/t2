@@ -12,9 +12,12 @@ module.exports = {
     if (!config.resolve.alias) config.resolve.alias = {};
     
     // Add aliases for problematic jsonwebtoken modules
-    config.resolve.alias['jsonwebtoken/lib/asymmetricKeyDetailsSupported'] = require.resolve('./node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js.next-shim');
-    config.resolve.alias['jsonwebtoken/lib/psSupported'] = require.resolve('./node_modules/jsonwebtoken/lib/psSupported.js.next-shim');
-    config.resolve.alias['jsonwebtoken/lib/rsaPssKeyDetailsSupported'] = require.resolve('./node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js.next-shim');
+    const path = require('path');
+    const jsonwebtokenLibPath = path.resolve(process.cwd(), 'node_modules/jsonwebtoken/lib');
+    
+    config.resolve.alias['jsonwebtoken/lib/asymmetricKeyDetailsSupported'] = path.join(jsonwebtokenLibPath, 'asymmetricKeyDetailsSupported.js.next-shim');
+    config.resolve.alias['jsonwebtoken/lib/psSupported'] = path.join(jsonwebtokenLibPath, 'psSupported.js.next-shim');
+    config.resolve.alias['jsonwebtoken/lib/rsaPssKeyDetailsSupported'] = path.join(jsonwebtokenLibPath, 'rsaPssKeyDetailsSupported.js.next-shim');
     
     return config;
   }

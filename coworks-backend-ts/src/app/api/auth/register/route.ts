@@ -244,12 +244,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const token = generateToken(newUser);
       
       // Send welcome email
-      try {
+      /*try {
         await mailService.sendWelcomeEmail(email, name);
       } catch (emailError) {
         console.error('Error sending welcome email:', emailError);
         // Continue despite email error
-      }
+      }*/
 
       return NextResponse.json({
         success: true,

@@ -1,57 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
+import { corsHeaders } from '@/utils/jwt-wrapper';
+import { isValidAdmin } from '@/utils/adminAuth';
 
 // Use Node.js runtime for Sequelize compatibility
 export const runtime = 'nodejs';
 
+// Delete a maintenance block by ID
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    
-    if (!id) {
+    // Verify admin authentication
+    const adminId = await isValidAdmin(request);
+    if (!adminId) {
       return NextResponse.json({
-        error: 'Missing parameter',
-        details: 'Block ID is required'
-      }, { status: 400 });
+        success: false,
+        message: 'Unauthorized'
+      }, { status: 401, headers: corsHeaders });
+    }
+
+    const blockId = params.id;
+    
+    // First, verify the block exists using Sequelize
+    const maintenanceBlock = await models.MaintenanceBlock.findByPk(blockId);
+    
+    if (!maintenanceBlock) {
+      return NextResponse.json({
+        error: 'Maintenance block not found',
+        details: `Maintenance block with ID ${blockId} does not exist`
+      }, { status: 404, headers: corsHeaders });
     }
     
-    // Check if the block exists
-    const checkQuery = `
-      SELECT id 
-      FROM excel_coworks_schema.maintenance_blocks 
-      WHERE id = '${id}'
-    `;
-    
-    const [checkResult] = await models.sequelize.query(checkQuery);
-    if (!checkResult || checkResult.length === 0) {
-      return NextResponse.json({
-        error: 'Block not found',
-        details: `Maintenance block with ID ${id} does not exist`
-      }, { status: 404 });
-    }
-    
-    // Delete the block
-    const deleteQuery = `
-      DELETE FROM excel_coworks_schema.maintenance_blocks 
-      WHERE id = '${id}'
-      RETURNING id
-    `;
-    
-    const [deleteResult] = await models.sequelize.query(deleteQuery);
+    // Delete the block using Sequelize model
+    await maintenanceBlock.destroy();
     
     return NextResponse.json({
-      message: 'Maintenance block deleted successfully',
-      block_id: id
-    }, { status: 200 });
+      success: true,
+      message: 'Maintenance block deleted successfully'
+    }, { status: 200, headers: corsHeaders });
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting maintenance block:', error);
     return NextResponse.json({
       error: 'Failed to delete maintenance block',
-      message: error.message || 'An unexpected error occurred'
-    }, { status: 500 });
+      message: error instanceof Error ? error.message : 'An unexpected error occurred'
+    }, { status: 500, headers: corsHeaders });
   }
 } 

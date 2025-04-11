@@ -18,15 +18,11 @@ const nextConfig = {
   // Use standalone output for better Vercel compatibility
   output: 'standalone',
   
-  // Remove serverActions option since it's available by default in Next.js 14+
-  // serverActions: true,
-  
   // Configure experimental options properly
   experimental: {
     serverComponentsExternalPackages: ["sequelize", "pg", "pg-hstore"],
-    // Keep other experimental options
     esmExternals: true,
-    },
+  },
 
   // Fix Google Fonts loading - ensure fonts can be downloaded
   assetPrefix: process.env.NEXT_PUBLIC_BASE_URL || '',
@@ -72,7 +68,8 @@ const nextConfig = {
   // This ensures Sequelize and other Node.js modules work properly
   serverRuntimeConfig: {
     PROJECT_ROOT: __dirname,
-    runtime: "nodejs"},
+    runtime: "nodejs"
+  },
   
   // Disable static generation for API routes
   staticPageGenerationTimeout: 1000,
@@ -97,7 +94,7 @@ const nextConfig = {
     }
     
     return config;
-  }
+  },
 };
 
 module.exports = nextConfig; 

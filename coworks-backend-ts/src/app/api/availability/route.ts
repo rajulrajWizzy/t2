@@ -7,12 +7,16 @@ export const fetchCache = "force-no-store";
 import { NextRequest, NextResponse } from 'next/server';
 import models from '@/models';
 import { corsHeaders } from '@/utils/jwt-wrapper';
+import { Op } from 'sequelize';
+import { AvailabilityStatusEnum } from '@/types/seating';
+import { calculateTotalPrice, applyQuantityDiscounts } from '@/utils/price-calculator';
 
 interface Seat {
   id: string;
   name: string;
   seat_number: string;
   seat_code: string;
+  price: number;
   availability_status: string;
   branch_id: string;
   branch_name: string;
@@ -48,6 +52,41 @@ interface MaintenanceBlock {
   reason?: string;
 }
 
+// Helper function to calculate total amount
+async function calculateTotalAmount(startDate: string, endDate: string, rate: number, quantity: number = 1, seatingTypeId?: string) {
+  if (!rate) {
+    return 0; // No price defined
+  }
+  
+  let rateType: 'hourly' | 'daily' | 'weekly' | 'monthly' = 'hourly';
+  
+  // Find the seating type to determine whether to use hourly/daily/monthly rate
+  if (seatingTypeId) {
+    const seatingType = await models.SeatingType.findByPk(seatingTypeId);
+    
+    if (seatingType) {
+      if (seatingType.is_monthly) {
+        rateType = 'monthly';
+        rate = seatingType.monthly_rate || rate;
+      } else if (seatingType.is_weekly) {
+        rateType = 'weekly';
+        rate = seatingType.weekly_rate || rate;
+      } else if (seatingType.is_daily) {
+        rateType = 'daily';
+        rate = seatingType.daily_rate || rate;
+      } else {
+        // Default to hourly
+        rate = seatingType.hourly_rate || rate;
+      }
+    }
+  }
+  
+  // Calculate base price
+  const basePrice = calculateTotalPrice(startDate, endDate, rate, quantity, rateType);
+  
+  return basePrice;
+}
+
 // GET availability for seats and branches
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +103,22 @@ export async function GET(request: NextRequest) {
     const branchId = searchParams.get('branch_id');
     const seatingTypeId = searchParams.get('seating_type_id');
     const seatingTypeCode = searchParams.get('seating_type_code');
+    const quantityParam = searchParams.get('quantity');
+    
+    // Parse quantity if provided, default to 1
+    const quantity = quantityParam ? parseInt(quantityParam, 10) : 1;
+    
+    // Validate quantity
+    if (isNaN(quantity) || quantity < 1) {
+      return NextResponse.json(
+        { 
+          error: "Invalid quantity", 
+          details: "Quantity must be a positive integer",
+          provided: { quantity: quantityParam }
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
     
     // Validate required parameters
     if (!startDate || !endDate) {
@@ -73,77 +128,36 @@ export async function GET(request: NextRequest) {
           details: "Both start_date and end_date are required",
           provided: { start_date: startDate, end_date: endDate }
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
-    
-    // Create bookings table if it does not exist
-    try {
-      await models.sequelize.query(`
-        -- Create the uuid extension if it doesn't exist
-        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-        CREATE TABLE IF NOT EXISTS excel_coworks_schema.bookings (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          seat_id UUID REFERENCES excel_coworks_schema.seats(id),
-          user_id UUID,
-          start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-          end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-          status VARCHAR(50) DEFAULT 'pending',
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          booking_reference VARCHAR(100),
-          notes TEXT,
-          price DECIMAL(10, 2),
-          currency VARCHAR(10) DEFAULT 'USD',
-          payment_status VARCHAR(50) DEFAULT 'unpaid',
-          checkin_time TIMESTAMP WITH TIME ZONE,
-          checkout_time TIMESTAMP WITH TIME ZONE
-        );
-        
-        CREATE TABLE IF NOT EXISTS excel_coworks_schema.maintenance_blocks (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          seat_id UUID REFERENCES excel_coworks_schema.seats(id),
-          start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-          end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-          reason TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          created_by UUID,
-          notes TEXT
-        );
-      `);
-    } catch (error: any) {
-      console.warn("Error creating tables:", error);
-      // Continue as tables might already exist
-    }
-    
-    // Ensure we have test seats available
-    await ensureTestSeatsExist();
     
     // Logic for different types of availability queries
     if (seatId) {
       // Get availability for a specific seat
       try {
-        const seatAvailability = await getSeatAvailability(seatId, startDate, endDate);
-        return NextResponse.json(seatAvailability);
-      } catch (error: any) {
+        const seatAvailability = await getSeatAvailability(seatId, startDate, endDate, quantity);
+        return NextResponse.json(seatAvailability, { headers: corsHeaders });
+      } catch (error) {
         console.error("Error getting seat availability:", error);
         
-        if (error.message && error.message.includes('not found')) {
+        if (error instanceof Error && error.message && error.message.includes('not found')) {
           // Fetch a list of valid seat IDs to help the user
           try {
-            const [seatsList] = await models.sequelize.query(`
-              SELECT id, name, seat_number FROM excel_coworks_schema.seats LIMIT 5
-            `);
+            const availableSeats = await models.Seat.findAll({
+              limit: 5,
+              attributes: ['id', 'seat_number', 'seat_code']
+            });
+            
             return NextResponse.json(
               { 
                 error: "Error retrieving seat availability", 
                 message: error.message,
                 seat_id: seatId,
                 help: "The requested seat ID was not found. Try using one of these valid seat IDs:",
-                available_seats: seatsList
+                available_seats: availableSeats
               }, 
-              { status: 404 }
+              { status: 404, headers: corsHeaders }
             );
           } catch (listError) {
             // Just return the original error if we can't fetch example seats
@@ -153,42 +167,41 @@ export async function GET(request: NextRequest) {
                 message: error.message || "Unknown error",
                 seat_id: seatId
               }, 
-              { status: 404 }
+              { status: 404, headers: corsHeaders }
             );
           }
         } else {
           return NextResponse.json(
             { 
               error: "Error retrieving seat availability", 
-              message: error.message || "Unknown error",
+              message: error instanceof Error ? error.message : "Unknown error",
               seat_id: seatId
             }, 
-            { status: 500 }
+            { status: 500, headers: corsHeaders }
           );
         }
       }
     } else if (branchId) {
       // Get availability for a branch, optionally filtered by seating type
-      // We now allow querying by branch_id without requiring seating type parameters
-      
       try {
         const branchAvailability = await getBranchAvailability(
           branchId, 
           seatingTypeId, 
           seatingTypeCode, 
           startDate, 
-          endDate
+          endDate,
+          quantity
         );
-        return NextResponse.json(branchAvailability);
-      } catch (error: any) {
+        return NextResponse.json(branchAvailability, { headers: corsHeaders });
+      } catch (error) {
         console.error("Error getting branch availability:", error);
         return NextResponse.json(
           { 
             error: "Error retrieving branch availability", 
-            message: error.message || "Unknown error",
+            message: error instanceof Error ? error.message : "Unknown error",
             branch_id: branchId
           }, 
-          { status: 404 }
+          { status: 404, headers: corsHeaders }
         );
       }
     } else {
@@ -198,124 +211,227 @@ export async function GET(request: NextRequest) {
           error: "Missing parameters", 
           details: "Either seat_id or branch_id must be provided"
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Unhandled error in availability API:", error);
     return NextResponse.json(
       { 
         error: "Internal server error", 
-        message: error.message || "An unexpected error occurred"
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
       }, 
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
 // Helper function to get availability for a specific seat
-async function getSeatAvailability(seatId: string, startDate: string, endDate: string) {
-  // First, get seat details
+async function getSeatAvailability(seatId: string, startDate: string, endDate: string, quantity: number = 1) {
+  // First, get seat details using Sequelize model
   try {
-    const seatQuery = `
-      SELECT 
-        s.id, s.name, s.seat_number, s.seat_code, s.availability_status,
-        b.id as branch_id, b.name as branch_name, b.opening_time, b.closing_time,
-        st.id as seating_type_id, st.name as seating_type_name
-      FROM 
-        excel_coworks_schema.seats s
-      JOIN
-        excel_coworks_schema.branches b ON s.branch_id = b.id
-      JOIN
-        excel_coworks_schema.seating_types st ON s.seating_type_id = st.id
-      WHERE 
-        s.id = '${seatId}'
-    `;
+    const seat = await models.Seat.findByPk(seatId, {
+      include: [
+        {
+          model: models.Branch,
+          as: 'Branch',
+          attributes: ['id', 'name', 'short_code', 'location', 'opening_time', 'closing_time']
+        },
+        {
+          model: models.SeatingType,
+          as: 'SeatingType',
+          attributes: ['id', 'name', 'short_code', 'hourly_rate', 'daily_rate', 'weekly_rate', 'monthly_rate', 'is_hourly', 'is_daily', 'is_weekly', 'is_monthly', 'cost_multiplier']
+        }
+      ]
+    });
     
-    const [seatsResult] = await models.sequelize.query(seatQuery);
-    if (!seatsResult || seatsResult.length === 0) {
+    if (!seat) {
       throw new Error(`Seat with ID ${seatId} not found`);
     }
     
-    // Type assertion to get proper typing
-    const seats = seatsResult as unknown as Seat[];
-    const seat = seats[0];
+    // Convert Sequelize model to plain object
+    const seatData = seat.get({ plain: true });
     
-    // Get existing bookings for this seat in the date range
-    const bookingsQuery = `
-      SELECT 
-        id, start_time, end_time, status
-      FROM 
-        excel_coworks_schema.bookings
-      WHERE 
-        seat_id = '${seat.id}'
-        AND status IN ('confirmed', 'pending')
-        AND (
-          (start_time BETWEEN '${startDate}' AND '${endDate}')
-          OR (end_time BETWEEN '${startDate}' AND '${endDate}')
-          OR (start_time <= '${startDate}' AND end_time >= '${endDate}')
-        )
-      ORDER BY
-        start_time
-    `;
+    console.log('Seat data with seating type:', {
+      seatId: seatData.id,
+      seatingTypeId: seatData.SeatingType?.id,
+      seatingTypeName: seatData.SeatingType?.name,
+      hourlyRate: seatData.SeatingType?.hourly_rate,
+      dailyRate: seatData.SeatingType?.daily_rate,
+      weeklyRate: seatData.SeatingType?.weekly_rate,
+      monthlyRate: seatData.SeatingType?.monthly_rate
+    });
     
-    let bookings: Booking[] = [];
-    try {
-      const [bookingsResult] = await models.sequelize.query(bookingsQuery);
-      // Type assertion
-      bookings = bookingsResult as unknown as Booking[];
-    } catch (error: any) {
-      console.warn("Error querying bookings:", error);
-      // Continue without bookings
+    // Get bookings for this seat using Sequelize
+    const bookings = await models.SeatBooking.findAll({
+      where: {
+        seat_id: seatId,
+        status: {
+          [Op.notIn]: ['CANCELLED', 'COMPLETED']
+        },
+        [Op.or]: [
+          {
+            start_time: {
+              [Op.between]: [startDate, endDate]
+            }
+          },
+          {
+            end_time: {
+              [Op.between]: [startDate, endDate]
+            }
+          },
+          {
+            [Op.and]: [
+              { start_time: { [Op.lte]: startDate } },
+              { end_time: { [Op.gte]: endDate } }
+            ]
+          }
+        ]
+      },
+      order: [['start_time', 'ASC']]
+    });
+    
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id,
+      start_time: booking.start_time,
+      end_time: booking.end_time,
+      status: booking.status
+    }));
+    
+    // Generate time slots for each day
+    const timeSlots = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const date = d.toISOString().split('T')[0];
+      const startTime = new Date(d);
+      startTime.setHours(8, 0, 0, 0);
+      const endTime = new Date(d);
+      endTime.setHours(20, 0, 0, 0);
+
+      // Find the relevant booking for this date (for info only)
+      const relevantBooking = formattedBookings.find(b => {
+        const bookingStart = new Date(b.start_time);
+        const bookingEnd = new Date(b.end_time);
+        return (
+          // Test if the booking overlaps with this day
+          (bookingStart <= endTime && bookingEnd >= startTime)
+        );
+      });
+
+      // IMPORTANT FIX: First check seat status, then only disable if actually booked
+      const statusIsAvailable = 
+        seatData.availability_status.toUpperCase() === 'AVAILABLE' || 
+        seatData.availability_status.toLowerCase() === 'available';
+      
+      // By default, seat is available if its status is available
+      let isAvailable = statusIsAvailable;
+      
+      // Mark as unavailable if there's any booking
+      if (relevantBooking) {
+        isAvailable = false;
+        console.log(`Seat ${seatId} is booked for ${date}, status: ${relevantBooking.status}`);
+      }
+
+      let reason = isAvailable ? 'Seat is AVAILABLE' : 'Seat is not available for this date';
+      if (relevantBooking) {
+        reason = 'Booked';
+      }
+
+      timeSlots.push({
+        date,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        is_available: isAvailable,
+        status: isAvailable ? 'available' : 'unavailable',
+        booking_id: relevantBooking?.id || null,
+        maintenance_id: null,
+        reason
+      });
     }
     
-    // Get any maintenance blocks
-    const maintenanceQuery = `
-      SELECT 
-        id, start_time, end_time, reason
-      FROM 
-        excel_coworks_schema.maintenance_blocks
-      WHERE 
-        seat_id = '${seat.id}'
-        AND (
-          (start_time BETWEEN '${startDate}' AND '${endDate}')
-          OR (end_time BETWEEN '${startDate}' AND '${endDate}')
-          OR (start_time <= '${startDate}' AND end_time >= '${endDate}')
-        )
-      ORDER BY
-        start_time
-    `;
-    
-    let maintenanceBlocks: MaintenanceBlock[] = [];
-    try {
-      const [blocksResult] = await models.sequelize.query(maintenanceQuery);
-      maintenanceBlocks = blocksResult as unknown as MaintenanceBlock[];
-    } catch (error: any) {
-      console.warn("Maintenance blocks table may not exist:", error);
-      // Continue without maintenance blocks
+    // Calculate total amount based on duration and price
+    if (!seatData.SeatingType) {
+      console.error('No seating type found for seat:', seatData.id);
+      return 0;
     }
+
+    const seatingTypeId = seatData.SeatingType.id;
+    const seatingType = seatData.SeatingType;
+
+    // Calculate duration in days
+    const bookingStart = new Date(startDate);
+    const bookingEnd = new Date(endDate);
+    const durationMs = bookingEnd.getTime() - bookingStart.getTime();
+    const durationDays = durationMs / (1000 * 60 * 60 * 24);
+
+    // Determine the appropriate rate based on duration
+    let rate = seatingType.hourly_rate;
+    if (durationDays >= 30 && seatingType.is_monthly && seatingType.monthly_rate) {
+      rate = seatingType.monthly_rate;
+    } else if (durationDays >= 7 && seatingType.is_weekly && seatingType.weekly_rate) {
+      rate = seatingType.weekly_rate;
+    } else if (durationDays >= 1 && seatingType.is_daily && seatingType.daily_rate) {
+      rate = seatingType.daily_rate;
+    }
+
+    console.log('Using rate for calculation:', {
+      seatingTypeId,
+      rate,
+      durationDays,
+      hourly_rate: seatingType.hourly_rate,
+      daily_rate: seatingType.daily_rate,
+      weekly_rate: seatingType.weekly_rate,
+      monthly_rate: seatingType.monthly_rate
+    });
+
+    const totalAmount = await calculateTotalAmount(
+      startDate, 
+      endDate, 
+      rate, 
+      quantity,
+      seatingTypeId?.toString()
+    );
     
-    // Process the time slots
-    const timeSlots = generateTimeSlots(startDate, endDate, seat.opening_time, seat.closing_time);
-    const availability = processAvailability(timeSlots, bookings, maintenanceBlocks, seat.availability_status);
+    // Check if the requested quantity can be fulfilled
+    const quantityAvailable = 1; // Individual seat is only 1
+    const canFulfillQuantity = quantity <= quantityAvailable;
     
     return {
       seat: {
-        id: seat.id,
-        name: seat.name,
-        seat_number: seat.seat_number,
-        seat_code: seat.seat_code,
-        availability_status: seat.availability_status,
-        branch_id: seat.branch_id,
-        branch_name: seat.branch_name,
-        seating_type_id: seat.seating_type_id,
-        seating_type_name: seat.seating_type_name
+        id: seatData.id,
+        name: seatData.seat_number || '',
+        seat_number: seatData.seat_number,
+        seat_code: seatData.seat_code,
+        price: seatData.price,
+        availability_status: seatData.availability_status,
+        branch_id: seatData.Branch?.id,
+        branch_name: seatData.Branch?.name,
+        seating_type_id: seatData.SeatingType?.id,
+        seating_type_name: seatData.SeatingType?.name
       },
-      bookings,
-      maintenance: maintenanceBlocks,
-      time_slots: availability
+      bookings: formattedBookings,
+      maintenance_blocks: [],
+      time_slots: timeSlots,
+      pricing: {
+        hourly_rate: seatingType?.hourly_rate || 0,
+        daily_rate: seatingType?.daily_rate || 0, 
+        weekly_rate: seatingType?.weekly_rate || 0,
+        monthly_rate: seatingType?.monthly_rate || 0,
+        currency: "INR", 
+        start_date: startDate,
+        end_date: endDate,
+        total_amount: totalAmount,
+        quantity: quantity,
+        quantity_available: quantityAvailable
+      },
+      can_fulfill_quantity: canFulfillQuantity,
+      availability_message: canFulfillQuantity ? 
+        "The requested quantity can be fulfilled" : 
+        `Only ${quantityAvailable} seat available, but ${quantity} requested`
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Error in getSeatAvailability:`, error);
     throw error; // Re-throw to be handled by caller
   }
@@ -327,306 +443,333 @@ async function getBranchAvailability(
   seatingTypeId: string | null, 
   seatingTypeCode: string | null, 
   startDate: string, 
-  endDate: string
+  endDate: string,
+  quantity: number = 1
 ) {
   try {
-    // First, get seats in this branch of the specified type
-    let seatingTypeCondition = '';
-    if (seatingTypeId) {
-      seatingTypeCondition = `AND s.seating_type_id = '${seatingTypeId}'`;
-    } else if (seatingTypeCode) {
-      seatingTypeCondition = `AND st.short_code = '${seatingTypeCode}'`;
+    // First, get branch details
+    const branch = await models.Branch.findByPk(branchId);
+    if (!branch) {
+      throw new Error(`Branch with ID ${branchId} not found`);
     }
-    // If neither seatingTypeId nor seatingTypeCode is provided, we'll return all seats in the branch
+
+    // Build seating type query condition
+    let seatingTypeQuery = '';
+    let seatingTypeParams: Record<string, any> = {};
     
-    const seatsQuery = `
-      SELECT 
-        s.id, s.name, s.seat_number, s.seat_code, s.availability_status,
-        b.id as branch_id, b.name as branch_name, b.opening_time, b.closing_time,
-        st.id as seating_type_id, st.name as seating_type_name, st.short_code as seating_type_code
-      FROM 
-        excel_coworks_schema.seats s
-      JOIN
-        excel_coworks_schema.branches b ON s.branch_id = b.id
-      JOIN
-        excel_coworks_schema.seating_types st ON s.seating_type_id = st.id
-      WHERE 
-        s.branch_id = '${branchId}'
-        ${seatingTypeCondition}
-      ORDER BY
-        s.id
+    if (seatingTypeId) {
+      seatingTypeQuery = 'AND s.seating_type_id = :seatingTypeId';
+      seatingTypeParams.seatingTypeId = seatingTypeId;
+    } else if (seatingTypeCode) {
+      seatingTypeQuery = 'AND st.short_code = :seatingTypeCode';
+      seatingTypeParams.seatingTypeCode = seatingTypeCode;
+    }
+
+    // Prepare query conditions for seats
+    const query = `
+      SELECT s.*, 
+        b.id as "Branch.id", 
+        b.name as "Branch.name", 
+        b.short_code as "Branch.short_code",
+        b.location as "Branch.location",
+        b.opening_time as "Branch.opening_time",
+        b.closing_time as "Branch.closing_time",
+        st.id as "SeatingType.id",
+        st.name as "SeatingType.name",
+        st.short_code as "SeatingType.short_code",
+        st.hourly_rate as "SeatingType.hourly_rate",
+        st.daily_rate as "SeatingType.daily_rate",
+        st.weekly_rate as "SeatingType.weekly_rate",
+        st.monthly_rate as "SeatingType.monthly_rate",
+        st.is_hourly as "SeatingType.is_hourly",
+        st.is_daily as "SeatingType.is_daily",
+        st.is_weekly as "SeatingType.is_weekly",
+        st.is_monthly as "SeatingType.is_monthly",
+        st.capacity_options as "SeatingType.capacity_options"
+      FROM "excel_coworks_schema"."seats" s
+      JOIN "excel_coworks_schema"."branches" b ON s.branch_id = b.id
+      JOIN "excel_coworks_schema"."seating_types" st ON s.seating_type_id = st.id
+      WHERE s.branch_id = :branchId
+      ${seatingTypeQuery}
+      ORDER BY s.id ASC
     `;
     
-    console.log('Branch seats query:', seatsQuery);
+    const replacements = { 
+      branchId: Number(branchId),
+      ...seatingTypeParams
+    };
     
-    const [seatsResult] = await models.sequelize.query(seatsQuery);
-    // Type assertion
-    const seats = seatsResult as unknown as Seat[];
-    
-    if (!seats || seats.length === 0) {
-      return {
-        branch_id: branchId,
-        seating_type_id: seatingTypeId,
-        seating_type_code: seatingTypeCode,
-        seats: [],
-        message: "No seats found matching the criteria"
-      };
-    }
+    // Execute query
+    const seats = await models.sequelize.query(
+      query,
+      {
+        replacements,
+        type: 'SELECT' as const
+      }
+    );
     
     console.log(`Found ${seats.length} seats in branch ${branchId}`);
     
+    // If no seats found, return empty result
+    if (!seats || seats.length === 0) {
+      return {
+        branch_id: branchId,
+        branch_name: branch.name,
+        branch_location: branch.location,
+        seating_type_id: seatingTypeId,
+        seating_type_code: seatingTypeCode,
+        seats: [],
+        message: "No seats found matching the criteria",
+        can_fulfill_quantity: false,
+        quantity_available: 0,
+        quantity_requested: quantity
+      };
+    }
+    
     // For each seat, get availability
     const seatAvailability = await Promise.all(
-      seats.map(async (seat: Seat) => {
-        // Get bookings for this seat
-        const bookingsQuery = `
-          SELECT 
-            id, start_time, end_time, status
-          FROM 
-            excel_coworks_schema.bookings
-          WHERE 
-            seat_id = '${seat.id}'
-            AND status IN ('confirmed', 'pending')
-            AND (
-              (start_time BETWEEN '${startDate}' AND '${endDate}')
-              OR (end_time BETWEEN '${startDate}' AND '${endDate}')
-              OR (start_time <= '${startDate}' AND end_time >= '${endDate}')
-            )
-          ORDER BY
-            start_time
-        `;
-        
-        let bookings: Booking[] = [];
-        try {
-          const [bookingsResult] = await models.sequelize.query(bookingsQuery);
-          bookings = bookingsResult as unknown as Booking[];
-        } catch (error: any) {
-          console.warn(`Error querying bookings for seat ${seat.id}:`, error);
-          // Continue without bookings
+      seats.map(async (seatData: any) => {
+        if (!seatData) {
+          console.warn('Null or undefined seat encountered in result set');
+          return null;
         }
         
-        // Process availability
-        const timeSlots = generateTimeSlots(startDate, endDate, seat.opening_time, seat.closing_time);
-        const availability = processAvailability(timeSlots, bookings, [], seat.availability_status);
+        // Ensure all required properties are present with defaults if missing
+        const sanitizedSeat = {
+          id: seatData.id || '',
+          name: seatData.seat_number || '',
+          seat_number: seatData.seat_number || '',
+          seat_code: seatData.seat_code || '',
+          price: typeof seatData.price === 'number' ? seatData.price : 0,
+          availability_status: seatData.availability_status || 'UNAVAILABLE',
+          seating_type_id: seatData['SeatingType.id'] || '',
+          seating_type_name: seatData['SeatingType.name'] || '',
+          seating_type_code: seatData['SeatingType.short_code'] || '',
+          branch_id: seatData['Branch.id'] || '',
+          branch_name: seatData['Branch.name'] || '',
+          opening_time: seatData['Branch.opening_time'] || '09:00',
+          closing_time: seatData['Branch.closing_time'] || '17:00',
+          capacity: seatData.capacity || null,
+          capacity_options: seatData['SeatingType.capacity_options'] || null
+        };
+        
+        // Query for bookings using raw SQL to ensure we use the right schema
+        const bookingsQuery = `
+          SELECT id, seat_id, start_time, end_time, status 
+          FROM "excel_coworks_schema"."seat_bookings" 
+          WHERE seat_id = :seatId 
+          AND status NOT IN ('CANCELLED')
+          AND (
+            (start_time < :endDate AND end_time > :startDate)
+          )
+          ORDER BY start_time ASC
+        `;
+        
+        const bookings = await models.sequelize.query(
+          bookingsQuery,
+          {
+            replacements: { 
+              seatId: sanitizedSeat.id,
+              startDate: startDate,
+              endDate: endDate
+            },
+            type: 'SELECT' as const
+          }
+        );
+        
+        const formattedBookings = bookings.map((booking: any) => ({
+          id: booking.id,
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          status: booking.status
+          }));
+          
+          // Generate time slots for each day
+          const timeSlots = [];
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const date = d.toISOString().split('T')[0];
+            const startTime = new Date(d);
+            startTime.setHours(8, 0, 0, 0);
+            const endTime = new Date(d);
+            endTime.setHours(20, 0, 0, 0);
+            
+            // Find the relevant booking for this date (for info only)
+            const relevantBooking = formattedBookings.find(b => {
+              const bookingStart = new Date(b.start_time);
+              const bookingEnd = new Date(b.end_time);
+            return (
+              // Test if the booking overlaps with this day
+              (bookingStart <= endTime && bookingEnd >= startTime)
+            );
+            });
+
+            // IMPORTANT FIX: First check seat status, then only disable if actually booked
+            const statusIsAvailable = 
+              sanitizedSeat.availability_status.toUpperCase() === 'AVAILABLE' || 
+              sanitizedSeat.availability_status.toLowerCase() === 'available';
+            
+            // By default, seat is available if its status is available
+            let isAvailable = statusIsAvailable;
+            
+            // Only mark as unavailable if there's an actual booking
+            if (relevantBooking) {
+              isAvailable = false;
+              console.log(`Seat ${sanitizedSeat.id} is booked for ${date}`);
+            }
+
+            let reason = isAvailable ? 'Seat is AVAILABLE' : 'Seat is not available for this date';
+            if (relevantBooking) {
+              reason = 'Booked';
+            }
+            
+            timeSlots.push({
+              date,
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              is_available: isAvailable,
+              status: isAvailable ? 'available' : 'unavailable',
+              booking_id: relevantBooking?.id || null,
+              reason
+            });
+          }
+          
+          // Calculate total amount based on duration and price
+        const seatingType = {
+          id: seatData['SeatingType.id'],
+          hourly_rate: seatData['SeatingType.hourly_rate'],
+          daily_rate: seatData['SeatingType.daily_rate'],
+          weekly_rate: seatData['SeatingType.weekly_rate'],
+          monthly_rate: seatData['SeatingType.monthly_rate'],
+          is_hourly: seatData['SeatingType.is_hourly'],
+          is_daily: seatData['SeatingType.is_daily'],
+          is_weekly: seatData['SeatingType.is_weekly'],
+          is_monthly: seatData['SeatingType.is_monthly']
+        };
+
+        console.log('Seating type data:', seatingType);
+
+        // Calculate duration in days
+        const bookingStart = new Date(startDate);
+        const bookingEnd = new Date(endDate);
+        const durationMs = bookingEnd.getTime() - bookingStart.getTime();
+        const durationDays = durationMs / (1000 * 60 * 60 * 24);
+
+        // Determine the appropriate rate based on duration
+        let rate = seatingType.hourly_rate;
+        if (durationDays >= 30 && seatingType.is_monthly && seatingType.monthly_rate) {
+          rate = seatingType.monthly_rate;
+        } else if (durationDays >= 7 && seatingType.is_weekly && seatingType.weekly_rate) {
+          rate = seatingType.weekly_rate;
+        } else if (durationDays >= 1 && seatingType.is_daily && seatingType.daily_rate) {
+          rate = seatingType.daily_rate;
+        }
+
+        console.log('Using rate for calculation:', {
+          seatingTypeId: seatingType.id,
+          rate,
+          durationDays,
+          hourly_rate: seatingType.hourly_rate,
+          daily_rate: seatingType.daily_rate,
+          weekly_rate: seatingType.weekly_rate,
+          monthly_rate: seatingType.monthly_rate
+        });
+
+        const totalAmount = await calculateTotalAmount(
+          startDate, 
+          endDate, 
+          rate, 
+          1,
+          seatingType.id?.toString()
+        );
         
         return {
-          id: seat.id,
-          name: seat.name,
-          seat_number: seat.seat_number,
-          seat_code: seat.seat_code,
-          availability_status: seat.availability_status,
-          seating_type_id: seat.seating_type_id,
-          seating_type_name: seat.seating_type_name,
-          seating_type_code: seat.seating_type_code,
-          availability: availability
-        };
+            seat: sanitizedSeat,
+            bookings: formattedBookings,
+            maintenance_blocks: [],
+            time_slots: timeSlots,
+            pricing: {
+            hourly_rate: seatingType.hourly_rate || 0,
+            daily_rate: seatingType.daily_rate || 0,
+            weekly_rate: seatingType.weekly_rate || 0,
+            monthly_rate: seatingType.monthly_rate || 0,
+              currency: "INR", 
+              start_date: startDate,
+              end_date: endDate,
+              total_amount: totalAmount
+            },
+            is_available: timeSlots.some(slot => slot.is_available)
+          };
       })
     );
     
+    // Filter out any null seat availability results
+    const filteredAvailability = seatAvailability.filter(item => item !== null);
+    
+    // Calculate how many seats are available for the requested period
+    const availableSeats = filteredAvailability.filter(item => item.is_available);
+    const quantityAvailable = availableSeats.length;
+    const canFulfillQuantity = quantity <= quantityAvailable;
+    
+    // Calculate total price based on the average seat price
+    let averageSeatPrice = 0;
+    if (availableSeats.length > 0) {
+      const totalPrices = availableSeats.reduce((sum, seat) => sum + seat.pricing.total_amount, 0);
+      averageSeatPrice = totalPrices / availableSeats.length;
+    }
+    
+    const totalAmount = await calculateTotalAmount(
+      startDate, 
+      endDate, 
+      averageSeatPrice, 
+      quantity,
+      seatingTypeId?.toString()
+    );
+    
+    // Return structured availability information
     return {
       branch_id: branchId,
-      branch_name: seats[0].branch_name,
-      seating_type_id: seatingTypeId || seats[0].seating_type_id,
-      seating_type_name: seats[0].seating_type_name,
-      seating_type_code: seatingTypeCode || seats[0].seating_type_code,
-      date_range: {
+      branch_name: branch?.name || '',
+      branch_location: branch?.location || '',
+      // Make availability info more prominent
+      availability_status: canFulfillQuantity ? 'AVAILABLE' : 'UNAVAILABLE',
+      total_available_seats: quantityAvailable,
+      total_price: totalAmount,
+      currency: "INR",
+      // Move these key availability indicators to the top level
+      requested_quantity: quantity,
+      can_fulfill_quantity: canFulfillQuantity,
+      availability_message: canFulfillQuantity ? 
+        "The requested quantity can be fulfilled" : 
+        `Only ${quantityAvailable} seats available, but ${quantity} requested`,
+      // Include the date range
+      start_date: startDate,
+      end_date: endDate,
+      // Original fields now follow
+      seating_type_id: seatingTypeId,
+      seating_type_code: seatingTypeCode,
+      seats: filteredAvailability,
+      total_seats: filteredAvailability.length,
+      available_seats: availableSeats.length,
+      pricing: {
+        average_price_per_day: averageSeatPrice,
+        currency: "INR",
         start_date: startDate,
-        end_date: endDate
-      },
-      seats: seatAvailability
+        end_date: endDate,
+        total_amount: totalAmount,
+        quantity: quantity
+      }
     };
-  } catch (error: any) {
-    console.error(`Error in getBranchAvailability:`, error);
+  } catch (error) {
+    console.error('Error in getBranchAvailability:', error);
     throw error; // Re-throw to be handled by caller
-  }
-}
-
-// Helper function to generate time slots for a date range
-function generateTimeSlots(startDate: string, endDate: string, openingTime: string, closingTime: string): TimeSlot[] {
-  try {
-    const slots: TimeSlot[] = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Format as YYYY-MM-DD
-    const formatDate = (date: Date) => {
-      return date.toISOString().split('T')[0];
-    };
-    
-    // Create slots for each day in the range
-    for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
-      const dateStr = formatDate(day);
-      
-      // Add a full-day slot for each day
-      slots.push({
-        date: dateStr,
-        start_time: `${dateStr}T${openingTime}:00`,
-        end_time: `${dateStr}T${closingTime}:00`,
-        is_available: true, // Default to available, will be updated later
-        status: 'available',
-        booking_id: null,
-        maintenance_id: null
-      });
-    }
-    
-    return slots;
-  } catch (error: any) {
-    console.error('Error generating time slots:', error);
-    // Return empty array if there's an error
-    return [];
-  }
-}
-
-// Helper function to process availability based on bookings and maintenance blocks
-function processAvailability(
-  timeSlots: TimeSlot[], 
-  bookings: Booking[], 
-  maintenanceBlocks: MaintenanceBlock[],
-  seatAvailabilityStatus: string
-): TimeSlot[] {
-  try {
-    // If seat is not generally available, mark all slots as unavailable
-    if (seatAvailabilityStatus !== 'available') {
-      return timeSlots.map(slot => ({
-        ...slot,
-        is_available: false,
-        status: 'unavailable',
-        reason: `Seat is ${seatAvailabilityStatus}`
-      }));
-    }
-    
-    // Clone the time slots to avoid modifying the original
-    const processedSlots = [...timeSlots];
-    
-    // For each slot, check if it overlaps with any booking or maintenance block
-    for (const slot of processedSlots) {
-      const slotStart = new Date(slot.start_time);
-      const slotEnd = new Date(slot.end_time);
-      
-      // Check bookings first
-      for (const booking of bookings) {
-        const bookingStart = new Date(booking.start_time);
-        const bookingEnd = new Date(booking.end_time);
-        
-        // Check if there's an overlap
-        if (
-          (bookingStart <= slotEnd && bookingEnd >= slotStart) ||
-          (slotStart <= bookingEnd && slotEnd >= bookingStart)
-        ) {
-          slot.is_available = false;
-          slot.status = 'booked';
-          slot.booking_id = booking.id;
-          slot.reason = 'Reserved by another user';
-          break; // No need to check other bookings if already booked
-        }
-      }
-      
-      // If not booked, check for maintenance blocks
-      if (slot.is_available && maintenanceBlocks.length > 0) {
-        for (const block of maintenanceBlocks) {
-          const blockStart = new Date(block.start_time);
-          const blockEnd = new Date(block.end_time);
-          
-          // Check if there's an overlap
-          if (
-            (blockStart <= slotEnd && blockEnd >= slotStart) ||
-            (slotStart <= blockEnd && slotEnd >= blockStart)
-          ) {
-            slot.is_available = false;
-            slot.status = 'maintenance';
-            slot.maintenance_id = block.id;
-            slot.reason = block.reason || 'Under maintenance';
-            break;
-          }
-        }
-      }
-    }
-    
-    return processedSlots;
-  } catch (error: any) {
-    console.error('Error processing availability:', error);
-    // Return original slots marked as error
-    return timeSlots.map(slot => ({
-      ...slot,
-      is_available: false,
-      status: 'error',
-      reason: 'Error processing availability'
-    }));
   }
 }
 
 // Create test seats if they don't exist
 async function ensureTestSeatsExist() {
-  try {
-    // Check if we have seats
-    const checkQuery = `
-      SELECT COUNT(*) as seat_count FROM excel_coworks_schema.seats
-    `;
-    const [countResult] = await models.sequelize.query(checkQuery);
-    const seatCount = parseInt((countResult[0] as { seat_count: string })?.seat_count || '0');
-    
-    if (seatCount === 0) {
-      console.log('No seats found, creating test seats...');
-      
-      // Create test branch if needed
-      await models.sequelize.query(`
-        INSERT INTO excel_coworks_schema.branches (
-          id, name, short_code, address, city, state, country, postal_code, 
-          phone, email, opening_time, closing_time, created_at, updated_at
-        )
-        SELECT 
-          gen_random_uuid(), 'Test Branch', 'TEST', '123 Test St', 'Test City', 'TS', 
-          'Test Country', '12345', '123-456-7890', 'test@example.com', 
-          '09:00', '17:00', NOW(), NOW()
-        WHERE NOT EXISTS (
-          SELECT 1 FROM excel_coworks_schema.branches LIMIT 1
-        )
-      `);
-      
-      // Get branch ID
-      const [branchResult] = await models.sequelize.query(`
-        SELECT id FROM excel_coworks_schema.branches LIMIT 1
-      `);
-      const branchId = (branchResult[0] as { id: string })?.id;
-      
-      // Create test seating type if needed
-      await models.sequelize.query(`
-        INSERT INTO excel_coworks_schema.seating_types (
-          id, name, short_code, description, created_at, updated_at
-        )
-        SELECT 
-          gen_random_uuid(), 'Hot Desk', 'HD', 'Flexible workspace', NOW(), NOW()
-        WHERE NOT EXISTS (
-          SELECT 1 FROM excel_coworks_schema.seating_types LIMIT 1
-        )
-      `);
-      
-      // Get seating type ID
-      const [typeResult] = await models.sequelize.query(`
-        SELECT id FROM excel_coworks_schema.seating_types LIMIT 1
-      `);
-      const typeId = (typeResult[0] as { id: string })?.id;
-      
-      // Create test seats
-      if (branchId && typeId) {
-        await models.sequelize.query(`
-          INSERT INTO excel_coworks_schema.seats (
-            id, branch_id, seating_type_id, name, seat_number, seat_code,
-            price, capacity, is_configurable, availability_status, created_at, updated_at
-          ) VALUES 
-          (
-            gen_random_uuid(), '${branchId}', '${typeId}', 'Test Seat 1', 'A1', 'TS-A1',
-            25.00, 1, false, 'available', NOW(), NOW()
-          ),
-          (
-            gen_random_uuid(), '${branchId}', '${typeId}', 'Test Seat 2', 'A2', 'TS-A2',
-            25.00, 1, false, 'available', NOW(), NOW()
-          )
-        `);
-        console.log('Test seats created successfully');
-      }
-    }
-  } catch (error: any) {
-    console.error('Error creating test seats:', error);
-  }
+  // This function is no longer needed as we're using Sequelize models
+  return;
 }

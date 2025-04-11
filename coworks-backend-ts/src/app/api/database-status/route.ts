@@ -9,15 +9,9 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { NextRequest, NextResponse } from 'next/server';
-import sequelize from '@/config/database';
+import models from '@/models';
 import { ApiResponse } from '@/types/common';
-
-// Add CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+import { corsHeaders } from '@/utils/jwt-wrapper';
 
 interface DatabaseStatus {
   connected: boolean;
@@ -58,12 +52,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     try {
       // Test database connection
-      await sequelize.authenticate();
+      await models.sequelize.authenticate();
       status.connected = true;
       status.message = 'Database connection successful';
       
       // Get list of tables
-      const [tables] = await sequelize.query(`
+      const [tables] = await models.sequelize.query(`
         SELECT table_name 
         FROM information_schema.tables 
         WHERE table_schema = '${dbSchema}'

@@ -12,8 +12,16 @@ export const isValidPhone = (phone: string | null | undefined): boolean => {
   return phoneRegex.test(phone);
 };
 
-// Validate name (not just whitespace)
+// Validate name (only letters, no numbers or special characters, not empty or just spaces)
 export const isValidName = (name: string): boolean => {
+  // Check if name is null or empty
+  if (!name || name.trim().length === 0) return false;
+  
+  // Check if name contains only letters and spaces between words
+  const nameRegex = /^[A-Za-z\s]+$/;
+  if (!nameRegex.test(name)) return false;
+  
+  // Check if name has at least one non-space character
   return name.trim().length > 0;
 };
 

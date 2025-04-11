@@ -13,6 +13,8 @@ import { verifyAuth } from '@/utils/jwt';
 import models from '@/models';
 import { ApiResponse } from '@/types/api';
 import { TicketStatus } from '@/models/supportTicket';
+import { corsHeaders } from '@/utils/jwt-wrapper';
+import { MessageSender } from '@/models/ticketMessage';
 
 /**
  * POST /api/support/tickets/messages - Add new message to ticket
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Ticket ID and message are required',
         data: null
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Check if ticket exists and belongs to the customer
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Ticket not found',
         data: null
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Cannot add messages to closed tickets
@@ -60,36 +62,61 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Cannot add messages to closed tickets. Please reopen the ticket first.',
         data: null
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Create new message
     const newMessage = await models.TicketMessage.create({
       ticket_id,
       message,
-      sender_type: 'customer',
-      sender_id: customerId
+      sender_type: MessageSender.CUSTOMER,
+      sender_id: customerId,
+      created_at: new Date(),
+      updated_at: new Date()
     });
     
     // If ticket is in 'new' status, update to 'in_progress'
     if (ticket.status === TicketStatus.NEW) {
       await ticket.update({
-        status: TicketStatus.IN_PROGRESS
+        status: TicketStatus.IN_PROGRESS,
+        updated_at: new Date()
       });
     }
     
-    return NextResponse.json<ApiResponse<typeof newMessage>>({
+    // Fetch complete message with related data
+    const completeMessage = await models.TicketMessage.findByPk(newMessage.id, {
+      include: [
+        {
+          model: models.SupportTicket,
+          as: 'Ticket',
+          attributes: ['id', 'ticket_number', 'title', 'status']
+        }
+      ]
+    });
+    
+    return NextResponse.json<ApiResponse<typeof completeMessage>>({
       success: true,
       message: 'Message added successfully',
-      data: newMessage
-    }, { status: 201 });
+      data: completeMessage
+    }, { status: 201, headers: corsHeaders });
     
   } catch (error) {
     console.error('Add message error:', error);
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to add message',
+      errors: error instanceof Error ? [{ message: error.message }] : [{ message: 'Unknown error' }],
       data: null
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
+}
+
+/**
+ * OPTIONS handler for CORS
+ */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders
+  });
 } 

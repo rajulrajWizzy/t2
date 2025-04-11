@@ -7,7 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyJWT } from '@/utils/jwt';
 import { verifyAdmin } from '@/utils/adminAuth';
 import models from '@/models';
-import { QueryTypes } from 'sequelize';
+import { BookingStatusEnum } from '@/types/booking';
+import { corsHeaders } from '@/utils/jwt-wrapper';
 
 // Handler for DELETE requests (cancel booking)
 export async function DELETE(
@@ -15,7 +16,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const bookingId = params.id;
+    const bookingId = Number(params.id);
     
     // Verify admin authentication
     const auth = await verifyAdmin(request);
@@ -29,45 +30,34 @@ export async function DELETE(
       throw new Error('Database connection failed: ' + (dbConnectionError as Error).message);
     }
     
-    // Find the booking
-    const booking = await models.sequelize.query(
-      `SELECT * FROM excel_coworks_schema.bookings WHERE id = :bookingId`,
-      {
-        replacements: { bookingId },
-        type: QueryTypes.SELECT
-      }
-    );
+    // Find the booking with Sequelize ORM
+    const booking = await models.SeatBooking.findByPk(bookingId);
     
-    if (!booking || booking.length === 0) {
+    if (!booking) {
       return NextResponse.json({
         success: false,
         message: `Booking with ID ${bookingId} not found`
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Update booking status to 'cancelled' instead of deleting
-    await models.sequelize.query(
-      `UPDATE excel_coworks_schema.bookings 
-       SET status = 'cancelled', updated_at = NOW() 
-       WHERE id = :bookingId`,
-      {
-        replacements: { bookingId },
-        type: QueryTypes.UPDATE
-      }
-    );
+    await booking.update({ 
+      status: BookingStatusEnum.CANCELLED,
+      updated_at: new Date()
+    });
     
     // Return success response
     return NextResponse.json({
       success: true,
       message: 'Booking cancelled successfully'
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error cancelling booking:', error);
     
     return NextResponse.json({
       success: false,
       message: 'Failed to cancel booking: ' + (error as Error).message
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -77,7 +67,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const bookingId = params.id;
+    const bookingId = Number(params.id);
     
     // Verify admin authentication
     const auth = await verifyAdmin(request);
@@ -94,58 +84,45 @@ export async function PUT(
       throw new Error('Database connection failed: ' + (dbConnectionError as Error).message);
     }
     
-    // Find the booking
-    const booking = await models.sequelize.query(
-      `SELECT * FROM excel_coworks_schema.bookings WHERE id = :bookingId`,
-      {
-        replacements: { bookingId },
-        type: QueryTypes.SELECT
-      }
-    );
+    // Find the booking with Sequelize
+    const booking = await models.SeatBooking.findByPk(bookingId);
     
-    if (!booking || booking.length === 0) {
+    if (!booking) {
       return NextResponse.json({
         success: false,
         message: `Booking with ID ${bookingId} not found`
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
-    // Update booking
-    await models.sequelize.query(
-      `UPDATE excel_coworks_schema.bookings 
-       SET customer_id = :customer_id, seat_id = :seat_id, branch_id = :branch_id, 
-       start_date = :start_date, end_date = :end_date, status = :status, 
-       amount = :amount, payment_status = :payment_status, updated_at = NOW() 
-       WHERE id = :bookingId`,
-      {
-        replacements: {
-          customer_id: data.customer_id,
-          seat_id: data.seat_id,
-          branch_id: data.branch_id,
-          start_date: data.start_date,
-          end_date: data.end_date,
-          status: data.status,
-          amount: data.amount,
-          payment_status: data.payment_status,
-          bookingId
-        },
-        type: QueryTypes.UPDATE
-      }
-    );
+    // Update booking using Sequelize model
+    await booking.update({
+      customer_id: data.customer_id,
+      seat_id: data.seat_id,
+      branch_id: data.branch_id,
+      start_time: data.start_date,
+      end_time: data.end_date,
+      status: data.status,
+      total_amount: data.amount,
+      payment_status: data.payment_status,
+      updated_at: new Date()
+    });
+    
+    // Get the updated booking
+    const updatedBooking = await models.SeatBooking.findByPk(bookingId);
     
     // Return success response
     return NextResponse.json({
       success: true,
       message: 'Booking updated successfully',
-      data: booking
-    });
+      data: updatedBooking
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error updating booking:', error);
     
     return NextResponse.json({
       success: false,
       message: 'Failed to update booking: ' + (error as Error).message
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -155,7 +132,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const bookingId = params.id;
+    const bookingId = Number(params.id);
     
     // Verify admin authentication
     const auth = await verifyAdmin(request);
@@ -169,28 +146,39 @@ export async function GET(
       throw new Error('Database connection failed: ' + (dbConnectionError as Error).message);
     }
     
-    // Find the booking with related data
-    const booking = await models.sequelize.query(
-      `SELECT b.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone, 
-       s.name AS seat_name, s.seat_number, st.name AS seating_type_name, 
-       br.name AS branch_name, br.address AS branch_address 
-       FROM excel_coworks_schema.bookings b 
-       LEFT JOIN excel_coworks_schema.users c ON b.customer_id = c.id 
-       LEFT JOIN excel_coworks_schema.seats s ON b.seat_id = s.id 
-       LEFT JOIN excel_coworks_schema.seating_types st ON s.seating_type_id = st.id 
-       LEFT JOIN excel_coworks_schema.branches br ON b.branch_id = br.id 
-       WHERE b.id = :bookingId`,
-      {
-        replacements: { bookingId },
-        type: QueryTypes.SELECT
-      }
-    );
+    // Find the booking with related data using Sequelize
+    const booking = await models.SeatBooking.findByPk(bookingId, {
+      include: [
+        {
+          model: models.Customer,
+          as: 'Customer',
+          attributes: ['id', 'name', 'email', 'phone']
+        },
+        {
+          model: models.Seat,
+          as: 'Seat',
+          attributes: ['id', 'seat_number', 'name'],
+          include: [
+            {
+              model: models.SeatingType,
+              as: 'SeatingType',
+              attributes: ['id', 'name', 'short_code']
+            },
+            {
+              model: models.Branch,
+              as: 'Branch',
+              attributes: ['id', 'name', 'address']
+            }
+          ]
+        }
+      ]
+    });
     
-    if (!booking || booking.length === 0) {
+    if (!booking) {
       return NextResponse.json({
         success: false,
         message: `Booking with ID ${bookingId} not found`
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Return success response
@@ -198,13 +186,13 @@ export async function GET(
       success: true,
       message: 'Booking details retrieved successfully',
       data: booking
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error retrieving booking details:', error);
     
     return NextResponse.json({
       success: false,
       message: 'Failed to retrieve booking details: ' + (error as Error).message
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }

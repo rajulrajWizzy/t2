@@ -1,538 +1,607 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow,
+import {
+  Box,
+  Typography,
   Button,
-  CircularProgress,
-  Alert,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
+  Chip,
+  CircularProgress,
+  Alert,
+  Pagination,
+  Tooltip,
   Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  IconButton,
-  Snackbar
+  InputAdornment,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import axios from 'axios';
-
-interface SeatingType {
-  id: string;
-  name: string;
-  description: string;
-  image_url?: string;
-  hourly_price_range?: string;
-  daily_price_range?: string;
-  monthly_price_range?: string;
-  features?: string[];
-  created_at: string;
-  updated_at: string;
-}
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  Image as ImageIcon,
+  Category as CategoryIcon
+} from '@mui/icons-material';
+import { seatingTypesApi, SeatingType } from '@/utils/admin-api';
 
 export default function SeatingTypesPage() {
+  // State for seating types list and pagination
   const [seatingTypes, setSeatingTypes] = useState<SeatingType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedType, setSelectedType] = useState<SeatingType | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [limit] = useState(10);
+  const [search, setSearch] = useState('');
+  
+  // State for seating type form dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [currentSeatingType, setCurrentSeatingType] = useState<SeatingType | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    short_code: '',
     description: '',
-    image_url: '',
-    hourly_price_range: '',
-    daily_price_range: '',
-    monthly_price_range: '',
-    features: ''
+    hourly_rate: 0,
+    daily_rate: 0,
+    monthly_rate: 0,
+    is_active: true
   });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState('');
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  
+  // State for delete confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [typeToDelete, setTypeToDelete] = useState<SeatingType | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  
+  // Load seating types on initial render and when search/page changes
   useEffect(() => {
-    // Check authentication status
-    const storedToken = localStorage.getItem('adminToken');
-    if (storedToken) {
-      setIsAuthenticated(true);
-      setToken(storedToken);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      fetchSeatingTypes();
-    }
-  }, [isAuthenticated, token]);
-
-  const fetchSeatingTypes = async () => {
+    loadSeatingTypes();
+  }, [page, search]);
+  
+  // Load seating types from API
+  const loadSeatingTypes = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      // Fetch seating types from the API
-      const response = await axios.get('/api/seating-types', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const response = await seatingTypesApi.getAll({
+        page,
+        limit,
+        search: search.trim() || undefined
       });
       
-      console.log('Seating types API response:', response.data);
-      
-      if (response.data && (response.data.success || Array.isArray(response.data))) {
-        let seatingTypesData;
-        
-        // Handle different response formats
-        if (Array.isArray(response.data)) {
-          seatingTypesData = response.data;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          seatingTypesData = response.data.data;
-        } else if (response.data.data && response.data.data.seatingTypes && Array.isArray(response.data.data.seatingTypes)) {
-          seatingTypesData = response.data.data.seatingTypes;
-        } else {
-          console.error('Unexpected seating types data format:', response.data);
-          seatingTypesData = [];
-        }
-        
-        setSeatingTypes(seatingTypesData);
+      if (response.success) {
+        setSeatingTypes(response.data || []);
+        setTotalPages(response.pagination?.pages || 1);
       } else {
-        // Fallback to mock data if API returns empty or invalid data
-        console.log('API returned invalid data, using mock data');
-        setSeatingTypes(getMockSeatingTypes());
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching seating types:', err);
-      // Use mock data as fallback
-      console.log('Using mock seating types data due to error');
-      setSeatingTypes(getMockSeatingTypes());
-      setError('Failed to fetch seating types from the server. Showing sample data instead.');
-      setLoading(false);
-    }
-  };
-
-  const handleOpenDialog = (type: SeatingType | null = null) => {
-    if (type) {
-      setSelectedType(type);
-      setFormData({
-        name: type.name,
-        description: type.description,
-        image_url: type.image_url || '',
-        hourly_price_range: type.hourly_price_range || '',
-        daily_price_range: type.daily_price_range || '',
-        monthly_price_range: type.monthly_price_range || '',
-        features: type.features ? type.features.join(', ') : ''
-      });
-    } else {
-      setSelectedType(null);
-      setFormData({
-        name: '',
-        description: '',
-        image_url: '',
-        hourly_price_range: '',
-        daily_price_range: '',
-        monthly_price_range: '',
-        features: ''
-      });
-    }
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const token = localStorage.getItem('adminToken');
-      const dataToSubmit = {
-        ...formData,
-        features: formData.features.split(',').map(feature => feature.trim()).filter(feature => feature)
-      };
-      
-      if (selectedType) {
-        // Update existing seating type
-        const response = await axios.put(`/api/seating-types/${selectedType.id}`, dataToSubmit, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.data.success) {
-          setSnackbar({
-            open: true,
-            message: 'Seating type updated successfully',
-            severity: 'success'
-          });
-          fetchSeatingTypes();
-          handleCloseDialog();
-        } else {
-          setError(response.data.message || 'Failed to update seating type');
-        }
-      } else {
-        // Create new seating type
-        const response = await axios.post('/api/seating-types', dataToSubmit, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.data.success) {
-          setSnackbar({
-            open: true,
-            message: 'Seating type created successfully',
-            severity: 'success'
-          });
-          fetchSeatingTypes();
-          handleCloseDialog();
-        } else {
-          setError(response.data.message || 'Failed to create seating type');
-        }
+        setError(response.message || 'Failed to load seating types');
+        setSeatingTypes([]);
       }
     } catch (err: any) {
-      console.error('Error saving seating type:', err);
-      setError(err.response?.data?.message || 'Error saving seating type');
+      console.error('Error loading seating types:', err);
+      setError(err.message || 'Failed to load seating types');
+      setSeatingTypes([]);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this seating type?')) {
+  
+  // Handle page change
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+  
+  // Handle search input change
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(event.target.value);
+    // Reset to first page when search changes
+    setPage(1);
+  };
+  
+  // Handle search submit
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    loadSeatingTypes();
+  };
+  
+  // Open dialog to add new seating type
+  const handleAddClick = () => {
+    setDialogMode('add');
+    setCurrentSeatingType(null);
+    setFormData({
+      name: '',
+      short_code: '',
+      description: '',
+      hourly_rate: 0,
+      daily_rate: 0,
+      monthly_rate: 0,
+      is_active: true
+    });
+    setFormErrors({});
+    setDialogOpen(true);
+  };
+  
+  // Open dialog to edit seating type
+  const handleEditClick = (type: SeatingType) => {
+    setDialogMode('edit');
+    setCurrentSeatingType(type);
+    setFormData({
+      name: type.name || '',
+      short_code: type.short_code || '',
+      description: type.description || '',
+      hourly_rate: type.hourly_rate || 0,
+      daily_rate: type.daily_rate || 0,
+      monthly_rate: type.monthly_rate || 0,
+      is_active: type.is_active
+    });
+    setFormErrors({});
+    setDialogOpen(true);
+  };
+  
+  // Close dialog
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+  };
+  
+  // Handle form input change
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = event.target;
+    
+    // Use checked for checkbox/switch inputs, value for others
+    const inputValue = type === 'checkbox' ? checked : value;
+    
+    // Convert to number for rate fields
+    if (name.includes('rate')) {
+      setFormData({
+        ...formData,
+        [name]: parseFloat(value) || 0
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: inputValue
+      });
+    }
+    
+    // Clear error for this field when changed
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+  };
+  
+  // Validate form
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    if (!formData.short_code.trim()) {
+      errors.short_code = 'Short code is required';
+    }
+    
+    if (formData.hourly_rate < 0) {
+      errors.hourly_rate = 'Rate cannot be negative';
+    }
+    
+    if (formData.daily_rate < 0) {
+      errors.daily_rate = 'Rate cannot be negative';
+    }
+    
+    if (formData.monthly_rate < 0) {
+      errors.monthly_rate = 'Rate cannot be negative';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
+  // Submit form
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       return;
     }
     
+    setSubmitting(true);
+    
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.delete(`/api/seating-types/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      let response;
       
-      if (response.data.success) {
-        setSnackbar({
-          open: true,
-          message: 'Seating type deleted successfully',
-          severity: 'success'
-        });
-        fetchSeatingTypes();
+      if (dialogMode === 'add') {
+        response = await seatingTypesApi.create(formData);
+      } else if (currentSeatingType) {
+        response = await seatingTypesApi.update(currentSeatingType.id.toString(), formData);
+      }
+      
+      if (response?.success) {
+        setDialogOpen(false);
+        loadSeatingTypes();
       } else {
-        setError(response.data.message || 'Failed to delete seating type');
+        setError(response?.message || 'Failed to save seating type');
+      }
+    } catch (err: any) {
+      console.error('Error saving seating type:', err);
+      setError(err.message || 'Failed to save seating type');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  // Open delete confirmation dialog
+  const handleDeleteClick = (type: SeatingType) => {
+    setTypeToDelete(type);
+    setDeleteDialogOpen(true);
+  };
+  
+  // Close delete confirmation dialog
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setTypeToDelete(null);
+  };
+  
+  // Delete seating type
+  const handleDeleteConfirm = async () => {
+    if (!typeToDelete) return;
+    
+    setDeleting(true);
+    
+    try {
+      const response = await seatingTypesApi.delete(typeToDelete.id.toString());
+      
+      if (response.success) {
+        setDeleteDialogOpen(false);
+        loadSeatingTypes();
+      } else {
+        setError(response.message || 'Failed to delete seating type');
       }
     } catch (err: any) {
       console.error('Error deleting seating type:', err);
-      setError(err.response?.data?.message || 'Error deleting seating type');
+      setError(err.message || 'Failed to delete seating type');
+    } finally {
+      setDeleting(false);
     }
   };
-
-  // Mock data function
-  const getMockSeatingTypes = (): SeatingType[] => {
-    return [
-      {
-        id: '1',
-        name: 'Hot Desk',
-        description: 'Flexible desk space available on a first-come, first-served basis',
-        image_url: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72',
-        hourly_price_range: '$5 - $10',
-        daily_price_range: '$25 - $40',
-        monthly_price_range: '$200 - $350',
-        features: ['High-speed WiFi', 'Access to common areas', 'Coffee & refreshments'],
-        created_at: '2023-01-15T10:00:00Z',
-        updated_at: '2023-01-15T10:00:00Z'
-      },
-      {
-        id: '2',
-        name: 'Dedicated Desk',
-        description: 'Your own permanent desk in a shared workspace',
-        image_url: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2',
-        hourly_price_range: 'N/A',
-        daily_price_range: '$40 - $60',
-        monthly_price_range: '$350 - $500',
-        features: ['Permanent desk', 'Storage locker', 'Mail handling', '24/7 access'],
-        created_at: '2023-01-15T10:00:00Z',
-        updated_at: '2023-01-15T10:00:00Z'
-      },
-      {
-        id: '3',
-        name: 'Private Office',
-        description: 'Enclosed private office space for teams',
-        image_url: 'https://images.unsplash.com/photo-1497215842964-222b430dc094',
-        hourly_price_range: 'N/A',
-        daily_price_range: '$80 - $150',
-        monthly_price_range: '$800 - $2000',
-        features: ['Private space', 'Meeting room credits', 'Business address', 'Phone booth access'],
-        created_at: '2023-01-15T10:00:00Z',
-        updated_at: '2023-01-15T10:00:00Z'
-      },
-      {
-        id: '4',
-        name: 'Meeting Room',
-        description: 'Conference rooms for meetings and presentations',
-        image_url: 'https://images.unsplash.com/photo-1497366216548-37526070297c',
-        hourly_price_range: '$20 - $50',
-        daily_price_range: '$120 - $300',
-        monthly_price_range: 'N/A',
-        features: ['Video conferencing', 'Whiteboard', 'Display screen', 'Catering options'],
-        created_at: '2023-01-15T10:00:00Z',
-        updated_at: '2023-01-15T10:00:00Z'
-      }
-    ];
+  
+  // Format currency
+  const formatCurrency = (amount?: number) => {
+    if (amount === undefined || amount === null) return '-';
+    
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
   };
-
+  
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Seating Types
-          </Typography>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={() => handleOpenDialog()}
-          >
-            Add New Seating Type
-          </Button>
-        </Box>
-
-        {error && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={3}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Grid container spacing={3}>
-            {seatingTypes.length === 0 ? (
-              <Grid item xs={12}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="body1">No seating types found</Typography>
-                </Paper>
-              </Grid>
+    <Box>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Seating Types
+        </Typography>
+        <Button 
+          variant="contained" 
+          startIcon={<AddIcon />}
+          onClick={handleAddClick}
+        >
+          Add Seating Type
+        </Button>
+      </Box>
+      
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+      
+      <Paper sx={{ mb: 3, p: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <Box component="form" onSubmit={handleSearchSubmit}>
+              <TextField
+                fullWidth
+                placeholder="Search seating types..."
+                value={search}
+                onChange={handleSearchChange}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => loadSeatingTypes()} edge="end">
+                        <RefreshIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Code</TableCell>
+              <TableCell>Description</TableCell>
+              <TableCell>Hourly Rate</TableCell>
+              <TableCell>Daily Rate</TableCell>
+              <TableCell>Monthly Rate</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                  <CircularProgress />
+                </TableCell>
+              </TableRow>
+            ) : seatingTypes.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                  No seating types found
+                </TableCell>
+              </TableRow>
             ) : (
               seatingTypes.map((type) => (
-                <Grid item xs={12} md={6} lg={4} key={type.id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    {type.image_url && (
-                      <CardMedia
-                        component="img"
-                        height="140"
-                        image={type.image_url}
-                        alt={type.name}
-                      />
-                    )}
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Typography gutterBottom variant="h5" component="div">
-                          {type.name}
-                        </Typography>
-                        <Box>
-                          <IconButton 
-                            size="small" 
-                            color="primary" 
-                            onClick={() => handleOpenDialog(type)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            color="error" 
-                            onClick={() => handleDelete(type.id)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                <TableRow key={type.id} hover>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      {type.image_url ? (
+                        <Box
+                          component="img"
+                          src={type.image_url}
+                          alt={type.name}
+                          sx={{ width: 40, height: 40, borderRadius: 1, mr: 1, objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: 1, 
+                            mr: 1, 
+                            bgcolor: 'secondary.light',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <CategoryIcon sx={{ color: 'white' }} />
                         </Box>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        {type.description}
-                      </Typography>
-                      
-                      <Typography variant="subtitle2" color="primary" gutterBottom>
-                        Pricing
-                      </Typography>
-                      <Grid container spacing={1} sx={{ mb: 1 }}>
-                        {type.hourly_price_range && (
-                          <Grid item xs={12}>
-                            <Typography variant="body2">
-                              <strong>Hourly:</strong> {type.hourly_price_range}
-                            </Typography>
-                          </Grid>
-                        )}
-                        {type.daily_price_range && (
-                          <Grid item xs={12}>
-                            <Typography variant="body2">
-                              <strong>Daily:</strong> {type.daily_price_range}
-                            </Typography>
-                          </Grid>
-                        )}
-                        {type.monthly_price_range && (
-                          <Grid item xs={12}>
-                            <Typography variant="body2">
-                              <strong>Monthly:</strong> {type.monthly_price_range}
-                            </Typography>
-                          </Grid>
-                        )}
-                      </Grid>
-                      
-                      {type.features && type.features.length > 0 && (
-                        <>
-                          <Typography variant="subtitle2" color="primary" gutterBottom>
-                            Features
-                          </Typography>
-                          <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0' }}>
-                            {type.features.map((feature, index) => (
-                              <li key={index}>
-                                <Typography variant="body2">{feature}</Typography>
-                              </li>
-                            ))}
-                          </ul>
-                        </>
                       )}
-                    </CardContent>
-                  </Card>
-                </Grid>
+                      <Typography variant="body1">{type.name}</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>{type.short_code}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                      {type.description || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{formatCurrency(type.hourly_rate)}</TableCell>
+                  <TableCell>{formatCurrency(type.daily_rate)}</TableCell>
+                  <TableCell>{formatCurrency(type.monthly_rate)}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={type.is_active ? 'Active' : 'Inactive'} 
+                      color={type.is_active ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Edit">
+                      <IconButton onClick={() => handleEditClick(type)}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton onClick={() => handleDeleteClick(type)} color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </Grid>
-        )}
-      </Box>
-
-      {/* Add/Edit Seating Type Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{selectedType ? 'Edit Seating Type' : 'Add New Seating Type'}</DialogTitle>
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
+      {totalPages > 1 && (
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </Box>
+      )}
+      
+      {/* Seating Type Form Dialog */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {dialogMode === 'add' ? 'Add New Seating Type' : 'Edit Seating Type'}
+        </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="name"
-                label="Name"
-                value={formData.name}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                required
-              />
+          <Box component="form" sx={{ mt: 1 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  fullWidth
+                  label="Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  error={!!formErrors.name}
+                  helperText={formErrors.name}
+                  required
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Short Code"
+                  name="short_code"
+                  value={formData.short_code}
+                  onChange={handleInputChange}
+                  error={!!formErrors.short_code}
+                  helperText={formErrors.short_code}
+                  required
+                  margin="normal"
+                  placeholder="e.g. HD"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  error={!!formErrors.description}
+                  helperText={formErrors.description}
+                  margin="normal"
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Hourly Rate"
+                  name="hourly_rate"
+                  type="number"
+                  value={formData.hourly_rate}
+                  onChange={handleInputChange}
+                  error={!!formErrors.hourly_rate}
+                  helperText={formErrors.hourly_rate}
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Daily Rate"
+                  name="daily_rate"
+                  type="number"
+                  value={formData.daily_rate}
+                  onChange={handleInputChange}
+                  error={!!formErrors.daily_rate}
+                  helperText={formErrors.daily_rate}
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Monthly Rate"
+                  name="monthly_rate"
+                  type="number"
+                  value={formData.monthly_rate}
+                  onChange={handleInputChange}
+                  error={!!formErrors.monthly_rate}
+                  helperText={formErrors.monthly_rate}
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.is_active}
+                      onChange={handleInputChange}
+                      name="is_active"
+                      color="primary"
+                    />
+                  }
+                  label="Active"
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="image_url"
-                label="Image URL"
-                value={formData.image_url}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                placeholder="https://example.com/image.jpg"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                name="description"
-                label="Description"
-                value={formData.description}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                multiline
-                rows={3}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                name="hourly_price_range"
-                label="Hourly Price Range"
-                value={formData.hourly_price_range}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                placeholder="$5 - $10"
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                name="daily_price_range"
-                label="Daily Price Range"
-                value={formData.daily_price_range}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                placeholder="$25 - $40"
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                name="monthly_price_range"
-                label="Monthly Price Range"
-                value={formData.monthly_price_range}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                placeholder="$200 - $350"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                name="features"
-                label="Features (comma separated)"
-                value={formData.features}
-                onChange={handleInputChange}
-                fullWidth
-                margin="normal"
-                multiline
-                rows={2}
-                placeholder="WiFi, Coffee, 24/7 Access"
-              />
-            </Grid>
-          </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {selectedType ? 'Update' : 'Create'}
+          <Button onClick={handleDialogClose}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained" 
+            disabled={submitting}
+          >
+            {submitting ? <CircularProgress size={24} /> : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteDialogClose}
       >
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity as any}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the seating type "{typeToDelete?.name}"?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose}>Cancel</Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? <CircularProgress size={24} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
-}
+} 

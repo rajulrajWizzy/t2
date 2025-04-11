@@ -17,29 +17,18 @@ export async function GET(
     const code = params.id;
     console.log(`Seating Type API GET by code: ${code}`);
 
-    // DEVELOPMENT ONLY: Bypass authentication for testing
-    const bypassAuth = true; // Set to false in production
+    // Use Sequelize model instead of raw SQL queries
+    const seatingType = await models.SeatingType.findOne({
+      where: { short_code: code },
+      attributes: [
+        'id', 'name', 'description', 'hourly_rate', 'daily_rate', 'weekly_rate', 
+        'monthly_rate', 'capacity', 'is_meeting_room', 'is_active', 
+        'created_at', 'updated_at', 'short_code', 'is_hourly', 
+        'min_booking_duration', 'min_seats'
+      ]
+    });
     
-    // Execute the raw query to get the seating type by code
-    const query = `
-      SELECT 
-        id, name, description, hourly_rate, daily_rate, weekly_rate, 
-        monthly_rate, capacity, is_meeting_room, is_active, 
-        created_at, updated_at, short_code, is_hourly, 
-        min_booking_duration, min_seats
-      FROM 
-        excel_coworks_schema.seating_types
-      WHERE 
-        short_code = '${code}'
-      LIMIT 1
-    `;
-    
-    console.log('Seating Type SQL Query:', query);
-    
-    const [seatingTypes] = await models.sequelize.query(query);
-    console.log(`Seating type query result:`, seatingTypes);
-    
-    if (!seatingTypes || seatingTypes.length === 0) {
+    if (!seatingType) {
       return NextResponse.json(
         { 
           success: false, 
@@ -48,8 +37,6 @@ export async function GET(
         { status: 404, headers: corsHeaders }
       );
     }
-    
-    const seatingType = seatingTypes[0];
     
     // Return with success response
     return NextResponse.json(
@@ -64,7 +51,11 @@ export async function GET(
   } catch (error) {
     console.error(`Error fetching seating type:`, error);
     return NextResponse.json(
-      { success: false, message: 'Failed to retrieve seating type' },
+      { 
+        success: false, 
+        message: 'Failed to retrieve seating type',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500, headers: corsHeaders }
     );
   }

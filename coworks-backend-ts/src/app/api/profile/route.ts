@@ -6,6 +6,7 @@ import { ApiResponse } from '@/types/common';
 import validation from '@/utils/validation';
 import { saveUploadedFile } from '@/utils/fileUpload';
 import path from 'path';
+import { formatObjectImages } from '@/utils/formatImageUrl';
 
 // GET current user profile
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -46,10 +47,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const customerData = customer.get({ plain: true });
     const { password, ...customerWithoutPassword } = customerData;
     
+    // Format image URLs to be fully accessible
+    const formattedCustomer = formatObjectImages(
+      customerWithoutPassword,
+      ['profile_picture', 'proof_of_identity', 'proof_of_address'],
+      request
+    );
+    
+    // Add debugging information
+    console.log('Original profile_picture:', customerWithoutPassword.profile_picture);
+    console.log('Formatted profile_picture:', formattedCustomer.profile_picture);
+    
     return NextResponse.json<ApiResponse<any>>({
       success: true,
       message: 'Profile retrieved successfully',
-      data: customerWithoutPassword
+      data: formattedCustomer
     });
   } catch (error) {
     console.error('Error retrieving profile:', error);

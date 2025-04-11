@@ -1,6 +1,7 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import sequelize from '@/config/database';
+import { db } from '@/lib/db';
 
 // Admin roles enum
 export enum AdminRole {
@@ -37,39 +38,57 @@ export interface AdminAttributes {
 interface AdminCreationAttributes extends Optional<AdminAttributes, 'id' | 'created_at' | 'updated_at' | 'is_active' | 'permissions'> {}
 
 // Admin model
-class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements AdminAttributes {
-  public id!: number;
-  public username!: string;
-  public email!: string;
-  public password!: string;
-  public name!: string;
-  public phone?: string;
-  public profile_picture?: string;
-  public proof_of_identity?: string;
-  public proof_of_address?: string;
-  public role!: string;
-  public branch_id?: number;
-  public permissions?: ResourcePermissions | null;
-  public is_active!: boolean;
-  public last_login?: Date;
-  public created_at!: Date;
-  public updated_at!: Date;
+export class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements AdminAttributes {
+  // Implement AdminAttributes interface
+  declare id: number;
+  declare email: string;
+  declare username: string;
+  declare password: string;
+  declare name: string;
+  declare role: string;
+  declare branch_id?: number;
+  declare is_active: boolean;
+  declare permissions: ResourcePermissions | null;
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
+
+  // Getters
+  get phone(): string | undefined {
+    return this.getDataValue('phone');
+  }
+
+  get profile_picture(): string | undefined {
+    return this.getDataValue('profile_picture');
+  }
+
+  get proof_of_identity(): string | undefined {
+    return this.getDataValue('proof_of_identity');
+  }
+
+  get proof_of_address(): string | undefined {
+    return this.getDataValue('proof_of_address');
+  }
+
+  get last_login(): Date | undefined {
+    return this.getDataValue('last_login');
+  }
 
   // Password validation method
   public async validatePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+    return bcrypt.compare(password, this.getDataValue('password'));
   }
 
   // Check if admin has permission for a specific resource and action
   public hasPermission(resource: string, action: Permission): boolean {
     // Super admins have all permissions
-    if (this.role === AdminRole.SUPER_ADMIN) return true;
+    if (this.getDataValue('role') === AdminRole.SUPER_ADMIN) return true;
     
     // If permissions not set, deny
-    if (!this.permissions) return false;
+    const permissions = this.getDataValue('permissions');
+    if (!permissions) return false;
     
     // Check if resource exists and if action is in the list
-    return !!this.permissions[resource]?.includes(action);
+    return !!permissions[resource]?.includes(action);
   }
 
   // Password complexity check - returns true if password meets requirements
@@ -101,7 +120,7 @@ class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements A
     if (superAdminCount <= 1) {
       // Check if the admin we're trying to delete/deactivate is a super admin
       const admin = await Admin.findByPk(adminId);
-      return admin?.role === AdminRole.SUPER_ADMIN;
+      return admin?.getDataValue('role') === AdminRole.SUPER_ADMIN;
     }
     
     return false;
@@ -166,13 +185,8 @@ Admin.init(
   {
     id: {
       type: DataTypes.INTEGER,
-      primaryKey: true,
       autoIncrement: true,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
+      primaryKey: true,
     },
     email: {
       type: DataTypes.STRING,
@@ -182,6 +196,11 @@ Admin.init(
         isEmail: true,
       },
     },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -190,37 +209,13 @@ Admin.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    phone: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    profile_picture: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    proof_of_identity: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    proof_of_address: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     role: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'staff',
+      defaultValue: 'admin',
     },
     branch_id: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'branches',
-        key: 'id',
-      },
-    },
-    permissions: {
-      type: DataTypes.JSONB,
       allowNull: true,
     },
     is_active: {
@@ -228,26 +223,27 @@ Admin.init(
       allowNull: false,
       defaultValue: true,
     },
-    last_login: {
-      type: DataTypes.DATE,
+    permissions: {
+      type: DataTypes.JSONB,
       allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
     updated_at: {
       type: DataTypes.DATE,
+      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
   },
   {
+    sequelize: db,
     tableName: 'admins',
     schema: 'excel_coworks_schema',
-    sequelize,
     timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
+    underscored: true,
     hooks: {
       // Hash password before create
       beforeCreate: async (admin: Admin) => {

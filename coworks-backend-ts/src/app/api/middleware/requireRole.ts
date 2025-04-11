@@ -15,16 +15,28 @@ export type Role = AdminRole | 'customer';
 export function requireRole(roles: Role[]) {
   return async function middleware(request: NextRequest) {
     try {
-      // Get token from authorization header
+      // Get token from authorization header or cookies
+      let token: string | undefined;
+      
+      // First try to get token from authorization header
       const authHeader = request.headers.get('authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+      
+      // If no token in header, try to get from cookies
+      if (!token) {
+        const cookies = request.cookies;
+        token = cookies.get('adminToken')?.value;
+      }
+      
+      // If no token found in either location
+      if (!token) {
         return NextResponse.json(
           { success: false, message: 'No authorization token provided' },
           { status: 401, headers: corsHeaders }
         );
       }
-
-      const token = authHeader.split(' ')[1];
       
       // Check if requiring admin roles or customer role
       const isAdminRoute = roles.some(role => role !== 'customer');
@@ -74,10 +86,11 @@ export function requireRole(roles: Role[]) {
         (request as any).user = decoded;
       }
       
-      return NextResponse.json(
-        { success: true, message: 'Authorized' },
-        { status: 200, headers: corsHeaders }
-      );
+      // For authenticated requests, continue to the route handler
+      const response = NextResponse.next();
+      // Copy the user info to the response headers for route handlers
+      response.headers.set('x-user-info', JSON.stringify((request as any).user));
+      return response;
     } catch (error) {
       console.error('[Role Middleware] Error:', error);
       return NextResponse.json(
@@ -92,4 +105,4 @@ export function requireRole(roles: Role[]) {
 export const requireSuperAdmin = () => requireRole([AdminRole.SUPER_ADMIN]);
 export const requireAdmin = () => requireRole([AdminRole.SUPER_ADMIN, AdminRole.BRANCH_ADMIN]);
 export const requireSupportAdmin = () => requireRole([AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_ADMIN]);
-export const requireCustomer = () => requireRole(['customer']); 
+export const requireCustomer = () => requireRole(['customer']);

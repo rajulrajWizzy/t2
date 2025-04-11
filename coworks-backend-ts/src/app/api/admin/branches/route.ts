@@ -16,6 +16,8 @@ import { verifyAdmin, verifyBranchAccess, verifySuperAdmin } from '@/utils/admin
 import { ApiResponse } from '@/types/api';
 import { corsHeaders } from '@/utils/jwt-wrapper';
 import { requireAdmin } from '@/app/api/middleware/requireRole';
+import { formatArrayImages, formatObjectImages } from '@/utils/formatImageUrl';
+import { cookies } from 'next/headers';
 
 // Mock data for branches with more detailed information
 const mockBranches = [
@@ -160,84 +162,77 @@ const getBranchStats = (branchId: string) => {
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // Apply admin middleware
-    const middleware = requireAdmin();
-    const middlewareResponse = await middleware(request);
-    if (middlewareResponse.status !== 200) {
-      return middlewareResponse;
-    }
+    // Check for admin authentication
+    const cookieStore = cookies();
+    const adminToken = cookieStore.get('adminToken')?.value;
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search') || '';
-    
-    // Validate pagination parameters
-    if (page < 1 || limit < 1 || limit > 100) {
+    if (!adminToken) {
       return NextResponse.json(
-        { success: false, message: 'Invalid pagination parameters' },
-        { status: 400, headers: corsHeaders }
+        { success: false, message: 'Unauthorized' },
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    // Build where clause for search
-    const whereClause: any = {};
-    if (search) {
-      whereClause[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { address: { [Op.iLike]: `%${search}%` } },
-        { location: { [Op.iLike]: `%${search}%` } }
-      ];
+    // Verify admin token
+    const adminResult = await verifyAdmin(request);
+    if (adminResult instanceof NextResponse) {
+      return adminResult;
     }
 
-    // Count total branches
-    const total = await models.Branch.count({ where: whereClause });
+    // Get pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = (page - 1) * limit;
 
     // Get branches with pagination
-    const branches = await models.Branch.findAll({
-      where: whereClause,
+    const { count, rows: branches } = await models.Branch.findAndCountAll({
       limit,
-      offset: (page - 1) * limit,
+      offset,
       order: [['created_at', 'DESC']],
       include: [
         {
-          model: models.Seat,
-          as: 'Seats',
-          include: [
-            {
-              model: models.SeatingType,
-              as: 'SeatingType'
-            }
-          ]
+          model: models.Admin,
+          as: 'Admins',
+          attributes: ['id', 'name', 'email'],
+          through: { attributes: [] }
         },
         {
           model: models.BranchImage,
-          as: 'Images'
+          as: 'Images',
+          attributes: ['id', 'url', 'type']
         }
       ]
     });
 
-    return NextResponse.json(
-      {
-          success: true,
-          data: {
-          branches,
-          pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit)
-          }
-        }
-      },
-      { status: 200, headers: corsHeaders }
-    );
+    // Format branch data
+    const formattedBranches = branches.map(branch => {
+      const branchData = branch.toJSON();
+      return {
+        ...branchData,
+        images: branchData.images ? formatArrayImages([branchData.images], ['url'], request) : [],
+        managers: branchData.Admins || []
+      };
+    });
 
+    return NextResponse.json({
+      success: true,
+      data: {
+        branches: formattedBranches,
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit)
+      }
+    }, { headers: corsHeaders });
   } catch (error) {
-    console.error('Error fetching branches:', error);
+    console.error('Error in branches GET endpoint:', error);
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch branches' },
+      { 
+        success: false, 
+        message: 'Failed to retrieve branches',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500, headers: corsHeaders }
     );
   }
@@ -324,11 +319,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ]
     });
 
+    // Format image URLs in the createdBranch response
+    const formattedBranch = formatObjectImages(
+      createdBranch?.get({ plain: true }) || {},
+      ['image_url', 'thumbnail'],
+      request
+    );
+    
+    // Also format image URLs in the Images array
+    if (formattedBranch.Images && Array.isArray(formattedBranch.Images)) {
+      formattedBranch.Images = formatArrayImages(formattedBranch.Images, ['image_url'], request);
+    }
+
     return NextResponse.json(
       {
         success: true,
         message: 'Branch created successfully',
-        data: createdBranch
+        data: formattedBranch
       },
       { status: 201, headers: corsHeaders }
     );

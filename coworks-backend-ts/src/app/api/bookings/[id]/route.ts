@@ -6,9 +6,10 @@ export const fetchCache = "force-no-store";
 
 import { NextRequest, NextResponse } from 'next/server';
 import models from '../../../../models';
-import { verifyToken, corsHeaders } from '@/utils/jwt-wrapper';
+import { corsHeaders } from '@/utils/jwt-wrapper';
 import { BookingStatusEnum } from '../../../../types/booking';
 import { AvailabilityStatusEnum } from '../../../../types/seating';
+import { validateAuthToken } from '@/utils/auth-helper';
 
 // GET a single booking by ID
 export async function GET(
@@ -21,29 +22,18 @@ export async function GET(
     if (isNaN(bookingId)) {
       return NextResponse.json(
         { success: false, message: 'Invalid booking ID' },
-        { status: 400}
+        { status: 400, headers: corsHeaders }
       );
     }
     const { id } = params;
 
-    
-    // Get token from the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401 });
+    // Verify token using the auth helper
+    const authResult = await validateAuthToken(request);
+    if (!authResult.isValid || !authResult.decoded) {
+      return authResult.errorResponse as NextResponse;
     }
     
-    const token = authHeader.split(' ')[1];
-    
-    // Verify the token
-    const { valid, decoded } = await verifyToken(token);
-    if (!valid || !decoded) {
-      return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401 });
-    }
+    const decoded = authResult.decoded;
     
     // Try to find as seat booking first
     let bookingType = 'seat';
@@ -165,6 +155,14 @@ export async function PUT(
       );
     }
 
+    // Verify token using the auth helper
+    const authResult = await validateAuthToken(request);
+    if (!authResult.isValid || !authResult.decoded) {
+      return authResult.errorResponse as NextResponse;
+    }
+    
+    const decoded = authResult.decoded;
+    
     // Parse request body
     const body = await request.json().catch(() => ({}));
     if (!body || typeof body !== 'object') {
@@ -172,24 +170,6 @@ export async function PUT(
         { success: false, message: 'Invalid request body' },
         { status: 400, headers: corsHeaders }
       );
-    }
-    
-    // Get token from the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401 });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    // Verify the token
-    const { valid, decoded } = await verifyToken(token);
-    if (!valid || !decoded) {
-      return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401 });
     }
     
     // Parse the request body
@@ -311,23 +291,13 @@ export async function DELETE(
       );
     }
     
-    // Get token from the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401  });
+    // Verify token using the auth helper
+    const authResult = await validateAuthToken(request);
+    if (!authResult.isValid || !authResult.decoded) {
+      return authResult.errorResponse as NextResponse;
     }
     
-    const token = authHeader.split(' ')[1];
-    
-    // Verify the token
-    const { valid, decoded } = await verifyToken(token);
-    if (!valid || !decoded) {
-      return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-        { status: 401  });
-    }
+    const decoded = authResult.decoded;
     
     // Start a transaction
     const transaction = await models.sequelize.transaction();
@@ -433,8 +403,9 @@ export async function DELETE(
     );
   }
 }
-// OPTIONS handler for CORS
-export async function OPTIONS(request: NextRequest) {
+
+// Handle OPTIONS requests (for CORS)
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: corsHeaders

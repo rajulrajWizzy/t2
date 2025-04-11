@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, corsHeaders } from '@/utils/jwt-wrapper';
 import models from '@/models';
 import { Op } from 'sequelize';
+import { formatArrayImages } from '@/utils/formatImageUrl';
 
 interface Branch {
   id: number;
@@ -227,6 +228,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
+    const seating_type_code = searchParams.get('seating_type_code');
     
     // Validate pagination parameters
     const validPage = page > 0 ? page : 1;
@@ -245,15 +247,96 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       };
     }
 
+    // Prepare include options
+    const includeOptions = [
+      {
+        model: models.BranchImage,
+        as: 'Images',
+        required: false,
+        attributes: ['id', 'branch_id', 'image_url', 'is_primary', 'created_at', 'updated_at']
+      }
+    ];
+
+    // Special handling for seating_type_code filtering
+    if (seating_type_code) {
+      try {
+        // Get branches that have seats with the matching seating type code
+        // We'll do this in a separate query to avoid SQL errors
+        const seatingType = await models.SeatingType.findOne({
+          where: { short_code: seating_type_code },
+          attributes: ['id']
+        });
+        
+        if (!seatingType) {
+          return NextResponse.json({
+            success: false,
+            message: `No seating type found with code: ${seating_type_code}`
+          }, { status: 404, headers: corsHeaders });
+        }
+        
+        // Get seats with matching seating type
+        const seats = await models.Seat.findAll({
+          where: { seating_type_id: seatingType.id },
+          attributes: ['branch_id']
+        });
+        
+        // Extract branch IDs
+        const branchIds = Array.from(new Set(seats.map(seat => seat.branch_id)));
+        
+        if (branchIds.length === 0) {
+          return NextResponse.json({
+            success: true,
+            message: 'No branches found with the specified seating type',
+            data: {
+              branches: [],
+              pagination: {
+                total: 0,
+                page: validPage,
+                limit: validLimit,
+                pages: 0
+              }
+            }
+          }, { status: 200, headers: corsHeaders });
+        }
+        
+        // Add filter for branch IDs
+        whereClause = {
+          ...whereClause,
+          id: { [Op.in]: branchIds }
+        };
+      } catch (error) {
+        console.error('[Branches API] Error filtering by seating type:', error);
+        return NextResponse.json(
+          { success: false, message: 'Error filtering branches by seating type' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
     // Count total branches matching criteria
     const count = await models.Branch.count({ where: whereClause });
 
-    // Get branches with pagination
+    // Get branches with pagination and include images
     const branches = await models.Branch.findAll({
       where: whereClause,
       limit: validLimit,
       offset,
-      order: [['id', 'ASC']]
+      order: [['id', 'ASC']],
+      include: includeOptions
+    });
+
+    // Format image URLs to be fully accessible
+    const formattedBranches = formatArrayImages(
+      branches.map(b => b.get({ plain: true })),
+      ['image_url', 'thumbnail'],
+      request
+    );
+    
+    // Also format image URLs in the Images array for each branch
+    formattedBranches.forEach(branch => {
+      if (branch.Images && Array.isArray(branch.Images)) {
+        branch.Images = formatArrayImages(branch.Images, ['image_url'], request);
+      }
     });
 
     return NextResponse.json(
@@ -261,7 +344,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         success: true,
         message: 'Branches retrieved successfully',
         data: {
-          branches,
+          branches: formattedBranches,
           pagination: {
             total: count,
             page: validPage,
@@ -348,8 +431,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const branch = await models.Branch.create({
         name: body.name,
         address: body.address,
-        contact: body.contact || null,
-        email: body.email || null,
+        location: body.location || '',
         is_active: body.is_active !== undefined ? body.is_active : true,
         opening_time: body.opening_time || '09:00:00',
         closing_time: body.closing_time || '18:00:00'

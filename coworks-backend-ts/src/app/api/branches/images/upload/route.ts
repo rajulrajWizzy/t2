@@ -9,13 +9,15 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadBranchImage } from '@/utils/cloudinary';
 import { verifyAuth } from '@/utils/jwt';
 import models from '@/models';
 import { Op } from 'sequelize';
+import path from 'path';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Upload a branch image via Cloudinary
+ * Upload a branch image to the local file system
  * @param req Request object
  * @returns Response with the branch image URL
  */
@@ -26,14 +28,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if ('status' in auth) {
       return auth as NextResponse;
     }
-
-    // Admin validation can be added here if needed
-    // if (auth.role !== 'admin') {
-    //   return NextResponse.json(
-    //     { success: false, message: 'Unauthorized access' },
-    //     { status: 403 }
-    //   );
-    // }
 
     // Parse form data
     const formData = await req.formData();
@@ -92,45 +86,81 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Convert file to buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    // Upload to Cloudinary
-    const imageUrl = await uploadBranchImage(buffer, branchId, seatingType, index);
-
-    // If marked as primary, unset any other primary images for this branch/seating type
-    if (isPrimary) {
-      await models.BranchImage.update(
-        { is_primary: false },
-        {
-          where: {
-            branch_id: branchId,
-            seating_type: seatingType,
-            is_primary: true
+    try {
+      // Determine file extension from MIME type
+      let fileExtension = '.jpg'; // Default
+      if (file.type === 'image/png') {
+        fileExtension = '.png';
+      } else if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+        fileExtension = '.jpg';
+      }
+      
+      // Create directory if it doesn't exist
+      const dirName = 'branch-images';
+      const uploadDir = path.join(process.cwd(), 'uploads', dirName, branchId.toString(), seatingType.toLowerCase());
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // Generate a unique filename
+      const filename = `${uuidv4()}${fileExtension}`;
+      const filePath = path.join(uploadDir, filename);
+      
+      // Save the file
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      fs.writeFileSync(filePath, buffer);
+      
+      // Create a relative URL to the file for database storage
+      const relativeUrl = `${dirName}/${branchId}/${seatingType.toLowerCase()}/${filename}`;
+      
+      // If marked as primary, unset any other primary images for this branch/seating type
+      if (isPrimary) {
+        await models.BranchImage.update(
+          { is_primary: false },
+          {
+            where: {
+              branch_id: branchId,
+              seating_type: seatingType,
+              is_primary: true
+            }
           }
-        }
-      );
-    }
+        );
+      }
 
-    // Save image to database
-    const branchImage = await models.BranchImage.create({
-      branch_id: branchId,
-      image_url: imageUrl,
-      is_primary: isPrimary,
-      seating_type: seatingType
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Branch image uploaded successfully',
-      data: {
-        id: branchImage.id,
+      // Save image to database
+      const branchImage = await models.BranchImage.create({
         branch_id: branchId,
-        image_url: imageUrl,
+        image_url: relativeUrl,
         is_primary: isPrimary,
         seating_type: seatingType
-      }
-    });
+      });
+
+      // Generate the full URL for the response
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                    `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('host')}`;
+      const fullUrl = `${baseUrl}/uploads/${relativeUrl}`;
+
+      return NextResponse.json({
+        success: true,
+        message: 'Branch image uploaded successfully',
+        data: {
+          id: branchImage.id,
+          branch_id: branchId,
+          image_url: fullUrl,
+          relative_path: relativeUrl,
+          is_primary: isPrimary,
+          seating_type: seatingType
+        }
+      });
+    } catch (error) {
+      console.error('Error processing file upload:', error);
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Error processing file upload', 
+        error: (error as Error).message 
+      }, { status: 500 });
+    }
   } catch (error) {
     console.error('Error uploading branch image:', error);
     return NextResponse.json(
@@ -190,13 +220,21 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     branchImage.is_primary = is_primary;
     await branchImage.save();
 
+    // Generate the full URL for the response if it's a relative path
+    let fullUrl = branchImage.image_url;
+    if (!branchImage.image_url.startsWith('http')) {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                    `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('host')}`;
+      fullUrl = `${baseUrl}/uploads/${branchImage.image_url.replace(/^\/?uploads\//, '')}`;
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Branch image updated successfully',
       data: {
         id: branchImage.id,
         branch_id: branchImage.branch_id,
-        image_url: branchImage.image_url,
+        image_url: fullUrl,
         is_primary: branchImage.is_primary,
         seating_type: branchImage.seating_type
       }
@@ -241,11 +279,21 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Try to delete the actual file if it's a local file
+    if (!branchImage.image_url.startsWith('http')) {
+      try {
+        const filePath = path.join(process.cwd(), 'uploads', branchImage.image_url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error('Error deleting branch image file:', err);
+        // Continue with deletion from database even if file deletion fails
+      }
+    }
+
     // Delete the image from database
     await branchImage.destroy();
-
-    // Note: You could also delete from Cloudinary using the deleteImage function
-    // if you extract the public ID from the URL.
 
     return NextResponse.json({
       success: true,

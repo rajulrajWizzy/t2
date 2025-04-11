@@ -13,12 +13,30 @@ import { verifyAuth } from '@/utils/jwt';
 import models from '@/models';
 import { ApiResponse } from '@/types/api';
 import { TicketStatus } from '@/models/supportTicket';
-import SupportTicketModel from '@/models/supportTicket';
-import TicketMessageModel from '@/models/ticketMessage';
+import { corsHeaders } from '@/utils/jwt-wrapper';
 
-// Extend SupportTicketModel interface for TypeScript
-interface TicketWithMessages extends SupportTicketModel {
-  Messages?: TicketMessageModel[];
+// Interface for ticket with messages
+interface TicketWithMessages {
+  id: number;
+  ticket_number: string;
+  customer_id: number;
+  branch_id: number;
+  branch_code: string;
+  seating_type_id?: number | null;
+  seating_type_code?: string | null;
+  booking_id?: number | null;
+  booking_type?: string | null;
+  title: string;
+  category: string;
+  description: string;
+  status: string;
+  priority?: string;  // Make priority optional to match the database model
+  created_at: Date;
+  updated_at: Date;
+  closed_at?: Date | null;
+  reopened_at?: Date | null;
+  assigned_to?: number | null;
+  Messages?: any[];
   Branch?: any;
   SeatingType?: any;
   AssignedAdmin?: any;
@@ -46,7 +64,7 @@ export async function GET(
         success: false,
         message: 'Invalid ticket ID',
         data: null
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Fetch ticket with relationships
@@ -57,22 +75,27 @@ export async function GET(
       },
       include: [
         {
-          association: 'Branch',
+          model: models.Branch,
+          as: 'Branch',
           attributes: ['id', 'name', 'location', 'short_code']
         },
         {
-          association: 'SeatingType',
+          model: models.SeatingType,
+          as: 'SeatingType',
           attributes: ['id', 'name', 'short_code']
         },
         {
-          association: 'AssignedAdmin',
-          attributes: ['id', 'name', 'username']
+          model: models.Admin,
+          as: 'AssignedAdmin',
+          attributes: ['id', 'name', 'username', 'email']
         },
         {
-          association: 'Messages',
+          model: models.TicketMessage,
+          as: 'Messages',
           include: [
             {
-              association: 'Ticket'
+              model: models.SupportTicket,
+              as: 'Ticket'
             }
           ],
           order: [['created_at', 'ASC']]
@@ -85,18 +108,18 @@ export async function GET(
         success: false,
         message: 'Ticket not found',
         data: null
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Mark unread messages from admin as read
     if (ticket.Messages && ticket.Messages.length > 0) {
       const messagesToUpdate = ticket.Messages.filter(
-        (message: TicketMessageModel) => message.sender_type === 'admin' && !message.read_at
+        (message) => message.sender_type === 'admin' && !message.read_at
       );
       
       if (messagesToUpdate.length > 0) {
         await Promise.all(
-          messagesToUpdate.map((message: TicketMessageModel) => 
+          messagesToUpdate.map((message) => 
             models.TicketMessage.update(
               { read_at: new Date() },
               { where: { id: message.id } }
@@ -106,19 +129,20 @@ export async function GET(
       }
     }
     
-    return NextResponse.json<ApiResponse<typeof ticket>>({
+    return NextResponse.json<ApiResponse<TicketWithMessages>>({
       success: true,
       message: 'Ticket retrieved successfully',
       data: ticket
-    }, { status: 200 });
+    }, { status: 200, headers: corsHeaders });
     
   } catch (error) {
     console.error('Ticket fetch error:', error);
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to retrieve ticket',
+      errors: error instanceof Error ? [{ message: error.message }] : [{ message: 'Unknown error' }],
       data: null
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -144,7 +168,7 @@ export async function PUT(
         success: false,
         message: 'Invalid ticket ID',
         data: null
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Fetch ticket
@@ -160,7 +184,7 @@ export async function PUT(
         success: false,
         message: 'Ticket not found',
         data: null
-      }, { status: 404 });
+      }, { status: 404, headers: corsHeaders });
     }
     
     // Parse request body
@@ -174,7 +198,7 @@ export async function PUT(
           success: false,
           message: 'Only closed tickets can be reopened',
           data: null
-        }, { status: 400 });
+        }, { status: 400, headers: corsHeaders });
       }
       
       if (!message) {
@@ -182,14 +206,15 @@ export async function PUT(
           success: false,
           message: 'Message is required to reopen a ticket',
           data: null
-        }, { status: 400 });
+        }, { status: 400, headers: corsHeaders });
       }
       
       // Update ticket status to reopened
       await ticket.update({
         status: TicketStatus.REOPENED,
         reopened_at: new Date(),
-        closed_at: null
+        closed_at: null,
+        updated_at: new Date()
       });
       
       // Add reopening message
@@ -197,23 +222,28 @@ export async function PUT(
         ticket_id: ticketId,
         message,
         sender_type: 'customer',
-        sender_id: customerId
+        sender_id: customerId,
+        created_at: new Date(),
+        updated_at: new Date()
       });
       
       // Fetch updated ticket with relationships
       const updatedTicket = await models.SupportTicket.findByPk(ticketId, {
         include: [
           {
-            association: 'Branch',
+            model: models.Branch,
+            as: 'Branch',
             attributes: ['id', 'name', 'location', 'short_code']
           },
           {
-            association: 'SeatingType',
+            model: models.SeatingType,
+            as: 'SeatingType',
             attributes: ['id', 'name', 'short_code']
           },
           {
-            association: 'AssignedAdmin',
-            attributes: ['id', 'name', 'username']
+            model: models.Admin,
+            as: 'AssignedAdmin',
+            attributes: ['id', 'name', 'username', 'email']
           }
         ]
       });
@@ -222,13 +252,13 @@ export async function PUT(
         success: true,
         message: 'Ticket reopened successfully',
         data: updatedTicket
-      }, { status: 200 });
+      }, { status: 200, headers: corsHeaders });
     } else {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
         message: 'Invalid action. Customers can only reopen tickets',
         data: null
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
   } catch (error) {
@@ -236,7 +266,18 @@ export async function PUT(
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       message: 'Failed to update ticket',
+      errors: error instanceof Error ? [{ message: error.message }] : [{ message: 'Unknown error' }],
       data: null
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
+}
+
+/**
+ * OPTIONS handler for CORS
+ */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders
+  });
 } 

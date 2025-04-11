@@ -3,862 +3,600 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Typography,
-  Paper,
-  Grid,
   Button,
-  TextField,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  Switch,
-  CircularProgress,
-  Alert,
-  Card,
-  CardContent,
-  CardActions,
-  Chip,
-  IconButton,
-  Divider,
-  Snackbar,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Chip,
+  CircularProgress,
+  Alert,
+  Pagination,
+  Tooltip,
+  Grid,
+  InputAdornment,
+  Switch,
+  FormControlLabel,
+  Stack
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  LocationOn as LocationIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
-  Business as BusinessIcon,
-  People as PeopleIcon,
-  EventSeat as SeatIcon,
-  AttachMoney as MoneyIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  Image as ImageIcon,
+  LocationOn as LocationIcon
 } from '@mui/icons-material';
-import { useAuth } from '@/contexts/AuthContext';
-import axios from 'axios';
+import { branchesApi } from '@/utils/admin-api';
 
-// Mock data for branches
-const mockBranches = [
-  {
-    id: 'b1',
-    name: 'Downtown Branch',
-    short_code: 'DT001',
-    location: '123 Main St, Downtown',
-    address: '123 Main St, Downtown, City, 10001',
-    description: 'Our flagship location in the heart of downtown with premium amenities.',
-    contact_email: 'downtown@coworks.com',
-    contact_phone: '+1234567890',
-    is_active: true,
-    capacity: 120,
-    occupancy_rate: 85,
-    total_seats: 120,
-    available_seats: 18,
-    total_bookings: 450,
-    active_bookings: 102,
-    monthly_revenue: 75000,
-    longitude: -73.9857,
-    latitude: 40.7484,
-    created_at: '2023-01-15T10:00:00Z',
-    managers: [
-      { id: 2, name: 'Branch Admin 1', email: 'branchadmin1@example.com' }
-    ]
-  },
-  {
-    id: 'b2',
-    name: 'Westside Branch',
-    short_code: 'WS002',
-    location: '456 West Ave, Westside',
-    address: '456 West Ave, Westside, City, 10002',
-    description: 'Modern workspace with a focus on technology startups.',
-    contact_email: 'westside@coworks.com',
-    contact_phone: '+1987654321',
-    is_active: true,
-    capacity: 85,
-    occupancy_rate: 92,
-    total_seats: 85,
-    available_seats: 7,
-    total_bookings: 320,
-    active_bookings: 78,
-    monthly_revenue: 62000,
-    longitude: -74.0060,
-    latitude: 40.7128,
-    created_at: '2023-02-20T14:30:00Z',
-    managers: [
-      { id: 3, name: 'Branch Admin 2', email: 'branchadmin2@example.com' }
-    ]
-  },
-  {
-    id: 'b3',
-    name: 'North Campus',
-    short_code: 'NC003',
-    location: '789 North Blvd, Northside',
-    address: '789 North Blvd, Northside, City, 10003',
-    description: 'Spacious campus-style workspace with outdoor areas.',
-    contact_email: 'north@coworks.com',
-    contact_phone: '+1122334455',
-    is_active: true,
-    capacity: 150,
-    occupancy_rate: 78,
-    total_seats: 150,
-    available_seats: 33,
-    total_bookings: 520,
-    active_bookings: 117,
-    monthly_revenue: 89000,
-    longitude: -73.9654,
-    latitude: 40.8116,
-    created_at: '2023-03-10T09:15:00Z',
-    managers: []
-  },
-  {
-    id: 'b4',
-    name: 'East Village Office',
-    short_code: 'EV004',
-    location: '321 East St, East Village',
-    address: '321 East St, East Village, City, 10004',
-    description: 'Boutique coworking space with a creative atmosphere.',
-    contact_email: 'eastvillage@coworks.com',
-    contact_phone: '+1555666777',
-    is_active: false,
-    capacity: 75,
-    occupancy_rate: 0,
-    total_seats: 75,
-    available_seats: 75,
-    total_bookings: 180,
-    active_bookings: 0,
-    monthly_revenue: 0,
-    longitude: -73.9400,
-    latitude: 40.7264,
-    created_at: '2023-04-05T11:45:00Z',
-    managers: []
-  }
-];
+// Branch type definition
+interface Branch {
+  id: string | number;
+  name: string;
+  address: string;
+  location?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  is_active: boolean;
+  image_url?: string;
+  total_seats?: number;
+  available_seats?: number;
+  created_at: string;
+  short_code?: string;
+}
 
-export default function AllBranchesPage() {
-  const { isAuthenticated, token, user } = useAuth();
-  const [branches, setBranches] = useState([]);
+export default function BranchesPage() {
+  // State for branch list and pagination
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [openDialog, setOpenDialog] = useState(false);
-  const [currentBranch, setCurrentBranch] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [limit] = useState(10);
+  const [search, setSearch] = useState('');
+  
+  // State for branch form dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [currentBranch, setCurrentBranch] = useState<Branch | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     short_code: '',
-    location: '',
     address: '',
-    description: '',
+    location: '',
     contact_email: '',
     contact_phone: '',
-    is_active: true,
-    longitude: '',
-    latitude: ''
+    is_active: true
   });
-  const [formErrors, setFormErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [viewMode, setViewMode] = useState('grid');
-
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  
+  // State for delete confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  
+  // Load branches on initial render and when search/page changes
   useEffect(() => {
-    if (isAuthenticated && token) {
-      fetchBranches();
-    }
-  }, [isAuthenticated, token]);
-
-  const fetchBranches = async () => {
+    loadBranches();
+  }, [page, search]);
+  
+  // Load branches from API
+  const loadBranches = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      // In a real implementation, you would fetch branches from your API
-      // For now, we'll use mock data
-      const response = await axios.get('/api/admin/branches', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const response = await branchesApi.getAll({
+        page,
+        limit,
+        search: search.trim() || undefined
       });
       
-      // Check if the API returns data, otherwise use mock data
-      if (response.data && response.data.branches && response.data.branches.length > 0) {
-        setBranches(response.data.branches);
+      if (response.success) {
+        setBranches(response.data || []);
+        setTotalPages(response.pagination?.pages || 1);
       } else {
-        console.log('Using mock branch data');
-        setBranches(mockBranches);
+        setError(response.message || 'Failed to load branches');
+        setBranches([]);
       }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching branches:', err);
-      // Use mock data as fallback
-      console.log('Using mock branch data due to error');
-      setBranches(mockBranches);
-      setError('Failed to fetch branches from the server. Showing sample data instead.');
+    } catch (err: any) {
+      console.error('Error loading branches:', err);
+      setError(err.message || 'Failed to load branches');
+      setBranches([]);
+    } finally {
       setLoading(false);
     }
   };
-
-  const handleSearchChange = (event) => {
-    setSearchQuery(event.target.value);
+  
+  // Handle page change
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
   };
-
-  const handleStatusFilterChange = (event) => {
-    setStatusFilter(event.target.value);
+  
+  // Handle search input change
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(event.target.value);
+    // Reset to first page when search changes
+    setPage(1);
   };
-
-  const handleAddBranch = () => {
+  
+  // Handle search submit
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    loadBranches();
+  };
+  
+  // Open dialog to add new branch
+  const handleAddClick = () => {
+    setDialogMode('add');
     setCurrentBranch(null);
     setFormData({
       name: '',
       short_code: '',
-      location: '',
       address: '',
-      description: '',
+      location: '',
       contact_email: '',
       contact_phone: '',
-      is_active: true,
-      longitude: '',
-      latitude: ''
+      is_active: true
     });
     setFormErrors({});
-    setOpenDialog(true);
+    setDialogOpen(true);
   };
-
-  const handleEditBranch = (branch) => {
+  
+  // Open dialog to edit branch
+  const handleEditClick = (branch: Branch) => {
+    setDialogMode('edit');
     setCurrentBranch(branch);
     setFormData({
-      name: branch.name,
-      short_code: branch.short_code,
-      location: branch.location,
-      address: branch.address || branch.location,
-      description: branch.description || '',
+      name: branch.name || '',
+      short_code: branch.short_code || '',
+      address: branch.address || '',
+      location: branch.location || '',
       contact_email: branch.contact_email || '',
       contact_phone: branch.contact_phone || '',
-      is_active: branch.is_active,
-      longitude: branch.longitude ? String(branch.longitude) : '',
-      latitude: branch.latitude ? String(branch.latitude) : ''
+      is_active: branch.is_active
     });
     setFormErrors({});
-    setOpenDialog(true);
+    setDialogOpen(true);
   };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
+  
+  // Close dialog
+  const handleDialogClose = () => {
+    setDialogOpen(false);
   };
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  
+  // Handle form input change
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = event.target;
+    
+    // Use checked for checkbox/switch inputs, value for others
+    const inputValue = type === 'checkbox' ? checked : value;
+    
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: inputValue
     });
     
-    // Clear error for this field if it exists
+    // Clear error for this field when changed
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
-        [name]: null
+        [name]: ''
       });
     }
   };
-
-  const validateForm = () => {
-    const errors = {};
+  
+  // Validate form
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
     
     if (!formData.name.trim()) {
       errors.name = 'Branch name is required';
     }
     
-    if (!formData.short_code.trim()) {
-      errors.short_code = 'Short code is required';
-    }
-    
-    if (!formData.location.trim()) {
-      errors.location = 'Location is required';
+    if (!formData.address.trim()) {
+      errors.address = 'Address is required';
     }
     
     if (formData.contact_email && !/\S+@\S+\.\S+/.test(formData.contact_email)) {
       errors.contact_email = 'Invalid email format';
     }
     
-    if (formData.longitude && (isNaN(Number(formData.longitude)) || Number(formData.longitude) < -180 || Number(formData.longitude) > 180)) {
-      errors.longitude = 'Longitude must be a number between -180 and 180';
-    }
-    
-    if (formData.latitude && (isNaN(Number(formData.latitude)) || Number(formData.latitude) < -90 || Number(formData.latitude) > 90)) {
-      errors.latitude = 'Latitude must be a number between -90 and 90';
-    }
-    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-
+  
+  // Submit form
   const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
     
+    setSubmitting(true);
+    
     try {
-      if (currentBranch) {
-        // Update existing branch
-        await axios.put(`/api/admin/branches/${currentBranch.id}`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        
-        // Update local state
-        setBranches(branches.map(branch => 
-          branch.id === currentBranch.id 
-            ? { ...branch, ...formData, longitude: formData.longitude ? Number(formData.longitude) : null, latitude: formData.latitude ? Number(formData.latitude) : null } 
-            : branch
-        ));
-        
-        setSuccessMessage('Branch updated successfully!');
-      } else {
-        // Create new branch
-        const response = await axios.post('/api/admin/branches', formData, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        
-        // Add new branch to local state
-        const newBranch = response.data.data || {
-          ...formData,
-          id: `b${branches.length + 1}`,
-          created_at: new Date().toISOString(),
-          longitude: formData.longitude ? Number(formData.longitude) : null,
-          latitude: formData.latitude ? Number(formData.latitude) : null,
-          managers: []
-        };
-        
-        setBranches([...branches, newBranch]);
-        setSuccessMessage('Branch created successfully!');
+      let response;
+      
+      if (dialogMode === 'add') {
+        response = await branchesApi.create(formData);
+      } else if (currentBranch) {
+        response = await branchesApi.update(currentBranch.id.toString(), formData);
       }
       
-      setSnackbarOpen(true);
-      handleCloseDialog();
-    } catch (err) {
+      if (response?.success) {
+        setDialogOpen(false);
+        loadBranches();
+      } else {
+        setError(response?.message || 'Failed to save branch');
+      }
+    } catch (err: any) {
       console.error('Error saving branch:', err);
-      setFormErrors({
-        ...formErrors,
-        submit: 'Failed to save branch. Please try again.'
-      });
+      setError(err.message || 'Failed to save branch');
+    } finally {
+      setSubmitting(false);
     }
   };
-
-  const handleToggleStatus = async (branch) => {
+  
+  // Open delete confirmation dialog
+  const handleDeleteClick = (branch: Branch) => {
+    setBranchToDelete(branch);
+    setDeleteDialogOpen(true);
+  };
+  
+  // Close delete confirmation dialog
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setBranchToDelete(null);
+  };
+  
+  // Delete branch
+  const handleDeleteConfirm = async () => {
+    if (!branchToDelete) return;
+    
+    setDeleting(true);
+    
     try {
-      await axios.patch(`/api/admin/branches/${branch.id}/status`, 
-        { is_active: !branch.is_active },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await branchesApi.delete(branchToDelete.id.toString());
       
-      // Update local state
-      setBranches(branches.map(b => 
-        b.id === branch.id 
-          ? { ...b, is_active: !b.is_active } 
-          : b
-      ));
-      
-      setSuccessMessage(`Branch ${branch.is_active ? 'deactivated' : 'activated'} successfully!`);
-      setSnackbarOpen(true);
-    } catch (err) {
-      console.error('Error toggling branch status:', err);
-      setError(`Failed to ${branch.is_active ? 'deactivate' : 'activate'} branch. Please try again.`);
+      if (response.success) {
+        setDeleteDialogOpen(false);
+        loadBranches();
+      } else {
+        setError(response.message || 'Failed to delete branch');
+      }
+    } catch (err: any) {
+      console.error('Error deleting branch:', err);
+      setError(err.message || 'Failed to delete branch');
+    } finally {
+      setDeleting(false);
     }
   };
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
-  };
-
-  const handleViewModeChange = (mode) => {
-    setViewMode(mode);
-  };
-
-  // Filter branches based on search query and status filter
-  const filteredBranches = branches.filter(branch => {
-    // Apply status filter
-    if (statusFilter === 'active' && !branch.is_active) return false;
-    if (statusFilter === 'inactive' && branch.is_active) return false;
-    
-    // Apply search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        branch.name.toLowerCase().includes(query) ||
-        branch.short_code.toLowerCase().includes(query) ||
-        branch.location.toLowerCase().includes(query) ||
-        (branch.description && branch.description.toLowerCase().includes(query))
-      );
-    }
-    
-    return true;
-  });
-
-  // Paginate branches for table view
-  const paginatedBranches = filteredBranches.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
+  
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        All Branches
-      </Typography>
+    <Box>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Branches
+        </Typography>
+        <Button 
+          variant="contained" 
+          startIcon={<AddIcon />}
+          onClick={handleAddClick}
+        >
+          Add Branch
+        </Button>
+      </Box>
       
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
       
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper sx={{ mb: 3, p: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Search branches"
-              variant="outlined"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Status"
-                onChange={handleStatusFilterChange}
-              >
-                <MenuItem value="all">All Branches</MenuItem>
-                <MenuItem value="active">Active Only</MenuItem>
-                <MenuItem value="inactive">Inactive Only</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Box display="flex" justifyContent="center">
-              <Button
-                variant={viewMode === 'grid' ? 'contained' : 'outlined'}
-                onClick={() => handleViewModeChange('grid')}
-                sx={{ mr: 1 }}
-              >
-                Grid View
-              </Button>
-              <Button
-                variant={viewMode === 'table' ? 'contained' : 'outlined'}
-                onClick={() => handleViewModeChange('table')}
-              >
-                Table View
-              </Button>
+          <Grid item xs={12} md={6}>
+            <Box component="form" onSubmit={handleSearchSubmit}>
+              <TextField
+                fullWidth
+                placeholder="Search branches..."
+                value={search}
+                onChange={handleSearchChange}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => loadBranches()} edge="end">
+                        <RefreshIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
             </Box>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={handleAddBranch}
-            >
-              Add Branch
-            </Button>
           </Grid>
         </Grid>
       </Paper>
       
-      {viewMode === 'grid' ? (
-        <Grid container spacing={3}>
-          {filteredBranches.length > 0 ? (
-            filteredBranches.map((branch) => (
-              <Grid item xs={12} md={6} lg={4} key={branch.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    opacity: branch.is_active ? 1 : 0.7
-                  }}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                      <Typography variant="h6" component="div">
-                        {branch.name}
-                      </Typography>
-                      <Chip 
-                        label={branch.is_active ? 'Active' : 'Inactive'} 
-                        color={branch.is_active ? 'success' : 'default'}
-                        size="small"
-                      />
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Code</TableCell>
+              <TableCell>Address</TableCell>
+              <TableCell>Contact</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Seats</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                  <CircularProgress />
+                </TableCell>
+              </TableRow>
+            ) : branches.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                  No branches found
+                </TableCell>
+              </TableRow>
+            ) : (
+              branches.map((branch) => (
+                <TableRow key={branch.id} hover>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      {branch.image_url ? (
+                        <Box
+                          component="img"
+                          src={branch.image_url}
+                          alt={branch.name}
+                          sx={{ width: 40, height: 40, borderRadius: 1, mr: 1, objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: 1, 
+                            mr: 1, 
+                            bgcolor: 'primary.light',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <LocationIcon sx={{ color: 'white' }} />
+                        </Box>
+                      )}
+                      <Typography variant="body1">{branch.name}</Typography>
                     </Box>
-                    <Typography color="text.secondary" gutterBottom>
-                      {branch.short_code}
-                    </Typography>
-                    <Box display="flex" alignItems="center" mb={1}>
-                      <LocationIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                      <Typography variant="body2">{branch.location}</Typography>
-                    </Box>
+                  </TableCell>
+                  <TableCell>{branch.short_code || '-'}</TableCell>
+                  <TableCell>{branch.address}</TableCell>
+                  <TableCell>
                     {branch.contact_email && (
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <EmailIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                        <Typography variant="body2">{branch.contact_email}</Typography>
-                      </Box>
+                      <Typography variant="body2" noWrap>{branch.contact_email}</Typography>
                     )}
                     {branch.contact_phone && (
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <PhoneIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                        <Typography variant="body2">{branch.contact_phone}</Typography>
-                      </Box>
-                    )}
-                    {branch.description && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        {branch.description}
+                      <Typography variant="body2" color="textSecondary" noWrap>
+                        {branch.contact_phone}
                       </Typography>
                     )}
-                    
-                    <Divider sx={{ my: 2 }} />
-                    
-                    <Grid container spacing={1}>
-                      <Grid item xs={6}>
-                        <Box display="flex" alignItems="center">
-                          <SeatIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            <strong>{branch.total_seats}</strong> seats
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Box display="flex" alignItems="center">
-                          <PeopleIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            <strong>{branch.occupancy_rate}%</strong> occupied
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Box display="flex" alignItems="center">
-                          <BusinessIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            <strong>{branch.active_bookings}</strong> active bookings
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Box display="flex" alignItems="center">
-                          <MoneyIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            <strong>${branch.monthly_revenue.toLocaleString()}</strong> monthly
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                  <CardActions>
-                    <Button 
-                      size="small" 
-                      color="primary"
-                      onClick={() => handleEditBranch(branch)}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      size="small" 
-                      color={branch.is_active ? 'error' : 'success'}
-                      onClick={() => handleToggleStatus(branch)}
-                    >
-                      {branch.is_active ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button 
-                      size="small" 
-                      component="a"
-                      href={`/admin/branch/${branch.id}`}
-                    >
-                      View Details
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))
-          ) : (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="h6">No branches found</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Try adjusting your search criteria or add a new branch.
-                </Typography>
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
-      ) : (
-        <Paper>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Code</TableCell>
-                  <TableCell>Location</TableCell>
-                  <TableCell>Seats</TableCell>
-                  <TableCell>Occupancy</TableCell>
-                  <TableCell>Revenue</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={branch.is_active ? 'Active' : 'Inactive'} 
+                      color={branch.is_active ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {branch.total_seats !== undefined ? (
+                      <Typography variant="body2">
+                        {branch.available_seats !== undefined ? (
+                          <>{branch.available_seats} / {branch.total_seats} available</>
+                        ) : (
+                          <>{branch.total_seats} total</>
+                        )}
+                      </Typography>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Edit">
+                      <IconButton onClick={() => handleEditClick(branch)}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton onClick={() => handleDeleteClick(branch)} color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedBranches.length > 0 ? (
-                  paginatedBranches.map((branch) => (
-                    <TableRow key={branch.id} hover>
-                      <TableCell>{branch.name}</TableCell>
-                      <TableCell>{branch.short_code}</TableCell>
-                      <TableCell>{branch.location}</TableCell>
-                      <TableCell>{branch.total_seats}</TableCell>
-                      <TableCell>{branch.occupancy_rate}%</TableCell>
-                      <TableCell>${branch.monthly_revenue.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={branch.is_active ? 'Active' : 'Inactive'} 
-                          color={branch.is_active ? 'success' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <IconButton 
-                          size="small" 
-                          color="primary"
-                          onClick={() => handleEditBranch(branch)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          color={branch.is_active ? 'error' : 'success'}
-                          onClick={() => handleToggleStatus(branch)}
-                        >
-                          {branch.is_active ? <DeleteIcon fontSize="small" /> : <AddIcon fontSize="small" />}
-                        </IconButton>
-                        <Button 
-                          size="small" 
-                          component="a"
-                          href={`/admin/branch/${branch.id}`}
-                        >
-                          Details
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      No branches found matching the current filters.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={filteredBranches.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
+      {totalPages > 1 && (
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange}
+            color="primary"
           />
-        </Paper>
+        </Box>
       )}
       
       {/* Branch Form Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
-          {currentBranch ? `Edit Branch: ${currentBranch.name}` : 'Add New Branch'}
+          {dialogMode === 'add' ? 'Add New Branch' : 'Edit Branch'}
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Branch Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                error={!!formErrors.name}
-                helperText={formErrors.name}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Short Code"
-                name="short_code"
-                value={formData.short_code}
-                onChange={handleInputChange}
-                error={!!formErrors.short_code}
-                helperText={formErrors.short_code}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                error={!!formErrors.location}
-                helperText={formErrors.location}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Full Address"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                error={!!formErrors.address}
-                helperText={formErrors.address}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Contact Email"
-                name="contact_email"
-                type="email"
-                value={formData.contact_email}
-                onChange={handleInputChange}
-                error={!!formErrors.contact_email}
-                helperText={formErrors.contact_email}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Contact Phone"
-                name="contact_phone"
-                value={formData.contact_phone}
-                onChange={handleInputChange}
-                error={!!formErrors.contact_phone}
-                helperText={formErrors.contact_phone}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Longitude"
-                name="longitude"
-                value={formData.longitude}
-                onChange={handleInputChange}
-                error={!!formErrors.longitude}
-                helperText={formErrors.longitude || 'Decimal degrees (e.g., -73.9857)'}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Latitude"
-                name="latitude"
-                value={formData.latitude}
-                onChange={handleInputChange}
-                error={!!formErrors.latitude}
-                helperText={formErrors.latitude || 'Decimal degrees (e.g., 40.7484)'}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Description"
-                name="description"
-                multiline
-                rows={3}
-                value={formData.description}
-                onChange={handleInputChange}
-                error={!!formErrors.description}
-                helperText={formErrors.description}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.is_active}
-                    onChange={handleInputChange}
-                    name="is_active"
-                    color="primary"
-                  />
-                }
-                label="Branch is active"
-              />
-            </Grid>
-            {formErrors.submit && (
-              <Grid item xs={12}>
-                <Alert severity="error">{formErrors.submit}</Alert>
+          <Box component="form" sx={{ mt: 1 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  fullWidth
+                  label="Branch Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  error={!!formErrors.name}
+                  helperText={formErrors.name}
+                  required
+                  margin="normal"
+                />
               </Grid>
-            )}
-          </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Short Code"
+                  name="short_code"
+                  value={formData.short_code}
+                  onChange={handleInputChange}
+                  error={!!formErrors.short_code}
+                  helperText={formErrors.short_code}
+                  margin="normal"
+                  placeholder="e.g. B001"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  error={!!formErrors.address}
+                  helperText={formErrors.address}
+                  required
+                  margin="normal"
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  error={!!formErrors.location}
+                  helperText={formErrors.location}
+                  margin="normal"
+                  placeholder="e.g. Downtown, Central District"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Contact Email"
+                  name="contact_email"
+                  type="email"
+                  value={formData.contact_email}
+                  onChange={handleInputChange}
+                  error={!!formErrors.contact_email}
+                  helperText={formErrors.contact_email}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Contact Phone"
+                  name="contact_phone"
+                  value={formData.contact_phone}
+                  onChange={handleInputChange}
+                  error={!!formErrors.contact_phone}
+                  helperText={formErrors.contact_phone}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.is_active}
+                      onChange={handleInputChange}
+                      name="is_active"
+                      color="primary"
+                    />
+                  }
+                  label="Active"
+                />
+              </Grid>
+            </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {currentBranch ? 'Update Branch' : 'Create Branch'}
+          <Button onClick={handleDialogClose}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained" 
+            disabled={submitting}
+          >
+            {submitting ? <CircularProgress size={24} /> : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
       
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        message={successMessage}
-      />
-    </Container>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteDialogClose}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the branch "{branchToDelete?.name}"?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose}>Cancel</Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? <CircularProgress size={24} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
-}
+} 

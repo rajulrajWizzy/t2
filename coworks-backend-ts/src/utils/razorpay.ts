@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import crypto from 'crypto';
 
 // Define types for Razorpay since they're missing
 interface RazorpayTypes {
@@ -35,18 +36,45 @@ export async function createOrder(
   notes: Record<string, string> = {}
 ): Promise<RazorpayTypes['Order']> {
   try {
+    // Ensure amount is properly formatted for Razorpay (integer in paise)
+    const amountInPaise = Math.round(amount * 100);
+    
+    console.log(`Creating Razorpay order: amount=${amountInPaise}, receipt=${receipt}, notes=`, notes);
+    
+    // Validate required Razorpay credentials
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.warn('Razorpay API keys are not properly configured in environment variables');
+    }
+    
     const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // Convert to paise/cents
+      amount: amountInPaise,
       currency: 'INR',
       receipt,
       notes,
       payment_capture: true, // Auto capture payment
     });
     
+    console.log('Razorpay order created successfully:', order.id);
     return order;
   } catch (error) {
     console.error('Error creating Razorpay order:', error);
-    throw new Error(`Failed to create payment order: ${error instanceof Error ? error.message : String(error)}`);
+    
+    // Improved error handling
+    let errorMessage: string;
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      try {
+        errorMessage = `Razorpay API error: ${JSON.stringify(error)}`;
+      } catch (e) {
+        errorMessage = `Razorpay API error details could not be stringified`;
+      }
+    } else {
+      errorMessage = String(error);
+    }
+    
+    throw new Error(`Failed to create payment order: ${errorMessage}`);
   }
 }
 
@@ -179,6 +207,46 @@ export function getRazorpayConfig() {
       color: '#3B82F6', // Primary color
     },
   };
+}
+
+/**
+ * Verify a Razorpay webhook signature
+ * @param webhookBody Raw request body as string
+ * @param webhookSignature X-Razorpay-Signature header value
+ * @param webhookSecret Webhook secret key (default: from env variable)
+ * @returns Whether the signature is valid
+ */
+export function verifyWebhookSignature(
+  webhookBody: string,
+  webhookSignature: string,
+  webhookSecret: string = process.env.RAZORPAY_WEBHOOK_SECRET || ''
+): boolean {
+  try {
+    if (!webhookSecret) {
+      console.warn('Razorpay webhook secret is not configured in environment variables');
+      return false;
+    }
+
+    // Generate a signature using the HMAC algorithm and SHA256 hash function
+    const generatedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(webhookBody)
+      .digest('hex');
+    
+    // Verify if the generated signature matches the received signature
+    const isValid = generatedSignature === webhookSignature;
+    
+    if (!isValid) {
+      console.warn('Razorpay webhook signature verification failed');
+      console.debug('Expected signature:', generatedSignature);
+      console.debug('Received signature:', webhookSignature);
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('Error verifying webhook signature:', error);
+    return false;
+  }
 }
 
 export default razorpay; 

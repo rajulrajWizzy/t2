@@ -15,6 +15,9 @@ import AdminModel from './admin';
 import AdminBranchModel from './adminBranch';
 import SupportTicketModel from './supportTicket';
 import TicketMessageModel from './ticketMessage';
+import CustomerCoinModel from './customerCoin';
+import CoinTransactionModel from './coinTransaction';
+import MaintenanceBlockModel from './maintenanceBlock';
 
 // Define associations with explicit aliases
 BranchModel.hasMany(SeatModel, { foreignKey: 'branch_id', as: 'Seats' });
@@ -125,6 +128,17 @@ TimeSlotModel.belongsTo(SeatModel, { foreignKey: 'seat_id', as: 'Seat' });
 SeatBookingModel.hasMany(TimeSlotModel, { foreignKey: 'booking_id', as: 'TimeSlots' });
 TimeSlotModel.belongsTo(SeatBookingModel, { foreignKey: 'booking_id', as: 'Booking' });
 
+// Coin associations
+CustomerModel.hasOne(CustomerCoinModel, { foreignKey: 'customer_id', as: 'Coins' });
+CustomerCoinModel.belongsTo(CustomerModel, { foreignKey: 'customer_id', as: 'Customer' });
+
+CustomerModel.hasMany(CoinTransactionModel, { foreignKey: 'customer_id', as: 'CoinTransactions' });
+CoinTransactionModel.belongsTo(CustomerModel, { foreignKey: 'customer_id', as: 'Customer' });
+
+// Maintenance Block associations
+SeatModel.hasMany(MaintenanceBlockModel, { foreignKey: 'seat_id', as: 'MaintenanceBlocks' });
+MaintenanceBlockModel.belongsTo(SeatModel, { foreignKey: 'seat_id', as: 'Seat' });
+
 // Export models
 const models = {
   sequelize,
@@ -144,6 +158,9 @@ const models = {
   AdminBranch: AdminBranchModel,
   SupportTicket: SupportTicketModel,
   TicketMessage: TicketMessageModel,
+  CustomerCoin: CustomerCoinModel,
+  CoinTransaction: CoinTransactionModel,
+  MaintenanceBlock: MaintenanceBlockModel,
   Sequelize: sequelize.Sequelize
 };
 export default models;

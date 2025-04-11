@@ -16,8 +16,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // Create upload directories if they don't exist
 const createUploadDirs = () => {
-  const dirs = ['profile_picture', 'proof_of_identity', 'proof_of_address'];
-  const baseDir = path.join(process.cwd(), 'uploads');
+  const dirs = ['profile-pictures', 'proof-of-identity', 'proof-of-address', 'branch-images'];
+  const baseDir = path.join(process.cwd(), 'public', 'uploads');
   
   if (!fs.existsSync(baseDir)) {
     fs.mkdirSync(baseDir);
@@ -37,16 +37,18 @@ createUploadDirs();
 // Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    let uploadDir = 'profile_picture';
+    let uploadDir = 'profile-pictures';
     
     // Determine upload directory based on field name
     if (file.fieldname === 'proofOfIdentity') {
-      uploadDir = 'proof_of_identity';
+      uploadDir = 'proof-of-identity';
     } else if (file.fieldname === 'proofOfAddress') {
-      uploadDir = 'proof_of_address';
+      uploadDir = 'proof-of-address';
+    } else if (file.fieldname === 'branchImage') {
+      uploadDir = 'branch-images';
     }
     
-    cb(null, path.join(process.cwd(), 'uploads', uploadDir));
+    cb(null, path.join(process.cwd(), 'public', 'uploads', uploadDir));
   },
   filename: (req, file, cb) => {
     const fileExt = ALLOWED_FILE_TYPES[file.mimetype];
@@ -66,7 +68,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   cb(null, true);
 };
 
-// Create multer instance with configuration
+// Create the multer upload instance
 const upload = multer({
   storage,
   fileFilter,
@@ -87,3 +89,5 @@ export const deleteFile = (filePath: string) => {
     fs.unlinkSync(filePath);
   }
 };
+
+export default upload;

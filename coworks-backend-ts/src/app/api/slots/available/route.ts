@@ -18,17 +18,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Extract query parameters
     const url = new URL(request.url);
     const branchCode = url.searchParams.get('branch_code');
+    const branchId = url.searchParams.get('branch_id');
     const seatingTypeCode = url.searchParams.get('seating_type_code');
     const startDate = url.searchParams.get('start_date') || new Date().toISOString().split('T')[0];
     const endDate = url.searchParams.get('end_date');
     const startTime = url.searchParams.get('start_time');
     const endTime = url.searchParams.get('end_time');
+    const capacity = url.searchParams.get('capacity');
     
     // Validate required filters
-    if (!branchCode) {
+    if (!branchCode && !branchId) {
       return NextResponse.json({
         success: false,
-        message: 'Branch code is required'
+        message: 'Branch code or branch ID is required'
       }, { status: 400 });
     }
     
@@ -40,15 +42,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // Find the branch
+    let branchWhere = {};
+    if (branchId) {
+      branchWhere = { id: parseInt(branchId) };
+    } else if (branchCode) {
+      branchWhere = { short_code: branchCode };
+    }
+    
     const branch = await models.Branch.findOne({
-      where: { short_code: branchCode },
+      where: branchWhere,
       attributes: ['id', 'name', 'location', 'address', 'short_code', 'opening_time', 'closing_time']
     });
     
     if (!branch) {
       return NextResponse.json({
         success: false,
-        message: `Branch with code ${branchCode} not found`
+        message: `Branch not found with the provided identifier`
       }, { status: 404 });
     }
     
@@ -102,20 +111,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // Find all available seats of this seating type in the branch
+    const seatWhere: any = {
+      branch_id: branch.id,
+      seating_type_id: seatingType.id,
+      availability_status: 'AVAILABLE'
+    };
+    
+    // If capacity is provided and it's a meeting room, filter by capacity
+    if (capacity && seatingType.name === SeatingTypeEnum.MEETING_ROOM) {
+      const capacityValue = parseInt(capacity);
+      if (!isNaN(capacityValue)) {
+        seatWhere.capacity = { [Op.gte]: capacityValue as number };
+      }
+    }
+    
     const seats = await models.Seat.findAll({
-      where: {
-        branch_id: branch.id,
-        seating_type_id: seatingType.id,
-        availability_status: 'AVAILABLE'
-      },
-      attributes: ['id', 'seat_number', 'seat_code', 'price'],
+      where: seatWhere,
+      attributes: ['id', 'seat_number', 'seat_code', 'price', 'capacity'],
       order: [['seat_number', 'ASC']]
     });
     
     if (seats.length === 0) {
       return NextResponse.json({
         success: false,
-        message: `No available seats found for seating type ${seatingTypeCode} in branch ${branchCode}`
+        message: `No available seats found for seating type ${seatingTypeCode} in branch ${branch.short_code || branch.id}`
       }, { status: 404 });
     }
     
@@ -275,7 +294,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         id: seat.id,
         seat_number: seat.seat_number,
         seat_code: seat.seat_code,
-        price: seat.price
+        price: seat.price,
+        capacity: seat.capacity || (seatingType.name === SeatingTypeEnum.MEETING_ROOM ? 8 : 1) // Default capacity
       })),
       seat_count: availableSeats.length,
       booking_requirements: {

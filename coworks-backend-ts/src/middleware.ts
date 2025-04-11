@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifyAdminToken } from '@/utils/jwt-wrapper';
 
 // Add validation helper functions
 function validateEmail(email: string): boolean {
@@ -78,10 +79,12 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/admin') && 
         !pathname.startsWith('/admin/login')) {
       
-      // Check if the admin token exists in cookies
-      const adminToken = request.cookies.get('adminToken')?.value;
+      // Check if the admin token exists in cookies or Authorization header
+      const adminToken = request.cookies.get('adminToken')?.value || 
+                         request.headers.get('authorization')?.replace('Bearer ', '');
       
       if (!adminToken) {
+        console.log('Middleware: No admin token found, redirecting to login');
         // Redirect to the login page
         const url = new URL('/admin/login', request.url);
         // Store the original URL to redirect back after login
@@ -89,9 +92,59 @@ export async function middleware(request: NextRequest) {
         
         return NextResponse.redirect(url);
       }
+
+      // Verify the token
+      const tokenResult = verifyTokenFormat(adminToken);
       
-      // Continue with the request if admin token exists
-      return NextResponse.next();
+      if (!tokenResult.valid || !tokenResult.decoded) {
+        console.log('Middleware: Invalid admin token, redirecting to login');
+        // Clear invalid token
+        const response = NextResponse.redirect(new URL('/admin/login', request.url));
+        response.cookies.delete('adminToken');
+        return response;
+      }
+      
+      // Check if it has the is_admin flag
+      if (!tokenResult.decoded.is_admin) {
+        // Secondary check for role-based admin access
+        const isAdminRole = tokenResult.decoded.role === 'admin' || 
+                          tokenResult.decoded.role === 'super_admin' || 
+                          tokenResult.decoded.role === 'administrator';
+                          
+        if (!isAdminRole) {
+          console.log('Middleware: Token missing is_admin flag and not admin role, redirecting to login', {
+            decoded: JSON.stringify({
+              id: tokenResult.decoded.id,
+              email: tokenResult.decoded.email,
+              role: tokenResult.decoded.role,
+              hasIsAdmin: !!tokenResult.decoded.is_admin,
+              tokenFields: Object.keys(tokenResult.decoded)
+            })
+          });
+          const response = NextResponse.redirect(new URL('/admin/login', request.url));
+          response.cookies.delete('adminToken');
+          return response;
+        } else {
+          console.log('Middleware: Token has admin role, continuing despite missing is_admin flag');
+        }
+      }
+      
+      // Continue with the request if admin token exists and is valid
+      console.log('Middleware: Valid admin token, continuing');
+      const response = NextResponse.next();
+      
+      // Ensure token is in the cookies if it came from Authorization header
+      if (!request.cookies.get('adminToken')?.value && adminToken) {
+        response.cookies.set('adminToken', adminToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 72 * 60 * 60, // 72 hours
+          path: '/',
+        });
+      }
+      
+      return response;
     }
     
     // Skip middleware for non-API routes and auth-related endpoints
@@ -189,6 +242,7 @@ export async function middleware(request: NextRequest) {
         !pathname.startsWith('/api/auth/') && 
         !pathname.startsWith('/api/public/') && 
         !pathname.startsWith('/api/admin/auth/') &&  // Add exemption for admin auth
+        !pathname.startsWith('/api/payments/razorpay-webhook') &&  // Exempt Razorpay webhook paths
         pathname !== '/api/health' &&
         pathname !== '/api/database-status' &&
         !pathname.includes('/_next/')) {
